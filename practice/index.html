@@ -102,12 +102,16 @@
   header{padding:40px 0 0}
   .topline{display:flex; justify-content:space-between; align-items:center; gap:16px; padding-bottom:22px; border-bottom:1px solid var(--line)}
   .topline .brand{font-family:"Newsreader", Georgia, serif; font-size:19px; font-weight:600; color:var(--ink); text-decoration:none}
-  .topline nav{display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end}
-  .topline nav a{font-size:13.5px; font-weight:500; color:var(--ink-2); text-decoration:none; padding:8px 10px; min-height:36px; display:inline-flex; align-items:center; border-radius:6px}
+  .topline nav{display:flex; gap:2px; flex-wrap:nowrap; justify-content:flex-end}
+  .topline nav a{font-size:13px; font-weight:500; color:var(--ink-2); text-decoration:none; padding:8px 7px; min-height:36px; display:inline-flex; align-items:center; border-radius:6px; white-space:nowrap}
   .topline nav a:hover{background:var(--accent-light); color:var(--ink)}
+  @media (max-width:900px){
+    .topline{flex-direction:column; align-items:flex-start; gap:10px}
+    .topline nav{flex-wrap:wrap; justify-content:flex-start; margin-left:-7px}
+  }
   @media (max-width:560px){
     .topline{flex-direction:column; align-items:flex-start; gap:10px; padding-bottom:18px}
-    .topline nav{justify-content:flex-start; margin-left:-10px}
+    .topline nav{justify-content:flex-start; margin-left:-7px}
   }
   .crumbs{margin-top:26px; font-size:13.5px; color:var(--muted)}
   .crumbs a{color:var(--muted); text-decoration:none}
