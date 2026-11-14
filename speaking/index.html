@@ -160,6 +160,12 @@
     font-family:"Newsreader", Georgia, serif;
     font-weight:500; font-size:20px; line-height:1.2; letter-spacing:-.01em; margin:28px 0 10px;
   }
+  details.transcript{margin-top:6px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:14px 0 6px}
+  details.transcript summary{cursor:pointer; font-weight:600; font-size:16px; color:var(--accent); list-style:none; display:flex; align-items:center; gap:8px; min-height:32px}
+  details.transcript summary::-webkit-details-marker{display:none}
+  details.transcript summary::before{content:"\25B8"; font-size:13px; transition:transform .2s ease}
+  details.transcript[open ] summary::before{transform:rotate(90deg)}
+  details.transcript summary:hover{text-decoration:underline; text-underline-offset:3px}
   article p{margin:0 0 18px; color:var(--ink-2)}
   article p:last-child{margin-bottom:0}
   .more{
@@ -274,6 +280,9 @@
       <section aria-labelledby="transcript-h">
         <h2 id="transcript-h">Transcript</h2>
         <p>This is the transcript of the talk Douglas Cirillo and Richard McGovern gave at Synapse 2019, Segment&#x27;s user conference, held in San Francisco in September 2019. It covers how Sotheby&#x27;s built a single, unified view of its customer data, and the adoption work that made it stick. Figures and examples are as of 2019 and are transcribed as spoken. The full <a href="/case-studies/sothebys/">Sotheby&#x27;s case study</a> is on this site.</p>
+        <details class="transcript">
+          <summary>Read the full transcript</summary>
+
         <h3>Introduction: a 275-year-old auction house goes digital (00:00)</h3>
         <p><strong>Douglas Cirillo:</strong> Hey, how&#x27;s everybody doing? Good. Thank you for joining. Before we dive into what we&#x27;ve been doing from a digital transformation side, we have a video that we put together to kind of give everybody here a little context into Sotheby&#x27;s and what we&#x27;ve been up to for the last 275 years. I know that not everybody&#x27;s super familiar with us, or if you are, you&#x27;re maybe more familiar with the real estate play, but I&#x27;m going to play this and then we&#x27;ll jump in.</p>
         <p><em>[Video plays]</em> A Sotheby&#x27;s brand video: specialists and artists talk about discovering and selling great works of art, cut with live auction footage and hammer prices.</p>
@@ -310,6 +319,7 @@
         <p><strong>Douglas Cirillo:</strong> So what we went over, when we started a year ago, was looking particularly and specifically at the martech side of the world, how people are engaging with us on digital channels, since we needed to set a foundation there, so that we can, over the next five years, grow those different channels aggressively. But what we want to start looking at now, that we&#x27;ve solved for the martech side of the coin in a relatively short amount of time than we would have traditionally been able to do, is how do we close the gaps that exist outside the martech space. So over the next couple of years, we want to really scale out, or look to scale out, what we&#x27;ve done here, to close the gaps that we have on syncing and interlocking our cataloging systems, and bringing and introducing that into this ecosystem, our research platforms, and our financial. So financial being very key, because that has all the records around both digital transactions, as well as offline traditional transactions. So once we have all of that information synced up, you can start really doing powerful stuff, especially down in a warehouse, since Segment, via Personas, acts as an ETL around that. So in terms of being able to look up, and help BI do their job better, whether it&#x27;s analyzing what&#x27;s happening today or looking at things historically, and having that perspective, there&#x27;s a lot of power that can be done there. So we&#x27;re entering the discovery period there. But what&#x27;s great is, because that essentially unifies all of our enterprise systems into one common data architecture, one set of properties, master property list. Really exciting stuff. There&#x27;s a lot of work ahead. So I think we&#x27;ve only really scratched the surface, in terms of the potential and what we can do here, but there&#x27;s a lot that we&#x27;re going to be going for in the next year and a half.</p>
         <p>So, for a takeaway, I would say, especially for any business that&#x27;s starting down this path, and we&#x27;re a particularly challenging use case, just given the uniqueness of our business, but I think this can apply to anybody that&#x27;s going through, or starting down, the road of transformation. One is, start small. Find those high-value, low-effort, low-hanging-fruit technical cases. In our case, we used the web tagging integration as kind of our V1. Show don&#x27;t tell. Demonstrate the value back to the business stakeholders and teams you&#x27;re helping to enable. And again, once you demonstrate the value back, they become the evangelizers for you, and are able to then collaborate, because you&#x27;ve democratized the data, and they can work together in ways that they haven&#x27;t before. So this is the approach that we took. We&#x27;ve seen a lot of success. We got a lot done in a year, which is incredible, but there&#x27;s a lot of work ahead. But really appreciate your time. Hope this all made sense, and enjoy the rest of Synapse. Thank you very much.</p>
         <p><strong>Session host:</strong> Thanks, guys.</p>
+        </details>
       </section>
 
       <section aria-labelledby="topics-h">
