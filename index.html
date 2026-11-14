@@ -234,6 +234,9 @@
   .prose p{margin:0 0 18px; color:var(--ink-2)}
   .prose p:last-child{margin-bottom:0}
   .prose p:first-child{color:var(--ink)}
+  .headshot{float:right; width:190px; height:auto; margin:4px 0 14px 22px; border-radius:10px}
+  .prose::after{content:""; display:block; clear:both}
+  @media (max-width:560px){ .headshot{float:none; display:block; width:150px; margin:0 0 14px} }
 
   /* record */
   .record{list-style:none; margin:0; padding:0; border-top:1px solid var(--line)}
@@ -414,6 +417,7 @@
     <section id="about" aria-labelledby="about-h">
       <div class="section-head"><span class="num">01</span><h2 id="about-h">About</h2></div>
       <div class="prose">
+        <img class="headshot" src="/assets/douglas-cirillo-headshot-web.jpg" alt="Douglas Cirillo, Head of Digital Experience and Growth" width="640" height="480">
         <p>I build digital and data functions at audience brands, then run them.</p>
         <p>I am Head of Digital Experience and Growth at Vanguard, where I lead a function supporting Personal Wealth marketing and the retail business. Before Vanguard, I led marketing and product strategy at Gangverk, was Vice President of Digital Product Management at A Place for Mom, directed digital product at Lindblad Expeditions, ran digital product and the growth stack at Sotheby&rsquo;s, and built and ran digital product at Madison Square Garden.</p>
         <p>The pattern across those seats is consistent: build with the people who will run it, put the data foundation first, measure against outcomes, and leave something that still stands after you leave the room. Former leaders have recruited me back three times.</p>
@@ -472,6 +476,7 @@
         <article>
           <h3>AI readiness and answer discoverability</h3>
           <p>How brands make their content and data useful to both people and AI agents.</p>
+          <p><a href="/practice/ai-readiness-and-answer-discoverability/">More on AI readiness and answer discoverability &rarr;</a></p>
         </article>
       </div>
     </section>
