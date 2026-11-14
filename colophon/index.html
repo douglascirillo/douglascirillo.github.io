@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>How This Site Runs | Douglas Cirillo</title>
+<meta name="description" content="The stack and operating model behind douglascirillo.com: plain HTML on GitHub Pages, Amplitude measurement, and an AI team with human approval gates." />
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+<meta name="author" content="Douglas Cirillo" />
+<meta name="color-scheme" content="light dark" />
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fcfcf9" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141615" />
+<link rel="canonical" href="https://douglascirillo.com/colophon/" />
+<!-- Open Graph -->
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Douglas Cirillo" />
+<meta property="og:title" content="How This Site Runs | Douglas Cirillo" />
+<meta property="og:description" content="The stack and operating model behind douglascirillo.com: plain HTML on GitHub Pages, Amplitude measurement, and an AI team with human approval gates." />
+<meta property="og:url" content="https://douglascirillo.com/colophon/" />
+<meta property="og:image" content="https://douglascirillo.com/assets/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Douglas Cirillo, Head of Digital Experience and Growth, douglascirillo.com" />
+<meta property="og:locale" content="en_US" />
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:creator" content="@DouglasCirillo" />
+<meta name="twitter:title" content="How This Site Runs | Douglas Cirillo" />
+<meta name="twitter:description" content="The stack and operating model behind douglascirillo.com: plain HTML on GitHub Pages, Amplitude measurement, and an AI team with human approval gates." />
+<meta name="twitter:image" content="https://douglascirillo.com/assets/og-image.png" />
+<meta name="twitter:image:alt" content="Douglas Cirillo, Head of Digital Experience and Growth, douglascirillo.com" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTIiIGZpbGw9IiMyZjRhM2UiLz48dGV4dCB4PSIzMiIgeT0iNDMiIGZvbnQtZmFtaWx5PSJHZW9yZ2lhLCAnVGltZXMgTmV3IFJvbWFuJywgc2VyaWYiIGZvbnQtc2l6ZT0iMjciIGZpbGw9IiNmY2ZjZjkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkRDPC90ZXh0Pjwvc3ZnPgo=" />
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://douglascirillo.com/colophon/#article",
+      "headline": "How this site runs",
+      "description": "The stack and operating model behind douglascirillo.com: plain HTML on GitHub Pages, Amplitude measurement, and an AI team with human approval gates.",
+      "author": { "@id": "https://douglascirillo.com/#person" },
+      "about": {
+        "@type": "Thing",
+        "name": "How this site runs"
+      },
+      "mainEntityOfPage": "https://douglascirillo.com/colophon/",
+      "image": "https://douglascirillo.com/assets/og-image.png",
+      "datePublished": "2026-11-14",
+      "dateModified": "2026-11-14",
+      "inLanguage": "en-US"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://douglascirillo.com/" },
+        { "@type": "ListItem", "position": 2, "name": "How This Site Runs", "item": "https://douglascirillo.com/colophon/" }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root{
+    --bg:#fcfcf9;
+    --surface:#ffffff;
+    --ink:#1c1e20;
+    --ink-2:#3d4145;
+    --muted:#6e7276;
+    --line:#e6e3db;
+    --line-strong:#d8d3c6;
+    --accent:#2f4a3e;
+    --accent-light:#eef2ee;
+    --link:#2f4a3e;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#141615;
+      --surface:#1b1e1c;
+      --ink:#ece9e2;
+      --ink-2:#c9c6be;
+      --muted:#9aa09c;
+      --line:#2a2e2b;
+      --line-strong:#353a36;
+      --accent:#a8c3b2;
+      --accent-light:#1f2a24;
+      --link:#a8c3b2;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Public Sans", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--link); text-decoration-color:color-mix(in srgb, var(--link) 35%, transparent); text-underline-offset:3px}
+  a:hover{text-decoration-color:var(--link)}
+  .wrap{max-width:760px; margin:0 auto; padding:0 24px}
+  @media (min-width:860px){ .wrap{max-width:780px; padding:0 32px} }
+
+  header{padding:40px 0 0}
+  .topline{display:flex; justify-content:space-between; align-items:center; gap:16px; padding-bottom:22px; border-bottom:1px solid var(--line)}
+  .topline .brand{font-family:"Newsreader", Georgia, serif; font-size:19px; font-weight:600; color:var(--ink); text-decoration:none}
+  .topline nav{display:flex; gap:2px; flex-wrap:nowrap; justify-content:flex-end}
+  .topline nav a{font-size:13px; font-weight:500; color:var(--ink-2); text-decoration:none; padding:8px 7px; min-height:36px; display:inline-flex; align-items:center; border-radius:6px; white-space:nowrap}
+  .topline nav a:hover{background:var(--accent-light); color:var(--ink)}
+  @media (max-width:900px){
+    .topline{flex-direction:column; align-items:flex-start; gap:10px}
+    .topline nav{flex-wrap:wrap; justify-content:flex-start; margin-left:-7px}
+  }
+  @media (max-width:560px){
+    .topline{flex-direction:column; align-items:flex-start; gap:10px; padding-bottom:18px}
+    .topline nav{justify-content:flex-start; margin-left:-7px}
+  }
+  .crumbs{margin-top:26px; font-size:13.5px; color:var(--muted)}
+  .crumbs a{color:var(--muted); text-decoration:none}
+  .crumbs a:hover{color:var(--ink); text-decoration:underline}
+  .crumbs .sep{margin:0 8px; color:var(--line-strong)}
+  .kicker{margin:30px 0 0; font-size:13px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--accent)}
+  h1{
+    font-family:"Newsreader", Georgia, serif;
+    font-weight:500;
+    font-size:clamp(36px, 6vw, 52px);
+    line-height:1.05;
+    letter-spacing:-.015em;
+    margin:12px 0 20px;
+  }
+  .summary{
+    font-size:18.5px; line-height:1.65; color:var(--ink);
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    padding:22px 0; margin:0 0 8px;
+  }
+  .video{position:relative; padding-top:56.25%; margin:24px 0 10px}
+  .video iframe{position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:8px}
+  .speaker-photo{display:block; width:280px; max-width:100%; height:auto; border-radius:10px; margin:6px 0 10px}
+  article section{padding:30px 0 0}
+  article h2{
+    font-family:"Newsreader", Georgia, serif;
+    font-weight:500; font-size:26px; line-height:1.15; letter-spacing:-.01em; margin:0 0 14px;
+  }
+  article h3{
+    font-family:"Newsreader", Georgia, serif;
+    font-weight:500; font-size:20px; line-height:1.2; letter-spacing:-.01em; margin:28px 0 10px;
+  }
+  details.transcript{margin-top:6px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:14px 0 6px}
+  details.transcript summary{cursor:pointer; font-weight:600; font-size:16px; color:var(--accent); list-style:none; display:flex; align-items:center; gap:8px; min-height:32px}
+  details.transcript summary::-webkit-details-marker{display:none}
+  details.transcript summary::before{content:"\25B8"; font-size:13px; transition:transform .2s ease}
+  details.transcript[open ] summary::before{transform:rotate(90deg)}
+  details.transcript summary:hover{text-decoration:underline; text-underline-offset:3px}
+  article p{margin:0 0 18px; color:var(--ink-2)}
+  article p:last-child{margin-bottom:0}
+  .more{
+    margin-top:48px; padding:22px 0 0; border-top:1px solid var(--line);
+    font-size:15.5px; color:var(--ink-2);
+  }
+  .more p{margin:0 0 8px}
+  footer{margin-top:56px; padding:28px 0 44px; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px 24px}
+  footer p{margin:0; font-size:13.5px; color:var(--muted)}
+  @keyframes fadeUp{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
+  .fade{animation:fadeUp .55s ease both}
+  @media (prefers-reduced-motion: reduce){
+    .fade{animation:none}
+    html{scroll-behavior:auto}
+  }
+</style>
+<!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
+<script>
+  var AMPLITUDE_API_KEY = '57757d6bacdea434529e97ab93899647';
+  (function () {
+    var isConfigured = !!AMPLITUDE_API_KEY;
+    var pending = [];
+    var ready = false;
+
+    function sendOutbound(properties) {
+      if (!isConfigured) return;
+      if (ready && window.amplitude && typeof window.amplitude.track === 'function') {
+        try { window.amplitude.track('Outbound Link Click', properties); } catch (e) {}
+      } else {
+        pending.push(properties);
+      }
+    }
+
+    document.addEventListener('click', function (event) {
+      var node = event.target;
+      var link = node && node.closest ? node.closest('a[data-outbound-link]') : null;
+      if (!link) return;
+      var href = link.href || link.getAttribute('href') || '';
+      if (!href) return;
+      var label = link.getAttribute('data-link-label') || (link.textContent || '').replace(/\s+/g, ' ').trim();
+      var host = '';
+      try { host = new URL(href).hostname; } catch (e) {}
+      sendOutbound({ destination: href, destination_host: host, link_label: label });
+    }, false);
+
+    if (!isConfigured) return;
+
+    var sdk = document.createElement('script');
+    sdk.src = 'https://cdn.amplitude.com/script/' + encodeURIComponent(AMPLITUDE_API_KEY) + '.js';
+    sdk.async = true;
+    sdk.onload = function () {
+      try {
+        if (window.amplitude && typeof window.amplitude.init === 'function') {
+          window.amplitude.init(AMPLITUDE_API_KEY, {
+            fetchRemoteConfig: false,
+            autocapture: {
+              pageViews: true,
+              sessions: true,
+              formInteractions: false,
+              fileDownloads: false,
+              elementInteractions: false
+            }
+          });
+          ready = true;
+          while (pending.length) {
+            var queued = pending.shift();
+            try { window.amplitude.track('Outbound Link Click', queued); } catch (e) {}
+          }
+        }
+      } catch (e) { /* Analytics must never break the page. */ }
+    };
+    sdk.onerror = function () { /* Fail silently if the CDN is unreachable. */ };
+    document.head.appendChild(sdk);
+  })();
+</script>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="topline">
+      <a class="brand" href="/">Douglas Cirillo</a>
+      <nav aria-label="Primary">
+        <a href="/#record">Record</a>
+        <a href="/case-studies/">Case Studies</a>
+        <a href="/practice/">Practice</a>
+        <a href="/#writing">Writing</a>
+        <a href="/speaking/">Speaking and media</a>
+        <a href="/#elsewhere">Elsewhere</a>
+      </nav>
+    </div>
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="/">Home</a><span class="sep" aria-hidden="true">/</span><span aria-current="page">How This Site Runs</span>
+    </nav>
+  </header>
+
+  <main>
+    <article>
+      <p class="kicker">Colophon</p>
+      <h1 class="fade">How this site runs</h1>
+      <p class="summary">Douglas Cirillo is Head of Digital Experience and Growth at Vanguard. This page is the colophon for his personal site: the stack it runs on, how it is measured, and the team and rules behind it.</p>
+
+      <p>This site is a working demo. It is built and run the way I say digital teams should work: a small stack, data first, and a human making the decisions.</p>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What is it built on?</h2>
+        <p>Plain HTML. No framework, no CMS, no build step. The site is hosted on GitHub Pages and every change is a git commit, so the full history of what changed and when is versioned like software. Because it is software.</p>
+      </section>
+
+      <section aria-labelledby="measured-h">
+        <h2 id="measured-h">How is it measured?</h2>
+        <p>Amplitude has measured the site since day one: page views, sessions, and outbound clicks. Google Search Console and Bing Webmaster Tools watch indexing, and Bing matters more than it used to because its index feeds AI answers. Semrush tracks a short list of keywords, my name and the ideas I write about. A personal site gets the same measurement discipline as a business property.</p>
+      </section>
+
+      <section aria-labelledby="team-h">
+        <h2 id="team-h">Who helps run it?</h2>
+        <p>I work with a small bench of AI systems, each with a lane. Claude pressure-tests positioning. Grok checks claims against what is live right now. Gemini works through long documents and diligence. ChatGPT argues the other side. An AI agent coordinates the day-to-day: research, drafts, publishing, and regular checks on how the site and channels are doing.</p>
+        <p>Every draft comes back to me. I edit, I decide, I approve. Nothing publishes on a model&rsquo;s say-so.</p>
+      </section>
+
+      <section aria-labelledby="rules-h">
+        <h2 id="rules-h">What are the rules?</h2>
+        <p>Settled facts only. Every number on this site traces to work I actually did. One change at a time, then measure. And the harness checks from my writing, Brand Out-of-Bounds, Contextual Switch, and Guardrails, apply to the team that builds this site too. Gates, not prompts.</p>
+        <p>The argument of my writing is that a small team with a real foundation outruns a big team on a bloated stack. This site is that argument, running in production.</p>
+      </section>
+
+      <div class="more">
+        <p><a href="/">Back to home</a> &middot; <a href="/practice/">What I work on</a></p>
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Douglas Cirillo</p>
+    <p>West Chester, Pennsylvania</p>
+  </footer>
+
+</div>
+</body>
+</html>
