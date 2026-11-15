@@ -249,6 +249,26 @@
   var AMPLITUDE_API_KEY = '57757d6bacdea434529e97ab93899647';
   (function () {
     var isConfigured = !!AMPLITUDE_API_KEY;
+    /* Bot classification (schema: bot-classification.md). Parsed once
+       from the user agent, set as user properties, and stamped on
+       every event by an enrichment plugin. */
+    var BOT_CLS = (function () {
+      var ua = navigator.userAgent || '';
+      var rules = [
+        ['social_preview', /(Slackbot|Twitterbot|facebookexternalhit|facebot|LinkedInBot|Discordbot|WhatsApp|TelegramBot|Pinterestbot|redditbot|Mastodon|Bluesky)/i],
+        ['ai_crawler', /(GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-User|anthropic-ai|PerplexityBot|Perplexity-User|CCBot|Bytespider|cohere-ai|Google-Extended|Applebot-Extended|Meta-ExternalAgent|Meta-ExternalFetcher|YouBot|Diffbot|ImagesiftBot|Omgilibot)/i],
+        ['search_engine_crawler', /(Googlebot|Google-InspectionTool|Storebot-Google|bingbot|BingPreview|DuckDuckBot|Slurp|Baiduspider|YandexBot|Applebot|Sogou|Exabot|PetalBot)/i],
+        ['uptime_monitor', /(Pingdom|UptimeRobot|Datadog|StatusCake|NewRelic|Site24x7|GTmetrix|Checkly|SpeedCurve|Chrome-Lighthouse|Lighthouse)/i],
+        ['security_scanner', /(HeadlessChrome|PhantomJS|Selenium|WebDriver|Puppeteer|Playwright|jsdom|nmap|sqlmap|nikto|masscan|zgrab|Censys|Shodan|python-requests|python-urllib|Go-http-client|curl\/|wget\/|libwww-perl|Scrapy|HttpClient|okhttp)/i]
+      ];
+      var type = 'human';
+      for (var i = 0; i < rules.length; i++) { if (rules[i][1].test(ua)) { type = rules[i][0]; break; } }
+      var isBot = type !== 'human';
+      if (!isBot && navigator.webdriver) { isBot = true; type = 'security_scanner'; }
+      if (!ua) { isBot = true; type = 'unknown'; }
+      return { is_bot: isBot, user_agent_type: type };
+    })();
+
     var pending = [];
     var ready = false;
 
@@ -292,6 +312,28 @@
             }
           });
           ready = true;
+          try {
+            if (typeof window.amplitude.Identify === 'function' && typeof window.amplitude.identify === 'function') {
+              var botId = new window.amplitude.Identify();
+              botId.set('is_bot', BOT_CLS.is_bot);
+              botId.set('user_agent_type', BOT_CLS.user_agent_type);
+              window.amplitude.identify(botId);
+            }
+            if (typeof window.amplitude.add === 'function') {
+              window.amplitude.add({
+                name: 'bot-classification',
+                type: 'enrichment',
+                execute: function (event) {
+                  var props = {};
+                  for (var k in event.event_properties) { props[k] = event.event_properties[k]; }
+                  props.is_bot = BOT_CLS.is_bot;
+                  props.user_agent_type = BOT_CLS.user_agent_type;
+                  event.event_properties = props;
+                  return Promise.resolve(event);
+                }
+              });
+            }
+          } catch (e) { /* Classification must never break analytics. */ }
           while (pending.length) {
             var queued = pending.shift();
             try { window.amplitude.track('Outbound Link Click', queued); } catch (e) {}
