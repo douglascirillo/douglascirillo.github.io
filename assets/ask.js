@@ -38,7 +38,7 @@
     },
     "/case-studies/madison-square-garden/": {
       placeholder: "Ask about Madison Square Garden\u2026",
-      chips: ["How many websites did he replatform?", "What happened to digital ticket sales?", "What was MSG Go recognized for?"],
+      chips: ["How many websites did he run?", "What happened to digital ticket sales?", "What was MSG Go recognized for?"],
       cta: CONVO
     },
     "/case-studies/a-place-for-mom/": {
