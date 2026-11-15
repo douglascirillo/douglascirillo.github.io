@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Own Your Harness | Douglas Cirillo</title>
+<meta name="description" content="Own your harness, your data, your runtime. Douglas Cirillo on the Monday test: three checks before trusting any agent setup, and why gates beat prompts." />
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+<meta name="author" content="Douglas Cirillo" />
+<meta name="color-scheme" content="light dark" />
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fcfcf9" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141615" />
+<link rel="canonical" href="https://douglascirillo.com/writing/own-your-harness/" />
+<!-- Open Graph -->
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Douglas Cirillo" />
+<meta property="og:title" content="Own Your Harness | Douglas Cirillo" />
+<meta property="og:description" content="Own your harness, your data, your runtime. Douglas Cirillo on the Monday test: three checks before trusting any agent setup, and why gates beat prompts." />
+<meta property="og:url" content="https://douglascirillo.com/writing/own-your-harness/" />
+<meta property="og:image" content="https://douglascirillo.com/assets/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Douglas Cirillo, Head of Digital Experience and Growth, douglascirillo.com" />
+<meta property="og:locale" content="en_US" />
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:creator" content="@DouglasCirillo" />
+<meta name="twitter:title" content="Own Your Harness | Douglas Cirillo" />
+<meta name="twitter:description" content="Own your harness, your data, your runtime. Douglas Cirillo on the Monday test: three checks before trusting any agent setup, and why gates beat prompts." />
+<meta name="twitter:image" content="https://douglascirillo.com/assets/og-image.png" />
+<meta name="twitter:image:alt" content="Douglas Cirillo, Head of Digital Experience and Growth, douglascirillo.com" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTIiIGZpbGw9IiMyZjRhM2UiLz48dGV4dCB4PSIzMiIgeT0iNDMiIGZvbnQtZmFtaWx5PSJHZW9yZ2lhLCAnVGltZXMgTmV3IFJvbWFuJywgc2VyaWYiIGZvbnQtc2l6ZT0iMjciIGZpbGw9IiNmY2ZjZjkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkRDPC90ZXh0Pjwvc3ZnPgo=" />
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://douglascirillo.com/writing/own-your-harness/#article",
+      "headline": "Own Your Harness",
+      "description": "Own your harness, your data, your runtime. Douglas Cirillo on the Monday test: three checks before trusting any agent setup, and why gates beat prompts.",
+      "author": {
+        "@id": "https://douglascirillo.com/#person"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "AI agent harnesses"
+      },
+      "mainEntityOfPage": "https://douglascirillo.com/writing/own-your-harness/",
+      "image": "https://douglascirillo.com/assets/writing-own-your-harness-hero.jpg",
+      "datePublished": "2026-11-08",
+      "dateModified": "2026-11-15",
+      "inLanguage": "en-US",
+      "publisher": {
+        "@id": "https://douglascirillo.com/#person"
+      },
+      "articleSection": "Writing",
+      "isPartOf": {
+        "@id": "https://douglascirillo.com/writing/#webpage"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://douglascirillo.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Writing",
+          "item": "https://douglascirillo.com/writing/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Own Your Harness",
+          "item": "https://douglascirillo.com/writing/own-your-harness/"
+        }
+      ]
+    },
+    {
+      "@type": "Person",
+      "@id": "https://douglascirillo.com/#person",
+      "name": "Douglas Cirillo",
+      "alternateName": "Doug Cirillo",
+      "givenName": "Douglas",
+      "familyName": "Cirillo",
+      "url": "https://douglascirillo.com/",
+      "image": "https://douglascirillo.com/assets/douglas-cirillo-headshot.jpg",
+      "jobTitle": "Head of Digital Experience and Growth",
+      "description": "Douglas Cirillo builds digital and data functions at audience brands, then runs them. Head of Digital Experience and Growth at Vanguard. West Chester, PA.",
+      "worksFor": {
+        "@type": "Organization",
+        "name": "Vanguard",
+        "url": "https://www.vanguard.com"
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "West Chester",
+        "addressRegion": "PA",
+        "addressCountry": "US"
+      },
+      "alumniOf": [
+        {
+          "@type": "EducationalOrganization",
+          "name": "Susquehanna University"
+        },
+        {
+          "@type": "EducationalOrganization",
+          "name": "Seton Hall University"
+        }
+      ],
+      "knowsAbout": [
+        "Digital experience strategy",
+        "Composable martech",
+        "Customer data platforms",
+        "Warehouse-first data architecture",
+        "Experimentation and measurement",
+        "AI discoverability"
+      ],
+      "mainEntityOfPage": {
+        "@id": "https://douglascirillo.com/#webpage"
+      },
+      "sameAs": [
+        "https://www.linkedin.com/in/douglascirillo/",
+        "https://douglascirillo.substack.com",
+        "https://www.linkedin.com/newsletters/7527368280857157632/",
+        "https://x.com/DouglasCirillo",
+        "https://www.youtube.com/channel/UCLg509RJNqaGKWCC7z5O4OA",
+        "https://www.crunchbase.com/person/douglas-cirillo"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://douglascirillo.com/#website",
+      "url": "https://douglascirillo.com/",
+      "name": "Douglas Cirillo",
+      "publisher": {
+        "@id": "https://douglascirillo.com/#person"
+      },
+      "inLanguage": "en-US"
+    }
+  ]
+}
+</script>
+<style>
+  :root{
+    --bg:#fcfcf9;
+    --surface:#ffffff;
+    --ink:#1c1e20;
+    --ink-2:#3d4145;
+    --muted:#6e7276;
+    --line:#e6e3db;
+    --line-strong:#d8d3c6;
+    --accent:#2f4a3e;
+    --accent-light:#eef2ee;
+    --link:#2f4a3e;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#141615;
+      --surface:#1b1e1c;
+      --ink:#ece9e2;
+      --ink-2:#c9c6be;
+      --muted:#9aa09c;
+      --line:#2a2e2b;
+      --line-strong:#353a36;
+      --accent:#a8c3b2;
+      --accent-light:#1f2a24;
+      --link:#a8c3b2;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Public Sans", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--link); text-decoration-color:color-mix(in srgb, var(--link) 35%, transparent); text-underline-offset:3px}
+  a:hover{text-decoration-color:var(--link)}
+  .wrap{max-width:760px; margin:0 auto; padding:0 24px}
+  @media (min-width:860px){ .wrap{max-width:780px; padding:0 32px} }
+  .hero{margin:26px 0 6px}
+  .hero img{width:100%; height:auto; display:block; border-radius:8px}
+  article img{max-width:100%; height:auto}
+
+  header{padding:40px 0 0}
+  .topline{display:flex; justify-content:space-between; align-items:center; gap:16px; padding-bottom:22px; border-bottom:1px solid var(--line)}
+  .topline .brand{font-family:"Newsreader", Georgia, serif; font-size:19px; font-weight:600; color:var(--ink); text-decoration:none}
+  .topline nav{display:flex; gap:2px; flex-wrap:nowrap; justify-content:flex-end}
+  .topline nav a{font-size:13px; font-weight:500; color:var(--ink-2); text-decoration:none; padding:8px 7px; min-height:36px; display:inline-flex; align-items:center; border-radius:6px; white-space:nowrap}
+  .topline nav a:hover{background:var(--accent-light); color:var(--ink)}
+  @media (max-width:900px){
+    .topline{flex-direction:column; align-items:flex-start; gap:10px}
+    .topline nav{flex-wrap:wrap; justify-content:flex-start; margin-left:-7px}
+  }
+  @media (max-width:560px){
+    .topline{flex-direction:column; align-items:flex-start; gap:10px; padding-bottom:18px}
+    .topline nav{justify-content:flex-start; margin-left:-7px}
+  }
+  .crumbs{margin-top:26px; font-size:13.5px; color:var(--muted)}
+  .crumbs a{color:var(--muted); text-decoration:none}
+  .crumbs a:hover{color:var(--ink); text-decoration:underline}
+  .crumbs .sep{margin:0 8px; color:var(--line-strong)}
+  .kicker{margin:30px 0 0; font-size:13px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--accent)}
+  h1{
+    font-family:"Newsreader", Georgia, serif;
+    font-weight:500;
+    font-size:clamp(36px, 6vw, 52px);
+    line-height:1.05;
+    letter-spacing:-.015em;
+    margin:12px 0 20px;
+  }
+  .summary{
+    font-size:18.5px; line-height:1.65; color:var(--ink);
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    padding:22px 0; margin:0 0 8px;
+  }
+  article section{padding:30px 0 0}
+  article h2{
+    font-family:"Newsreader", Georgia, serif;
+    font-weight:500; font-size:26px; line-height:1.15; letter-spacing:-.01em; margin:0 0 14px;
+  }
+  article p{margin:0 0 18px; color:var(--ink-2)}
+  article p:last-child{margin-bottom:0}
+  .more{
+    margin-top:48px; padding:22px 0 0; border-top:1px solid var(--line);
+    font-size:15.5px; color:var(--ink-2);
+  }
+  .more p{margin:0 0 8px}
+  footer{margin-top:56px; padding:28px 0 44px; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px 24px}
+  footer p{margin:0; font-size:13.5px; color:var(--muted)}
+  @keyframes fadeUp{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
+  .fade{animation:fadeUp .55s ease both}
+  @media (prefers-reduced-motion: reduce){
+    .fade{animation:none}
+    html{scroll-behavior:auto}
+  }
+</style>
+<!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
+<script>
+  var AMPLITUDE_API_KEY = '57757d6bacdea434529e97ab93899647';
+  (function () {
+    var isConfigured = !!AMPLITUDE_API_KEY;
+    var pending = [];
+    var ready = false;
+
+    function sendOutbound(properties) {
+      if (!isConfigured) return;
+      if (ready && window.amplitude && typeof window.amplitude.track === 'function') {
+        try { window.amplitude.track('Outbound Link Click', properties); } catch (e) {}
+      } else {
+        pending.push(properties);
+      }
+    }
+
+    document.addEventListener('click', function (event) {
+      var node = event.target;
+      var link = node && node.closest ? node.closest('a[data-outbound-link]') : null;
+      if (!link) return;
+      var href = link.href || link.getAttribute('href') || '';
+      if (!href) return;
+      var label = link.getAttribute('data-link-label') || (link.textContent || '').replace(/\s+/g, ' ').trim();
+      var host = '';
+      try { host = new URL(href).hostname; } catch (e) {}
+      sendOutbound({ destination: href, destination_host: host, link_label: label });
+    }, false);
+
+    if (!isConfigured) return;
+
+    var sdk = document.createElement('script');
+    sdk.src = 'https://cdn.amplitude.com/script/' + encodeURIComponent(AMPLITUDE_API_KEY) + '.js';
+    sdk.async = true;
+    sdk.onload = function () {
+      try {
+        if (window.amplitude && typeof window.amplitude.init === 'function') {
+          window.amplitude.init(AMPLITUDE_API_KEY, {
+            fetchRemoteConfig: false,
+            autocapture: {
+              pageViews: true,
+              sessions: true,
+              formInteractions: false,
+              fileDownloads: false,
+              elementInteractions: false
+            }
+          });
+          ready = true;
+          while (pending.length) {
+            var queued = pending.shift();
+            try { window.amplitude.track('Outbound Link Click', queued); } catch (e) {}
+          }
+        }
+      } catch (e) { /* Analytics must never break the page. */ }
+    };
+    sdk.onerror = function () { /* Fail silently if the CDN is unreachable. */ };
+    document.head.appendChild(sdk);
+  })();
+</script>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="topline">
+      <a class="brand" href="/">Douglas Cirillo</a>
+      <nav aria-label="Primary">
+        <a href="/#record">Record</a>
+        <a href="/case-studies/">Case Studies</a>
+        <a href="/practice/">Practice</a>
+        <a href="/writing/">Writing</a>
+        <a href="/speaking/">Speaking and media</a>
+        <a href="/#elsewhere">Elsewhere</a>
+        <a href="#ask-h">Ask</a>
+      </nav>
+    </div>
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="/">Home</a><span class="sep" aria-hidden="true">/</span><a href="/writing/">Writing</a><span class="sep" aria-hidden="true">/</span><span aria-current="page">Own Your Harness</span>
+    </nav>
+  </header>
+
+  <main>
+    <article>
+      <p class="kicker">Writing</p>
+      <h1 class="fade">Own Your Harness</h1>
+      <p class="summary">Guillermo Rauch&rsquo;s line was about local models and open source. Mine is about a working life. I run a good part of mine through an AI assistant, and what makes it useful is not the model. It is the harness: the rules, the memory, the approval gates. This essay first ran on Substack in November 2026. The pattern is the same one behind the record on this site, and this site runs on it too.</p>
+      <p class="byline">By Douglas Cirillo &middot; First published on Substack, November 8, 2026 &middot; Site edition, November 2025</p>
+      <figure class="hero"><img src="/assets/writing-own-your-harness-hero.jpg" alt="Interior of an old car with a worn steering wheel, in black and white" width="1200" height="800" loading="lazy"></figure>
+
+      <section aria-labelledby="harness-h">
+        <h2 id="harness-h">What does owning the harness look like?</h2>
+        <p>Guillermo Rauch put it sharply last week: own your harness, your data, your runtime. His version is about local models and open source. Mine is smaller and closer to home. What does owning the harness actually look like when it has to hold a working life, and then a brand?</p>
+        <p>Start with the shopping problem. Everyone I talk to is shopping for a better model. New release drops, benchmarks get posted, group chats light up, and somebody starts a migration plan by Friday. I think most of them are shopping for the wrong thing.</p>
+        <p>Here is my own setup, because it is the simplest version I know. I run a good part of my working life through an AI assistant. What makes it useful is not only the model. It is the harness around the model, and the harness is mine. There is a short document that says how it should behave and what it should never do. There is a memory, kept in files I own, of what matters to me and how I like things done. There are goals it works toward when I am not in the room, with logs I can read afterward. And there are approval gates, enforced in the system rather than requested in a prompt: a short list of things it cannot do without asking me first, no matter how confident it sounds. A prompt is a request. A gate is a control.</p>
+        <p>The model underneath all of that is swappable, and swapping is the point. The rules carry over. The memory carries over. The gates carry over. The performance does not, not automatically: a new model has a different tone, different judgment, different failure modes. So you re-test. That is not a flaw in the approach. That is the approach.</p>
+      </section>
+
+      <section aria-labelledby="owned-h">
+        <h2 id="owned-h">Where do the wins actually come from?</h2>
+        <p>That is my Builder OS in miniature, and it is the same pattern I have watched play out at every brand I have run digital for. The wins never came from whichever platform we happened to be renting that year. They came from the layer we owned: the customer data foundation, the content model, the <a href="/practice/composable-martech-and-customer-data/">martech</a> running on them, and the measurement discipline that tells you whether any of it worked. Vendors changed. Suites got acquired, roadmaps got rewritten. The foundation stayed ours, so every change on top of it was an upgrade instead of a migration.</p>
+        <p>A monolithic platform is the opposite bet. It is somebody else&rsquo;s harness, rented. Their context, their guardrails, their idea of what your customer is. It demos beautifully, because a harness always does when the person who built it is driving. Then your edge cases show up, and you find out which parts you are allowed to change.</p>
+      </section>
+
+      <section aria-labelledby="monday-h">
+        <h2 id="monday-h">What is the Monday test?</h2>
+        <p>Agents make this urgent in a way the platform era did not. An agent acting on bad context is not a rounding error, it is a behavior. So before I trust any <a href="/practice/ai-readiness-and-answer-discoverability/">agent setup</a>, mine included, I run a short check. I call it the Monday test, because Monday is when you find out what your systems did over the weekend.</p>
+        <p><strong>One: Brand Out-of-Bounds.</strong> Ask the agent for something outside its remit and see what it does. A good harness pivots back to what it can actually help with, cleanly, without inventing things.</p>
+        <p><strong>Two: Contextual Switch.</strong> Change the intent mid-session. New constraint, new goal, drop the old parameters. A good harness drops them. A bad one keeps quietly serving the first version of you it met.</p>
+        <p><strong>Three: Guardrails.</strong> Push on it with the requests it should never say yes to. A good harness holds the line, the same way every time. The polite wording can vary. The gate cannot, because the gate is enforced, not suggested.</p>
+        <p>Three tests, ten minutes, and you know whether the setup is worth trusting this week. Then you run it again after every model or vendor change, because that is when harnesses quietly become rentals.</p>
+      </section>
+
+      <section aria-labelledby="engines-h">
+        <h2 id="engines-h">Why let the engines compete?</h2>
+        <p>Models are going to keep changing, at least every quarter and often faster. That is not a problem to solve, it is weather. If you own the harness, every new model is a better engine in a car that already handles the way you like, and you still retune it and re-test it. If you rent the harness, every new model is a move, and you do not even own the boxes.</p>
+        <p>Build the harness. Own the harness. Let the engines compete for the privilege of running in it.</p>
+        <p>Thanks for reading,<br />Doug</p>
+        <p><em>First published on <a href="https://douglascirillo.substack.com/p/own-your-harness" data-outbound-link data-link-label="Own Your Harness on Substack">Substack</a>, November 8, 2026. The discussion lives there.</em></p>
+      </section>
+
+      <div class="more">
+        <p><a href="/writing/">All writing</a> &middot; <a href="/colophon/">The colophon: how this site runs</a></p>
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Douglas Cirillo</p>
+    <p>West Chester, Pennsylvania</p>
+  </footer>
+
+</div>
+<script src="/assets/ask.js" defer></script>
+</body>
+</html>
