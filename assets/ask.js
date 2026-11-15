@@ -484,6 +484,10 @@
           });
           panel.appendChild(a);
         });
+        if (hits.length && queryID) {
+          var aa2 = insights();
+          if (aa2) { try { aa2("viewedObjectIDsAfterSearch", { eventName: "Search Results Viewed", index: ALGOLIA_INDEX, queryID: queryID, objectIDs: hits.slice(0, 20).map(function (h) { return h.objectID; }) }); } catch (e) {} }
+        }
         panel.hidden = false;
         setActive(-1);
       })
@@ -547,6 +551,10 @@
       li.appendChild(document.createTextNode(": " + (h.summary || "")));
       ul.appendChild(li);
     });
+    if (hits.length) {
+      var aa3 = insights();
+      if (aa3) { try { aa3("viewedObjectIDs", { eventName: "List Items Viewed", index: ALGOLIA_INDEX, objectIDs: hits.slice(0, 20).map(function (h) { return h.objectID; }) }); } catch (e) {} }
+    }
     if (hubUrl) {
       var mli = document.createElement("li");
       mli.className = "dynamic-more";
