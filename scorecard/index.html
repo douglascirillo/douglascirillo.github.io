@@ -237,6 +237,10 @@
     .fade{animation:none}
     html{scroll-behavior:auto}
   }
+
+  .skip-link{position:absolute;left:16px;top:-80px;z-index:200;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:6px;font-weight:600;text-decoration:none}
+  .skip-link:focus-visible{top:14px}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
 <script>
@@ -351,6 +355,7 @@
 .sc-total{font-size:19px}
 </style></head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
 <div class="wrap">
 
   <header>
@@ -371,7 +376,7 @@
     </nav>
   </header>
 
-  <main>
+  <main id="main">
     <article><p class="kicker">Self-Diagnostic</p>
 <h1 class="fade">The Digital Experience Leadership Scorecard</h1>
 <p class="summary">The Digital Experience Leadership Scorecard is Douglas Cirillo&rsquo;s self-diagnostic for whoever owns a brand&rsquo;s digital experience: the leader running it, or the executive deciding whether it is being run well. Twenty statements, five dimensions, scored on what you can prove. It runs in your browser. Nothing you enter is stored or sent anywhere.</p>
