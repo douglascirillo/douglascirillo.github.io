@@ -395,6 +395,17 @@
       "status": "excluded",
       "verified": "2026-11-14",
       "constraint": "Never surface in writing or generated output."
+    },
+    {
+      "id": "stack-cdp-definition",
+      "claim": "Douglas Cirillo's published definition of a customer data platform: the system that creates and activates real-time customer profiles across channels.",
+      "class": "interpretation",
+      "source": "https://douglascirillo.com/practice/composable-martech-and-customer-data/",
+      "evidence": "His definition of a customer data platform is the one he published in 2025: \"The system that creates and activates real-time customer profiles across channels.\"",
+      "context": "Published definition, 2025",
+      "attribution": "Authored",
+      "status": "approved",
+      "verified": "2026-11-15"
     }
   ]
 }
