@@ -549,15 +549,57 @@
     var aa = insights();
     if (aa) { try { aa("clickedObjectIDs", { eventName: "List Item Clicked", index: ALGOLIA_INDEX, objectIDs: [h.objectID] }); } catch (e) {} }
   }
+  function fmtDate(ts) {
+    if (!ts) return "";
+    try { return new Date(ts * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }); } catch (e) { return ""; }
+  }
+  function ensureCardCss() {
+    if (document.getElementById("dl-card-css")) return;
+    var st = document.createElement("style"); st.id = "dl-card-css";
+    st.textContent = ".dl-card{list-style:none}" +
+      ".dl-card-a{display:flex;gap:14px;text-decoration:none;border:1px solid var(--line,#ddd);border-radius:12px;padding:12px;background:var(--surface,var(--bg,#fff));color:inherit;transition:border-color .15s ease,transform .15s ease}" +
+      ".dl-card-a:hover{border-color:var(--accent,#5b7a67);transform:translateY(-1px)}" +
+      ".dl-img{width:112px;min-height:88px;object-fit:cover;border-radius:8px;flex:none}" +
+      ".dl-body{display:flex;flex-direction:column;gap:4px;min-width:0}" +
+      ".dl-meta{display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--muted,#777)}" +
+      ".dl-tag{letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line,#ddd);border-radius:4px;padding:0 5px;font-weight:600}" +
+      ".dl-title{font-family:Newsreader,Georgia,serif;font-size:18.5px;font-weight:600;line-height:1.25;color:var(--ink,inherit)}" +
+      ".dl-sum{font-size:14px;line-height:1.5;color:var(--ink-2,#444);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}" +
+      ".dl-cta{margin-top:auto;padding-top:2px;font-size:13.5px;font-weight:600;color:var(--accent,#5b7a67)}" +
+      ".related-writing li.dl-card,.related-writing li.dynamic-more{padding:0;border-bottom:none}" +
+      ".related-writing li.dynamic-more{padding:6px 2px 0}" +
+      "@media (max-width:560px){.dl-img{width:84px}}";
+    document.head.appendChild(st);
+  }
   function renderEssayList(ul, hits, surface, hubUrl, hubLabel) {
+    ensureCardCss();
     ul.innerHTML = "";
     hits.forEach(function (h) {
       var li = document.createElement("li");
+      li.className = "dl-card";
       var a = document.createElement("a");
-      a.href = h.url; a.textContent = h.title || "";
+      a.className = "dl-card-a"; a.href = h.url;
       a.addEventListener("click", function () { listClick(surface, h); });
-      li.appendChild(a);
-      li.appendChild(document.createTextNode(": " + (h.summary || "")));
+      if (h.image) {
+        var im = document.createElement("img");
+        im.className = "dl-img"; im.src = h.image; im.alt = ""; im.loading = "lazy";
+        a.appendChild(im);
+      }
+      var body = document.createElement("span"); body.className = "dl-body";
+      var meta = document.createElement("span"); meta.className = "dl-meta";
+      var tag = document.createElement("span"); tag.className = "dl-tag";
+      tag.textContent = h.type || "Essay"; meta.appendChild(tag);
+      var d = fmtDate(h.date);
+      if (d) { var ds = document.createElement("span"); ds.textContent = d; meta.appendChild(ds); }
+      body.appendChild(meta);
+      var ti = document.createElement("span"); ti.className = "dl-title";
+      ti.textContent = h.title || ""; body.appendChild(ti);
+      var su = document.createElement("span"); su.className = "dl-sum";
+      su.textContent = h.summary || ""; body.appendChild(su);
+      var ct = document.createElement("span"); ct.className = "dl-cta";
+      ct.textContent = (h.type === "Essay" ? "Read the essay" : "Read more") + " \u2192";
+      body.appendChild(ct);
+      a.appendChild(body);
       ul.appendChild(li);
     });
     if (hits.length) {
