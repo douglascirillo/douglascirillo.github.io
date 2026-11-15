@@ -393,7 +393,7 @@
 </script>
 <style>
 .intents{margin:44px 0 4px;padding:22px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
-.intents .explore-bar{max-width:none;margin:0;padding:0}
+.intents .explore{max-width:none;margin:0;padding:0}
 .entry-divider{display:flex;align-items:center;gap:12px;margin:18px 0 12px;color:var(--muted);font-size:13px}
 .entry-divider::before,.entry-divider::after{content:"";flex:1;border-top:1px solid var(--line)}
 .selected-writing li.dl-card{padding:0;border-bottom:none}
@@ -602,11 +602,12 @@
   });
   document.addEventListener('DOMContentLoaded', function(){
     var mount=document.querySelector('[data-record-bar-mount]');
-    var bar=document.querySelector('.explore-bar');
+    var bar=document.querySelector('.explore');
     if(mount&&bar) mount.appendChild(bar);
     if(bar){
-      var form=bar.querySelector('form');
-      if(form) form.addEventListener('submit', function(){
+      var q=bar.querySelector('#explore-q');
+      if(q) q.addEventListener('keydown', function(ev){
+        if(ev.key!=='Enter') return;
         var c=document.getElementById('composition'); if(c){ c.hidden=true; c.innerHTML=''; }
         document.querySelectorAll('.intent-btn').forEach(function(b){ b.setAttribute('aria-pressed','false'); });
         try{ sessionStorage.removeItem('dc-intent'); }catch(e){}
@@ -618,7 +619,7 @@
     }catch(e){}
   });
 })();
-</script><script src="/assets/ask.js?v=20261115-7" defer></script>
+</script><script src="/assets/ask.js?v=20261115-8" defer></script>
 <script src="/assets/compose.js?v=20261115-3" defer></script>
 </body>
 </html>
