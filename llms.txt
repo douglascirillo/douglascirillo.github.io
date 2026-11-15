@@ -28,7 +28,7 @@
 
 - [Speaking and media](https://douglascirillo.com/speaking/): includes the Synapse 2019 talk with Richard McGovern, "How Sotheby's Transformed a 275-Year-Old Company into a Data Innovator," with full transcript.
 - Writing: Observations from the Middle Seat on Substack; From the Middle Seat, his LinkedIn newsletter; site editions of all 14 essays at https://douglascirillo.com/writing/ (each essay from Observations from the Middle Seat has a redrafted site edition there; Substack remains the discussion copy)
-- [How this site runs](https://douglascirillo.com/colophon/): plain HTML, no CMS, every change a git commit, AI assistance under one rule: nothing publishes without his approval. Gates, not prompts.
+- [How this site runs](https://douglascirillo.com/colophon/): hand-written HTML, no framework, no CMS, every change a git commit, AI assistance under one rule: nothing publishes without his approval. Gates, not prompts.
 
 ## Ask, assemble, assess
 
