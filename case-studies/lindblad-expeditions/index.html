@@ -246,6 +246,12 @@
     .fade{animation:none}
     html{scroll-behavior:auto}
   }
+
+.keypoints{border:1px solid var(--line);border-radius:8px;padding:16px 20px 8px;margin:22px 0 6px;background:var(--accent-light)}
+.kp-head{font-weight:600;color:var(--ink);margin:0 0 10px;display:flex;align-items:center;gap:10px}
+.kp-tag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+.keypoints ul{margin:0 0 8px;padding-left:20px;color:var(--ink-2)}
+.keypoints li{margin:0 0 8px;line-height:1.55}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
 <script>
@@ -333,6 +339,15 @@
       <p class="kicker">Case Study</p>
       <h1 class="fade">Lindblad Expeditions: rebuilding the booking engine</h1>
       <p class="summary">Douglas Cirillo led digital product at <a href="https://www.expeditions.com" data-outbound-link data-link-label="Lindblad Expeditions">Lindblad Expeditions</a>, the small-ship expedition travel company that sails in partnership with National Geographic. He was recruited there by former MSG and Sotheby&rsquo;s leaders then in Lindblad&rsquo;s leadership. He led a team of 10 and a $5M portfolio across product, analytics, design, and partners. Within eight months of the replatform: bookings up 30%, booking funnel completion up 82%, qualified leads up 40%.</p>
+      <div class="keypoints">
+        <p class="kp-head">Key points <span class="kp-tag">AI-generated</span></p>
+        <ul>
+          <li>Douglas Cirillo led a multi-phase transformation across CMS, CDP, DAM, and analytics at Lindblad Expeditions, with Conductor on organic search intelligence and Optimizely on experimentation.</li>
+          <li>The transformation at Lindblad Expeditions followed a sequence of data foundation first, then the experience on top of it.</li>
+          <li>Legacy systems at Lindblad Expeditions made personalization difficult, campaigns could not be tracked end to end, and content changes moved slowly before the replatform.</li>
+          <li>Bookings at Lindblad Expeditions rose 30%, qualified leads rose 40%, and booking funnel completion rose 82% within eight months of the replatform.</li>
+        </ul>
+      </div>
       <figure class="hero"><img src="/assets/case-lindblad-expeditions.jpg" alt="An expedition vessel between icebergs in polar water" width="1200" height="800" loading="lazy"></figure>
 
       <section aria-labelledby="challenge-h">
