@@ -237,6 +237,10 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
 .hub-sum p{margin:0;font-size:15px;line-height:1.6;color:var(--ink-2)}
 .hub-cta{margin-top:auto;padding-top:6px;font-size:13.5px;font-weight:600;color:var(--accent)}
 .hub-static{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+
+  .skip-link{position:absolute;left:16px;top:-80px;z-index:200;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:6px;font-weight:600;text-decoration:none}
+  .skip-link:focus-visible{top:14px}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
 <script>
@@ -341,6 +345,7 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
 </script>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
 <div class="wrap">
 
   <header>
@@ -361,7 +366,7 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
     </nav>
   </header>
 
-  <main>
+  <main id="main">
     <h1 class="fade">What I work on</h1>
     <p class="intro">Douglas Cirillo builds digital and data functions at audience brands, then runs them. These are the practice areas that work sits in. Each area page gives the definition, the method, and the proof.</p>
 
