@@ -27,7 +27,7 @@
 ## Speaking and writing
 
 - [Speaking and media](https://douglascirillo.com/speaking/): includes the Synapse 2019 talk with Richard McGovern, "How Sotheby's Transformed a 275-Year-Old Company into a Data Innovator," with full transcript.
-- Writing: The Middle Seat on Substack; From the Middle Seat, his LinkedIn newsletter.
+- Writing: Observations from the Middle Seat on Substack; From the Middle Seat, his LinkedIn newsletter; site editions of the essays at https://douglascirillo.com/writing/ (first edition: What a Customer Data Platform Actually Is (and Isn't), https://douglascirillo.com/writing/what-a-customer-data-platform-actually-is/)
 - [How this site runs](https://douglascirillo.com/colophon/): plain HTML, no CMS, every change a git commit, AI assistance under one rule: nothing publishes without his approval. Gates, not prompts.
 
 ## Machine-readable record
