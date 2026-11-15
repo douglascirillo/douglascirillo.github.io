@@ -520,7 +520,10 @@
 
   /* Dynamic lists (Phase B): rendered from the same public index.
      Static HTML stays as the fallback; if the index does not answer,
-     nothing changes. Lists show title + fixed summary only. */
+     nothing changes. Lists show title + fixed summary only.
+     Default cap (Douglas, Nov 15): show the 3 most relevant items plus
+     a view-all row to the type hub. Personalization may override the
+     cap later; until then every list follows this pattern. */
   function queryIndex(body) {
     return fetch("https://" + ALGOLIA_APP + "-dsn.algolia.net/1/indexes/" + ALGOLIA_INDEX + "/query", {
       method: "POST",
@@ -533,7 +536,7 @@
     var aa = insights();
     if (aa) { try { aa("clickedObjectIDs", { eventName: "List Item Clicked", index: ALGOLIA_INDEX, objectIDs: [h.objectID] }); } catch (e) {} }
   }
-  function renderEssayList(ul, hits, surface) {
+  function renderEssayList(ul, hits, surface, hubUrl, hubLabel) {
     ul.innerHTML = "";
     hits.forEach(function (h) {
       var li = document.createElement("li");
@@ -544,6 +547,15 @@
       li.appendChild(document.createTextNode(": " + (h.summary || "")));
       ul.appendChild(li);
     });
+    if (hubUrl) {
+      var mli = document.createElement("li");
+      mli.className = "dynamic-more";
+      var ma = document.createElement("a");
+      ma.href = hubUrl; ma.textContent = hubLabel || "View all";
+      ma.addEventListener("click", function () { track("dynamic_list_click", { surface: surface, destination_type: "Hub" }); });
+      mli.appendChild(ma);
+      ul.appendChild(mli);
+    }
   }
   var homeList = document.querySelector("ul.selected-writing[data-dynamic-list='essays']");
   if (homeList) {
@@ -551,8 +563,9 @@
       .then(function (data) {
         var hits = (data.hits || []).slice().sort(function (a, b) { return (b.date || 0) - (a.date || 0); });
         if (!hits.length) return;
-        renderEssayList(homeList, hits, "home_writing");
-        track("dynamic_list_rendered", { surface: "home_writing", count: hits.length });
+        var shown = hits.slice(0, 3);
+        renderEssayList(homeList, shown, "home_writing", "/writing/", "View all writing");
+        track("dynamic_list_rendered", { surface: "home_writing", count: shown.length });
       })
       .catch(function () {});
   }
@@ -575,7 +588,7 @@
           var hd = document.createElement("h2"); hd.textContent = "Related writing";
           var ul = document.createElement("ul");
           sec.appendChild(hd); sec.appendChild(ul);
-          renderEssayList(ul, hits, "related_writing");
+          renderEssayList(ul, hits, "related_writing", "/writing/", "All writing");
           main.appendChild(sec);
           track("dynamic_list_rendered", { surface: "related_writing", count: hits.length });
         })
