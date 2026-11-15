@@ -219,7 +219,7 @@
     ".explore .ask-chip{font:inherit;font-size:13.5px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-2);cursor:pointer;text-align:left}",
     ".explore .ask-chip:hover{border-color:var(--accent);color:var(--ink)}",
     ".explore .explore-answer{margin-top:14px}",
-    ".explore .ask-item{padding:14px 18px;border:1px solid var(--line);border-radius:10px;margin:0 0 10px}",
+    ".explore .ask-prose{font-size:15.5px;line-height:1.55;margin:0 0 4px}.ask-gen-tag{font-size:12px;color:var(--muted,#777);margin:0 0 10px}.ask-item{padding:14px 18px;border:1px solid var(--line);border-radius:10px;margin:0 0 10px}",
     ".explore .ask-item p{margin:0 0 6px;font-size:16.5px;line-height:1.55}",
     ".explore .ask-item a{font-size:14px}",
     ".explore .ask-msg{font-size:16.5px;line-height:1.55}",
@@ -343,7 +343,17 @@
       .then(function (data) {
         answerBox.innerHTML = "";
         if (data.type === "answer" && data.items && data.items.length) {
-          track("ask_answered", { page: page, records: data.items.length });
+          track("ask_answered", { page: page, records: data.items.length, generated: !!data.generated });
+          if (data.generated && data.prose) {
+            var lead = document.createElement("p");
+            lead.className = "ask-prose";
+            lead.textContent = data.prose;
+            answerBox.appendChild(lead);
+            var tag = document.createElement("p");
+            tag.className = "ask-gen-tag";
+            tag.textContent = "Framing written by AI. The claims below are quoted word for word from the record.";
+            answerBox.appendChild(tag);
+          }
           data.items.forEach(function (it) {
             var div = document.createElement("div");
             div.className = "ask-item";
@@ -698,6 +708,39 @@
           }
         })
         .catch(function () {});
+    }
+  }
+
+  /* Selected writing bridge (home only): the checked one-line
+     introduction for the four most recent essays, from bridges.json. */
+  if ((window.location.pathname || "/") === "/" && BRIDGES_ENABLED) {
+    var grid = document.querySelector("#writing .hub-grid");
+    if (grid) {
+      var cards = Array.prototype.slice.call(grid.querySelectorAll("a.hub-card-a[href^='/writing/']"));
+      var oids = cards.map(function (a) {
+        return "writing-" + a.getAttribute("href").replace(/^\/|\/$/g, "").replace(/\//g, "-").replace(/^writing-/, "");
+      }).sort();
+      if (oids.length) {
+        var hsig = "selected_writing|home|" + oids.join(",");
+        fetchBridges().then(function (doc) {
+          var entry = doc && doc.bridges ? doc.bridges[hsig] : null;
+          track("bridge_rendered", { surface: "selected_writing", matched: !!entry });
+          if (entry && entry.text && !document.querySelector(".selected-writing-bridge")) {
+            var hst = document.createElement("style");
+            hst.textContent = ".selected-writing-bridge{margin:2px 0 14px;font-size:15.5px;line-height:1.6;color:var(--ink-2,#444)}.selected-writing-bridge .bridge-tag{display:inline-block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line,#ddd);border-radius:4px;padding:0 5px;margin-right:8px;vertical-align:1px}";
+            document.head.appendChild(hst);
+            var bp = document.createElement("p");
+            bp.className = "selected-writing-bridge";
+            bp.setAttribute("data-nosnippet", "");
+            var tag = document.createElement("span");
+            tag.className = "bridge-tag";
+            tag.textContent = "AI-generated";
+            bp.appendChild(tag);
+            bp.appendChild(document.createTextNode(entry.text));
+            grid.parentNode.insertBefore(bp, grid);
+          }
+        });
+      }
     }
   }
 })();
