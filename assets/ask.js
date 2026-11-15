@@ -108,12 +108,12 @@
     },
     "/writing/own-your-harness/": {
       placeholder: "Ask about owning your harness\u2026",
-      chips: ["What are the harness checks?", "What is his approach to AI?", "What is the approval rule for publishing?"],
+      chips: ["What are the harness checks?", "What does Douglas do now?", "What is the approval rule for publishing?"],
       cta: null
     },
     "/writing/data-first-ai-second/": {
       placeholder: "Ask about data first, AI second\u2026",
-      chips: ["What is his approach to AI?", "What is a CDP, in his framing?", "What were the results at Sotheby\u2019s?"],
+      chips: ["How did he grow organic traffic at Sotheby\u2019s?", "What is a CDP, in his framing?", "What were the results at Sotheby\u2019s?"],
       cta: null
     },
     "/writing/the-hardest-part-of-strategy-is-letting-go/": {
@@ -133,7 +133,7 @@
     },
     "/writing/marketing-vs-selling/": {
       placeholder: "Ask about marketing and leadership\u2026",
-      chips: ["What does Douglas do now?", "What is his approach to AI?", "What were the results at Sotheby\u2019s?"],
+      chips: ["What does Douglas do now?", "What were the results at Lindblad?", "What were the results at Sotheby\u2019s?"],
       cta: null
     },
     "/writing/the-long-road-back/": {
