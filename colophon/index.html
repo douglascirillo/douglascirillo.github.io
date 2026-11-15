@@ -263,6 +263,15 @@
 .log-day{font-weight:600;color:var(--ink);margin:24px 0 8px}
 .log{margin:0 0 10px;padding-left:22px;color:var(--ink-2)}
 .log li{margin:0 0 9px;line-height:1.6}
+
+.acc{border-top:1px solid var(--line)}
+.acc summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:12px 2px;font-family:"Newsreader", Georgia, serif;font-size:19px;font-weight:500;color:var(--ink)}
+.acc summary::-webkit-details-marker{display:none}
+.acc summary::after{content:"+";color:var(--muted);font-size:18px}
+.acc[open] summary::after{content:"\2013"}
+.acc-body{padding:0 2px 14px}
+.acc-body p{margin:0}
+.log-acc-last{border-bottom:1px solid var(--line)}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
 <script>
@@ -480,13 +489,11 @@
       <section aria-labelledby="changelog-h">
         <h2 id="changelog-h">What changed, and when?</h2>
         <p>This log is part of the page. Every release that changes how the site works adds its bullet under its day, in the same batch as the change itself. The scope is features, technical changes, and corrections. New writing appears in the Writing section and is not logged here.</p>
-        <p class="log-day">Nov 14, 2026</p>
-        <ul class="log">
+        <details class="acc" open><summary>Nov 14, 2026</summary><div class="acc-body"><ul class="log">
           <li><strong>The site launches.</strong> Plain HTML on GitHub Pages: six case studies, four practice pages, a speaking page with the full Synapse transcript. An owned home base that search engines and AI engines can read, instead of renting reach from platforms.</li>
           <li><strong>This colophon.</strong> The build log is part of the product, published from day one.</li>
-        </ul>
-        <p class="log-day">Nov 15, 2026</p>
-        <ul class="log">
+        </ul></div></details>
+        <details class="acc"><summary>Nov 15, 2026</summary><div class="acc-body"><ul class="log">
           <li><strong>The record becomes data.</strong> record.json and llms.txt publish the evidence registry everything else on the site reads from.</li>
           <li><strong>Intent paths and the scorecard.</strong> Visitors arrive with a problem, not a page in mind. The home page routes by intent, and the scorecard turns the diagnostic into a tool.</li>
           <li><strong>Ask my record.</strong> A question bar that answers only from the published record, verbatim, with citations. It shipped behind an eval gate and a monthly cost cap.</li>
@@ -504,16 +511,19 @@
           <li><strong>A wording correction.</strong> The build section no longer says plain HTML. The pages are hand-written HTML with JavaScript layered on top for the record bar, the dynamic lists, and the compositions, and now the colophon says so.</li>
           <li><strong>The walk-away test.</strong> A reader proposed asking the record bar for a fact the record does not hold, and counting a refusal as the pass. Asked how many people were on the Sotheby&rsquo;s team, which is not published anywhere on this site, the bar declined instead of quoting around the gap. The test is now part of the eval set the bar has to keep passing.</li>
           <li><strong>A narrower log.</strong> From here, the change log covers features, technical changes, and corrections. New writing is not logged. It lives in the Writing section.</li>
-        </ul>
+          <li><strong>One front door.</strong> The record bar and the intent pills now live in a single entry card on the home page, with one result region. The intent panel that repeated each composition&rsquo;s opening line is retired. The frame renders once, and the panel&rsquo;s links moved into the composition&rsquo;s footer.</li>
+          <li><strong>Preview cards.</strong> The dynamic lists render as cards now: hero image, title, the fixed summary, a read call, and the type and date. The search index gained an image field to feed them. The static text lists remain the fallback.</li>
+          <li><strong>The log folds.</strong> The change log and the roadmap now present as accordions: one item per day, one per roadmap step, the newest day and the next step open by default. Same words, less scroll.</li>
+        </ul></div></details>
       </section>
 
       <section aria-labelledby="roadmap-h">
         <h2 id="roadmap-h">Where is this going?</h2>
         <p>The record does not change. What changes is how much of the experience around it can assemble itself, under the same gates. The set lives in <a href="/record/">the record</a>.</p>
-        <p>Next: the generated introductions extend to the home page writing list, once a regeneration cycle runs clean. Ask gains connective writing between the records it cites, after a review period of real visitor questions, with the verbatim answer kept as the fallback.</p>
-        <p>Then composition: pages that assemble around a visitor&rsquo;s intent from the approved block library, precomputed and checked the way the introductions are checked. The static pages stay underneath as the canonical record, and any composition can be switched off without touching them.</p>
-        <p>In a private lab, not linked from this site: vendor generative tooling, tested against the same gates before anything is adopted.</p>
-        <p>Not on the roadmap: personalization based on who a visitor works for, and generated text a visitor sees before it has been checked against the record.</p>
+        <details class="acc" open><summary>Next</summary><div class="acc-body"><p>The generated introductions extend to the home page writing list, once a regeneration cycle runs clean. Ask gains connective writing between the records it cites, after a review period of real visitor questions, with the verbatim answer kept as the fallback.</p></div></details>
+        <details class="acc"><summary>Then: composition</summary><div class="acc-body"><p>Pages that assemble around a visitor&rsquo;s intent from the approved block library, precomputed and checked the way the introductions are checked. The static pages stay underneath as the canonical record, and any composition can be switched off without touching them.</p></div></details>
+        <details class="acc"><summary>In a private lab</summary><div class="acc-body"><p>Not linked from this site: vendor generative tooling, tested against the same gates before anything is adopted.</p></div></details>
+        <details class="acc log-acc-last"><summary>Not on the roadmap</summary><div class="acc-body"><p>Personalization based on who a visitor works for, and generated text a visitor sees before it has been checked against the record.</p></div></details>
       </section>
 
       <div class="more">
@@ -528,6 +538,6 @@
   </footer>
 
 </div>
-<script src="/assets/ask.js?v=20261115-6" defer></script>
+<script src="/assets/ask.js?v=20261115-7" defer></script>
 </body>
 </html>
