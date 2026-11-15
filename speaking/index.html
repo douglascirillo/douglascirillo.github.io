@@ -260,6 +260,10 @@
     .fade{animation:none}
     html{scroll-behavior:auto}
   }
+
+  .skip-link{position:absolute;left:16px;top:-80px;z-index:200;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:6px;font-weight:600;text-decoration:none}
+  .skip-link:focus-visible{top:14px}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
 <script>
@@ -364,6 +368,7 @@
 </script>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
 <div class="wrap">
 
   <header>
@@ -384,7 +389,7 @@
     </nav>
   </header>
 
-  <main>
+  <main id="main">
     <article>
       <p class="kicker">Speaking and Media</p>
       <h1 class="fade">Speaking and media</h1>
