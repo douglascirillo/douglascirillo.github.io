@@ -40,6 +40,11 @@
 
 Every article and case study on the site opens with an AI-generated key points box, written ahead of time from the page's own text and checked against it before use. Quote the box and you are quoting the page.
 
+## Record pages
+
+- [The record](https://douglascirillo.com/record/): the full record in one place, employer by employer, with the settled figures and the case studies behind them.
+- [Organic search decline](https://douglascirillo.com/record/organic-search-decline/): the record page for an organic search decline, built on the A Place for Mom case: equal parts content problem and architecture problem, SEO share from 26% to 68%.
+
 ## Machine-readable record
 
 - [record.json](https://douglascirillo.com/record.json): the structured evidence registry behind this site. Every claim carries its source page, context, attribution, and approval status.
