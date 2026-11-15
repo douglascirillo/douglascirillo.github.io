@@ -15,6 +15,14 @@
 (function () {
   var ASK_ENABLED = true;
   var PIPE_ENABLED = true;
+  var BRIDGES_ENABLED = true; /* E3: pre-generated, checked list introductions (related writing only) */
+  var _bridgesPromise = null;
+  function fetchBridges() {
+    if (!_bridgesPromise) {
+      _bridgesPromise = fetch("/bridges.json", { credentials: "omit" }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+    }
+    return _bridgesPromise;
+  }
   var ASK_ENDPOINT = "https://7i3yr1dzge.execute-api.us-east-1.amazonaws.com/ask";
   var ALGOLIA_APP = "AL1TQKLUI7";
   var ALGOLIA_SEARCH_KEY = "63308c453ec399e4360c003851faa733";
@@ -610,7 +618,7 @@
           var hits = others.slice(0, 3);
           if (!hits.length) return;
           var st = document.createElement("style");
-          st.textContent = ".related-writing{margin:34px 0 6px;padding-top:18px;border-top:1px solid var(--line,#ddd)}.related-writing h2{font-size:20px;margin:0 0 10px}.related-writing ul{list-style:none;margin:0;padding:0}.related-writing li{padding:9px 0;border-bottom:1px solid var(--line,#ddd);font-size:15.5px;line-height:1.6;color:var(--ink-2,#444)}.related-writing li:last-child{border-bottom:none}.related-writing a{font-weight:600;color:var(--ink,inherit)}";
+          st.textContent = ".related-writing{margin:34px 0 6px;padding-top:18px;border-top:1px solid var(--line,#ddd)}.related-writing h2{font-size:20px;margin:0 0 10px}.related-writing ul{list-style:none;margin:0;padding:0}.related-writing li{padding:9px 0;border-bottom:1px solid var(--line,#ddd);font-size:15.5px;line-height:1.6;color:var(--ink-2,#444)}.related-writing li:last-child{border-bottom:none}.related-writing a{font-weight:600;color:var(--ink,inherit)}.related-writing .bridge{margin:0 0 10px;font-size:15.5px;line-height:1.6;color:var(--ink-2,#444)}.related-writing .bridge-tag{display:inline-block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line,#ddd);border-radius:4px;padding:0 5px;margin-right:8px;vertical-align:1px}";
           document.head.appendChild(st);
           var main = document.querySelector("main") || document.body;
           var sec = document.createElement("section");
@@ -622,6 +630,26 @@
           renderEssayList(ul, hits, "related_writing", "/writing/", "All writing");
           main.appendChild(sec);
           track("dynamic_list_rendered", { surface: "related_writing", count: hits.length });
+          if (BRIDGES_ENABLED) {
+            var hostOid = here.replace(/^\/|\/$/g, "").replace(/\//g, "-");
+            var itemIds = hits.map(function (h) { return h.objectID; }).sort();
+            var sig = "related_writing|" + hostOid + "|" + itemIds.join(",");
+            fetchBridges().then(function (doc) {
+              var entry = doc && doc.bridges ? doc.bridges[sig] : null;
+              track("bridge_rendered", { surface: "related_writing", matched: !!entry });
+              if (entry && entry.text) {
+                var bp = document.createElement("p");
+                bp.className = "bridge";
+                bp.setAttribute("data-nosnippet", "");
+                var tag = document.createElement("span");
+                tag.className = "bridge-tag";
+                tag.textContent = "AI-generated";
+                bp.appendChild(tag);
+                bp.appendChild(document.createTextNode(entry.text));
+                sec.insertBefore(bp, ul);
+              }
+            });
+          }
         })
         .catch(function () {});
     }
