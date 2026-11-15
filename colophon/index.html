@@ -364,7 +364,7 @@
 
       <section aria-labelledby="built-h">
         <h2 id="built-h">What is it built on?</h2>
-        <p>Hand-written HTML. No framework, no CMS, no build step. Every page&rsquo;s content is in the HTML itself, readable with JavaScript off. JavaScript layers on top for the interactive parts: the record bar, the dynamic lists, and the compositions. The site is hosted on GitHub Pages and every change is a git commit, so the full history of what changed and when is versioned like software. Because it is software.</p>
+        <p>Hand-written HTML. No framework, no CMS, no build step. Every page&rsquo;s content is in the HTML itself, readable with JavaScript off. JavaScript layers on top for the interactive parts: the record bar, the dynamic lists, and the compositions. Lists whose entries lead to pages of their own render as preview cards by default: image where the page has one, tag, title, summary, and the read call. Reference lists inside a page stay text. The site is hosted on GitHub Pages and every change is a git commit, so the full history of what changed and when is versioned like software. Because it is software.</p>
       </section>
 
       <section aria-labelledby="measured-h">
@@ -517,6 +517,7 @@
           <li><strong>A cache and a class name.</strong> The entry card&rsquo;s bar move looked for the wrong element class, so the bar stayed outside the card, and warm browser caches held the pre-card list script. Both fixed. The script version is bumped so every visitor gets the card build on their next load.</li>
           <li><strong>Hub cards.</strong> The writing and case study hubs trade their text lists for the same preview cards: image, tag, title, summary, and the read call, in a two-column grid that stacks on phones.</li>
           <li><strong>Baked in.</strong> The dynamic lists now also ship as finished cards in the page HTML itself, home list and every essay&rsquo;s related list, computed from the same index and the same ranking. The script still refreshes them live where it runs; where it does not, the cards are simply there.</li>
+          <li><strong>Cards by default.</strong> The card treatment is now the site&rsquo;s default for destination lists. The home page&rsquo;s record entries and practice areas are cards, as is the practice hub. The record cards keep their full proof text. Reference lists stay text.</li>
         </ul></div></details>
       </section>
 
