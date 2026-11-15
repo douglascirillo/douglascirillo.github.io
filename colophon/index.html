@@ -365,11 +365,23 @@
         <h2 id="ask-h2">How does Ask my record work?</h2>
         <p>Every page on this site has a question box. It answers from one source: a public evidence registry, record.json, that holds every claim on this site as data, word for word, with its source page. The registry is the site, in machine-readable form.</p>
         <p>A small AI model (Claude Haiku) reads the question and picks which records answer it. The model never writes the answer. Code assembles the reply from the registry verbatim and links the source. Numbers cannot drift, because the model never touches them. If no record answers, the box says so and points to the case studies. If a question is out of bounds (my employer beyond my published role, compensation, my family), it gets one fixed refusal, every time. Some exclusions are enforced in code, not just in instructions to the model.</p>
-        <p>The box knows which page you are on. It suggests questions that page can actually answer, prefers that page&rsquo;s records when several could answer, and ends with the next step that fits the page. You do not have to scroll for it. Each content page also offers the box near the top, and the nav carries an Ask link on every page. It runs on a serverless function (AWS Lambda) that I deployed from a script, and it is measured like everything else here: views, questions, answers, and next clicks in Amplitude.</p>
-        <p>Questions are kept for 90 days so I can read what people actually ask and improve the record. Email addresses and phone numbers are stripped automatically before anything is stored. No visitor identifiers are kept. After 90 days the log deletes itself.</p>
+        <p>There is one input, at the top of every page, and it is also the search box (next section). Ask a question and the answer renders right there, in place. The box knows which page you are on. It suggests questions that page can actually answer, prefers that page&rsquo;s records when several could answer, and ends with the next step that fits the page. The nav&rsquo;s Ask link just focuses the input. It runs on a serverless function (AWS Lambda) that I deployed from a script, and it is measured like everything else here: views, questions, answers, and next clicks in Amplitude.</p>
+        <p>Questions are kept for 90 days so I can read what people actually ask and improve the record. Email addresses and phone numbers are stripped automatically before anything is stored. The question log keeps no visitor identifiers. After 90 days the log deletes itself.</p>
         <p>Cost is capped twice: a monthly ceiling in the code, and a spend limit where the model bill actually lands. There is a kill switch on the site side and on the server side.</p>
         <p>Before any of this shipped, it had to pass a 20-case test set: ordinary questions, scope traps, and adversarial ones. The first run passed 17. The three failures were fixed in the open: a missing record, a selection preference, and an exclusion that needed code instead of instructions. The set has to pass 20 of 20 before changes go live.</p>
         <p><strong>Build your own.</strong> Publish your record as data, with sources. Keep every claim verbatim. Let the model select, never write. Write your refusals in advance and make them fixed. Log questions with a short fuse. Cap the spend where the bill lands. Gate changes on a test set that includes people trying to break it.</p>
+      </section>
+
+      <section aria-labelledby="search-h">
+        <h2 id="search-h">How does search work?</h2>
+        <p>The same input searches the site. It runs on Algolia, the on-site search and recommendations tool from my Sotheby&rsquo;s stack, over a public index built from the published pages: titles, fixed summaries, headings. Nothing else. Restricted records never enter it, and results show the fixed summary rather than a raw snippet, so a figure cannot be separated from its scope. The index rebuilds on every publish, into a temporary index that swaps in only on success, so the site and the index never disagree.</p>
+        <p>Type a few words, get pages. Ask a full question, and the input routes to Ask My Record instead. Results lean toward the kind of page you are already on.</p>
+        <p>Search queries are measured by length and result count, never stored as text. Result clicks are sent to Algolia under the same anonymous ID that Amplitude uses, so I can read search behavior and site behavior together. No names, no emails, nothing that identifies a person.</p>
+      </section>
+
+      <section aria-labelledby="writing-h">
+        <h2 id="writing-h">How does the writing work?</h2>
+        <p>Essays publish first on Substack, where the discussion lives. Each one also gets a redrafted edition here under Writing: a new framing against the record, question-shaped headings, and links into the case studies and practice pages. Never a verbatim copy. The site edition is the version built to be found. Substack keeps the conversation.</p>
       </section>
 
       <section aria-labelledby="record-h">
