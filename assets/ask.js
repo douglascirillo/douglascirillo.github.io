@@ -106,6 +106,71 @@
       chips: ["What is a CDP, in his framing?", "What CDP experience does he have?", "What was the CDP approach at Lindblad?"],
       cta: null
     },
+    "/writing/own-your-harness/": {
+      placeholder: "Ask about owning your harness\u2026",
+      chips: ["What are the harness checks?", "What is his approach to AI?", "What is the approval rule for publishing?"],
+      cta: null
+    },
+    "/writing/data-first-ai-second/": {
+      placeholder: "Ask about data first, AI second\u2026",
+      chips: ["What is his approach to AI?", "What is a CDP, in his framing?", "What were the results at Sotheby\u2019s?"],
+      cta: null
+    },
+    "/writing/the-hardest-part-of-strategy-is-letting-go/": {
+      placeholder: "Ask about strategy and letting go\u2026",
+      chips: ["What does Douglas do now?", "What were the results at Lindblad?", "How did he grow organic traffic at Sotheby\u2019s?"],
+      cta: null
+    },
+    "/writing/seo-is-just-ux-done-right/": {
+      placeholder: "Ask about search and UX\u2026",
+      chips: ["What was the A Place for Mom diagnosis?", "How did search market share change at A Place for Mom?", "How did he grow organic traffic at Sotheby\u2019s?"],
+      cta: null
+    },
+    "/writing/what-customer-centric-actually-means/": {
+      placeholder: "Ask about customer-centric work\u2026",
+      chips: ["What does Douglas do now?", "What were the results at Lindblad?", "What were the results at Sotheby\u2019s?"],
+      cta: null
+    },
+    "/writing/marketing-vs-selling/": {
+      placeholder: "Ask about marketing and leadership\u2026",
+      chips: ["What does Douglas do now?", "What is his approach to AI?", "What were the results at Sotheby\u2019s?"],
+      cta: null
+    },
+    "/writing/the-long-road-back/": {
+      placeholder: "Ask my record anything\u2026",
+      chips: ["What does Douglas do now?", "What were the results at Sotheby\u2019s?", "What is a CDP, in his framing?"],
+      cta: null
+    },
+    "/writing/the-ac-ledger/": {
+      placeholder: "Ask my record anything\u2026",
+      chips: ["What does Douglas do now?", "What were the results at Sotheby\u2019s?", "What is a CDP, in his framing?"],
+      cta: null
+    },
+    "/writing/composable-is-a-culture-not-just-a-stack/": {
+      placeholder: "Ask about composable culture\u2026",
+      chips: ["What is a CDP, in his framing?", "What CDP experience does he have?", "What was the CDP approach at Lindblad?"],
+      cta: null
+    },
+    "/writing/build-it-with-them-not-for-them/": {
+      placeholder: "Ask about building with people\u2026",
+      chips: ["What does Douglas do now?", "What were the results at Lindblad?", "How did he grow organic traffic at Sotheby\u2019s?"],
+      cta: null
+    },
+    "/writing/remote-work-is-isolating/": {
+      placeholder: "Ask my record anything\u2026",
+      chips: ["What does Douglas do now?", "What were the results at Sotheby\u2019s?", "What is a CDP, in his framing?"],
+      cta: null
+    },
+    "/writing/prioritization-is-about-saying-no/": {
+      placeholder: "Ask about prioritization\u2026",
+      chips: ["What does Douglas do now?", "What were the results at Sotheby\u2019s?", "What were the results at Lindblad?"],
+      cta: null
+    },
+    "/writing/alignment-isnt-a-meeting-its-a-system/": {
+      placeholder: "Ask about alignment\u2026",
+      chips: ["What does Douglas do now?", "How did he grow organic traffic at Sotheby\u2019s?", "What were the results at Lindblad?"],
+      cta: null
+    },
     "/record/": {
       placeholder: "Ask my record anything\u2026",
       chips: ["What does Douglas do now?", "What is a CDP, in his framing?", "What were the results at Sotheby\u2019s?"],
