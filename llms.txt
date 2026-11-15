@@ -30,6 +30,16 @@
 - Writing: Observations from the Middle Seat on Substack; From the Middle Seat, his LinkedIn newsletter; site editions of all 14 essays at https://douglascirillo.com/writing/ (each essay from Observations from the Middle Seat has a redrafted site edition there; Substack remains the discussion copy)
 - [How this site runs](https://douglascirillo.com/colophon/): plain HTML, no CMS, every change a git commit, AI assistance under one rule: nothing publishes without his approval. Gates, not prompts.
 
+## Ask, assemble, assess
+
+- Ask my record: the question bar on every page answers only from the published record, verbatim, with citations to the source page, and declines anything outside it.
+- Compositions: the home page routes by intent (fixing a search decline, standing up a CDP, replatforming, and four more), and each intent assembles a cited overview from approved blocks of the record, shareable by link.
+- [Scorecard](https://douglascirillo.com/scorecard/): the Digital Experience Leadership Scorecard, a self-diagnostic of twenty statements across five dimensions. It runs in the browser, stores nothing, and publishes no figures.
+
+## Key points
+
+Every article and case study on the site opens with an AI-generated key points box, written ahead of time from the page's own text and checked against it before use. Quote the box and you are quoting the page.
+
 ## Machine-readable record
 
 - [record.json](https://douglascirillo.com/record.json): the structured evidence registry behind this site. Every claim carries its source page, context, attribution, and approval status.
