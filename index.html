@@ -399,6 +399,11 @@
 .intent-btn:hover{background:var(--accent-light)}
 .intent-btn[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
 @media (prefers-color-scheme: dark){.intent-btn[aria-pressed="true"]{color:#101512}}
+.composition{margin-top:20px;padding:20px;border:1px solid var(--line);border-radius:10px}
+.composition-h{font-family:"Newsreader", Georgia, serif;font-weight:500;font-size:22px;margin:0 0 14px}
+.composition section{margin:0 0 14px}
+.composition p{margin:0 0 10px;line-height:1.55}
+.composition-note{font-size:13.5px;color:var(--muted)}
 .intent-panel{margin-top:20px;padding:20px;border:1px solid var(--line);border-radius:10px}
 .intent-frame{margin:0 0 10px;font-size:17px;line-height:1.55}
 .intent-links{margin:0 0 6px;font-size:15px}
@@ -453,6 +458,7 @@
       <p class="intent-links" id="intent-links"></p>
       <p class="intent-reset"><button type="button" id="intent-reset">See the full record instead</button></p>
     </div>
+    <section class="composition" id="composition" hidden aria-label="Assembled from the record"></section>
   </section>
 
   <main>
@@ -608,5 +614,6 @@
   try{ var saved=sessionStorage.getItem('dc-intent'); if(saved) apply(saved); }catch(e){}
 })();
 </script><script src="/assets/ask.js?v=20261115-5" defer></script>
+<script src="/assets/compose.js?v=20261115-1" defer></script>
 </body>
 </html>
