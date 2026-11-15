@@ -1,14 +1,20 @@
-/* Ask My Record: cited retrieval UI for douglascirillo.com.
-   One shared file, loaded by every page. Set ASK_ENABLED to false to remove
-   the feature site-wide with no other change. ASK_ENDPOINT is set at deploy.
-   Context-aware: each page gets its own placeholder, example questions drawn
-   from that page's records, and a next step matched to the page's job. The
-   page path is sent with the question so the service can prefer that page's
-   records when several answer equally well.
-   Amplitude: ask_module_viewed, ask_submitted, ask_answered, ask_no_evidence,
-   ask_refused, ask_next_click, ask_entry_click. Every event carries the page path. */
+/* The Record Bar: one input for douglascirillo.com (A1.2).
+   A single prominent bar at the top of every page. Keyword-style input
+   searches the site on Algolia (public index: titles and fixed summaries
+   only). Question-style input asks the record: the Lambda selects records,
+   code assembles the answer verbatim, and it renders in place, in the bar's
+   own answer region. There is no second input and no jump.
+   Set ASK_ENABLED to false to remove the feature site-wide.
+   Amplitude events: ask_module_viewed, ask_submitted, ask_answered,
+   ask_no_evidence, ask_refused, ask_next_click, search_query,
+   search_result_click, explore_focus. Every event carries the page path.
+   Amplitude <> Algolia pipe: Algolia Insights events carry the visitor's
+   Amplitude anonymous device ID as the user token when Amplitude is
+   present (PIPE_ENABLED), so search behavior and site behavior join on one
+   anonymous ID in both systems. Otherwise a session-scoped token is used. */
 (function () {
   var ASK_ENABLED = true;
+  var PIPE_ENABLED = true;
   var ASK_ENDPOINT = "https://7i3yr1dzge.execute-api.us-east-1.amazonaws.com/ask";
   var ALGOLIA_APP = "AL1TQKLUI7";
   var ALGOLIA_SEARCH_KEY = "63308c453ec399e4360c003851faa733";
@@ -121,90 +127,34 @@
   var ctx = CONTEXTS[page] || DEFAULT_CTX;
 
   var css = [
-    ".ask{padding:44px 0 8px}",
-    ".ask h2{font-family:\"Newsreader\", Georgia, serif;font-weight:500;font-size:28px;letter-spacing:-.01em;margin:0 0 8px}",
-    ".ask .ask-sub{margin:0 0 16px;color:var(--ink-2);font-size:16px;line-height:1.55;max-width:38em}",
-    ".ask form{display:flex;gap:8px;flex-wrap:wrap}",
-    ".ask input{font:inherit;font-size:16px;flex:1 1 260px;padding:10px 14px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink)}",
-    ".ask button.ask-go{font:inherit;font-size:15px;padding:10px 18px;border:1px solid var(--accent);border-radius:999px;background:var(--accent);color:#fff;cursor:pointer}",
-    "@media (prefers-color-scheme: dark){.ask button.ask-go{color:#101512}}",
-    ".ask .ask-chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}",
-    ".ask .ask-chip{font:inherit;font-size:13.5px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-2);cursor:pointer;text-align:left}",
-    ".ask .ask-chip:hover{border-color:var(--accent);color:var(--ink)}",
-    ".ask .ask-note{margin:10px 0 0;font-size:13px;color:var(--muted)}",
-    ".ask .ask-results{margin-top:18px}",
-    ".ask .ask-item{padding:14px 18px;border:1px solid var(--line);border-radius:10px;margin:0 0 10px}",
-    ".ask .ask-item p{margin:0 0 6px;font-size:16.5px;line-height:1.55}",
-    ".ask .ask-item a{font-size:14px}",
-    ".ask .ask-msg{font-size:16.5px;line-height:1.55}",
-    ".ask .ask-next{margin-top:14px;font-size:15px}",
-    ".ask-entry{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 18px;border:1px solid var(--line);border-radius:10px;margin:22px 0}",
-    ".ask-entry .ask-entry-label{font-size:15px;color:var(--ink-2)}",
-    ".ask-entry button{font:inherit;font-size:13.5px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-2);cursor:pointer;text-align:left}",
-    ".ask-entry button:hover{border-color:var(--accent);color:var(--ink)}",
-    ".explore{margin:26px 0 4px;padding:18px 18px 10px;border:1px solid var(--line);border-radius:12px}",
+    ".explore{margin:26px 0 4px;padding:18px 18px 12px;border:1px solid var(--line);border-radius:12px}",
     ".explore .explore-label{display:block;font-size:15px;color:var(--ink-2);margin:0 0 10px}",
     ".explore input{font:inherit;font-size:16px;width:100%;box-sizing:border-box;padding:11px 16px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink)}",
     ".explore input:focus{outline:none;border-color:var(--accent)}",
+    ".explore .explore-note{margin:10px 0 0;font-size:13px;color:var(--muted)}",
     ".explore .explore-panel{margin-top:12px}",
     ".explore .explore-hit{display:block;padding:10px 14px;border:1px solid var(--line);border-radius:10px;margin:0 0 8px;text-decoration:none;color:var(--ink)}",
-    ".explore .explore-hit:hover{border-color:var(--accent)}",
+    ".explore .explore-hit:hover,.explore .explore-hit.active{border-color:var(--accent)}",
     ".explore .explore-hit .t{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 2px}",
     ".explore .explore-hit .ti{display:block;font-size:16px;font-weight:600;margin:0 0 2px}",
     ".explore .explore-hit .sm{display:block;font-size:14px;color:var(--ink-2);line-height:1.45}",
     ".explore .explore-askrow{display:block;width:100%;text-align:left;font:inherit;font-size:15px;padding:10px 14px;border:1px solid var(--accent);border-radius:10px;background:transparent;color:var(--ink);cursor:pointer;margin:0 0 8px}",
+    ".explore .explore-askrow.active{background:var(--accent-light)}",
     ".explore .explore-none{font-size:14.5px;color:var(--muted);margin:2px 0 10px}",
+    ".explore .explore-head{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:4px 0 6px}",
     ".explore .explore-chips{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 8px}",
     ".explore .ask-chip{font:inherit;font-size:13.5px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-2);cursor:pointer;text-align:left}",
     ".explore .ask-chip:hover{border-color:var(--accent);color:var(--ink)}",
-    ".aa-Form{display:flex;align-items:center;border:1px solid var(--line);border-radius:999px;padding:0 6px 0 16px;background:transparent}",
-    ".aa-Form:focus-within{border-color:var(--accent)}",
-    ".aa-Input{font:inherit;font-size:16px;flex:1;border:none;background:transparent;color:var(--ink);padding:11px 0;outline:none}",
-    ".aa-SubmitButton,.aa-ClearButton,.aa-LoadingIndicator{border:none;background:transparent;color:var(--muted);cursor:pointer;padding:6px}",
-    ".aa-DetachedSearchButtonIcon,.aa-SubmitIcon{fill:currentColor}",
-    ".aa-Panel{margin-top:12px}",
-    ".aa-PanelLayout{padding:0}",
-    ".aa-Source{margin:0 0 10px}",
-    ".aa-SourceHeader{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 6px;padding:0 2px}",
-    ".aa-List{list-style:none;margin:0;padding:0}",
-    ".aa-Item{padding:10px 14px;border:1px solid var(--line);border-radius:10px;margin:0 0 8px;cursor:pointer;color:var(--ink)}",
-    ".aa-Item[aria-selected=true]{border-color:var(--accent)}",
-    ".aa-Item .t{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 2px}",
-    ".aa-Item .ti{display:block;font-size:16px;font-weight:600;margin:0 0 2px}",
-    ".aa-Item .sm{display:block;font-size:14px;color:var(--ink-2);line-height:1.45}",
-    ".aa-Item .askline{font-size:15px}",
-    ".aa-ItemIcon{display:none}",
-    ".aa-ItemContent{margin:0}",
-    ".aa-ItemActionButton{display:none}"
+    ".explore .explore-answer{margin-top:14px}",
+    ".explore .ask-item{padding:14px 18px;border:1px solid var(--line);border-radius:10px;margin:0 0 10px}",
+    ".explore .ask-item p{margin:0 0 6px;font-size:16.5px;line-height:1.55}",
+    ".explore .ask-item a{font-size:14px}",
+    ".explore .ask-msg{font-size:16.5px;line-height:1.55}",
+    ".explore .ask-next{margin-top:6px;font-size:15px}"
   ].join("\n");
   var style = document.createElement("style");
   style.textContent = css;
   document.head.appendChild(style);
-
-  var section = document.createElement("section");
-  section.className = "ask";
-  section.setAttribute("aria-labelledby", "ask-h");
-  var chipsHtml = "";
-  ctx.chips.forEach(function (c) {
-    chipsHtml += "<button type=\"button\" class=\"ask-chip\"></button>";
-  });
-  section.innerHTML =
-    "<h2 id=\"ask-h\">Ask my record</h2>" +
-    "<p class=\"ask-sub\">Answers come only from what is published on this site, quoted word for word, with the source. If it is not in the record, the answer says so.</p>" +
-    "<form id=\"ask-form\"><input id=\"ask-q\" type=\"text\" maxlength=\"300\" autocomplete=\"off\" aria-label=\"Ask a question about the published record\">" +
-    "<button type=\"submit\" class=\"ask-go\">Ask</button></form>" +
-    "<div class=\"ask-chips\" id=\"ask-chips\">" + chipsHtml + "</div>" +
-    "<p class=\"ask-note\">Questions are kept for 90 days and read by Douglas to improve the record. Please leave out personal details.</p>" +
-    "<div class=\"ask-results\" id=\"ask-results\" aria-live=\"polite\"></div>";
-
-  var footer = document.querySelector("footer");
-  if (footer && footer.parentNode) footer.parentNode.insertBefore(section, footer);
-  else document.body.appendChild(section);
-
-  var input = document.getElementById("ask-q");
-  input.setAttribute("placeholder", ctx.placeholder);
-  var chipEls = section.querySelectorAll(".ask-chip");
-  ctx.chips.forEach(function (c, i) { if (chipEls[i]) chipEls[i].textContent = c; });
 
   function track(n, p) {
     if (window.amplitude && typeof window.amplitude.track === "function") {
@@ -212,24 +162,88 @@
     }
   }
 
+  /* ---------- the bar ---------- */
+  var main = document.querySelector("main");
+  if (!main) return;
+  var bar = document.createElement("div");
+  bar.className = "explore";
+  bar.id = "ask-h";
+  bar.innerHTML =
+    "<span class=\"explore-label\">Search the record, or ask it a question.</span>" +
+    "<input id=\"explore-q\" type=\"text\" maxlength=\"300\" autocomplete=\"off\" aria-label=\"Search the record or ask a question\">" +
+    "<div class=\"explore-panel\" id=\"explore-panel\" hidden></div>" +
+    "<div class=\"explore-answer\" id=\"explore-answer\" hidden></div>" +
+    "<p class=\"explore-note\">Questions are kept for 90 days and read by Douglas to improve the record. Searches are measured by length and result only. Please leave out personal details.</p>";
+  main.insertBefore(bar, main.firstChild);
+  var ein = document.getElementById("explore-q");
+  ein.setAttribute("placeholder", ctx.placeholder);
+  var panel = document.getElementById("explore-panel");
+  var answerBox = document.getElementById("explore-answer");
+
   var viewed = false;
-  function markViewed() {
-    if (viewed) return;
-    viewed = true;
-    track("ask_module_viewed", { page: page });
-  }
   if ("IntersectionObserver" in window) {
     var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) { if (en.isIntersecting) { markViewed(); io.disconnect(); } });
+      entries.forEach(function (en) {
+        if (en.isIntersecting && !viewed) { viewed = true; track("ask_module_viewed", { page: page }); io.disconnect(); }
+      });
     }, { threshold: 0.4 });
-    io.observe(section);
-  } else {
-    markViewed();
+    io.observe(bar);
   }
 
-  var form = document.getElementById("ask-form");
-  var results = document.getElementById("ask-results");
+  /* Nav "Ask" link: focus the one input instead of jumping to a module. */
+  document.querySelectorAll("a[href$=\"#ask-h\"]").forEach(function (a) {
+    a.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      bar.scrollIntoView({ behavior: "smooth", block: "start" });
+      setTimeout(function () { ein.focus({ preventScroll: true }); }, 450);
+    });
+  });
 
+  /* ---------- Amplitude <> Algolia pipe ---------- */
+  var sessionToken = null;
+  try {
+    sessionToken = window.sessionStorage.getItem("dc_anon_token");
+    if (!sessionToken) {
+      sessionToken = "anon-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      window.sessionStorage.setItem("dc_anon_token", sessionToken);
+    }
+  } catch (e) { sessionToken = "anon-ephemeral"; }
+  function pipeToken() {
+    if (PIPE_ENABLED) {
+      try {
+        if (window.amplitude && typeof window.amplitude.getDeviceId === "function") {
+          var d = window.amplitude.getDeviceId();
+          if (d) return d;
+        }
+      } catch (e) {}
+    }
+    return sessionToken;
+  }
+  var aaClient = null, aaTried = false;
+  function insights() {
+    if (aaTried) return aaClient;
+    aaTried = true;
+    var lib = window.AlgoliaAnalytics;
+    var aa = lib && (lib.default || lib);
+    if (typeof aa !== "function") {
+      var sc = document.createElement("script");
+      sc.src = "https://cdn.jsdelivr.net/npm/search-insights@2/dist/search-insights.min.js";
+      sc.async = true;
+      sc.onload = function () {
+        var l2 = window.AlgoliaAnalytics;
+        var a2 = l2 && (l2.default || l2);
+        if (typeof a2 === "function") {
+          try { a2("init", { appId: ALGOLIA_APP, apiKey: ALGOLIA_SEARCH_KEY }); a2("setUserToken", pipeToken()); aaClient = a2; } catch (e) {}
+        }
+      };
+      document.head.appendChild(sc);
+      return null;
+    }
+    try { aa("init", { appId: ALGOLIA_APP, apiKey: ALGOLIA_SEARCH_KEY }); aa("setUserToken", pipeToken()); aaClient = aa; } catch (e) { aaClient = null; }
+    return aaClient;
+  }
+
+  /* ---------- Ask: answers render in place ---------- */
   function nextStep() {
     if (!ctx.cta) return null;
     var p = document.createElement("p");
@@ -241,10 +255,11 @@
     p.appendChild(a);
     return p;
   }
-
-  function submit(q, via) {
+  function ask(q, via) {
     track("ask_submitted", { page: page, via: via });
-    results.innerHTML = "<p class=\"ask-msg\">Checking the record\u2026</p>";
+    panel.hidden = true;
+    answerBox.hidden = false;
+    answerBox.innerHTML = "<p class=\"ask-msg\">Checking the record\u2026</p>";
     fetch(ASK_ENDPOINT, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -252,7 +267,7 @@
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        results.innerHTML = "";
+        answerBox.innerHTML = "";
         if (data.type === "answer" && data.items && data.items.length) {
           track("ask_answered", { page: page, records: data.items.length });
           data.items.forEach(function (it) {
@@ -262,358 +277,179 @@
             var a = document.createElement("a"); a.href = it.source; a.textContent = "Read it in context";
             a.addEventListener("click", function () { track("ask_next_click", { page: page, kind: "source" }); });
             div.appendChild(p); div.appendChild(a);
-            results.appendChild(div);
+            answerBox.appendChild(div);
           });
-          var ns = nextStep(); if (ns) results.appendChild(ns);
+          var ns = nextStep(); if (ns) answerBox.appendChild(ns);
         } else if (data.type === "refusal") {
           track("ask_refused", { page: page });
           var p1 = document.createElement("p"); p1.className = "ask-msg"; p1.textContent = data.text;
-          results.appendChild(p1);
+          answerBox.appendChild(p1);
         } else {
           track("ask_no_evidence", { page: page });
           var p2 = document.createElement("p"); p2.className = "ask-msg"; p2.textContent = data.text || "";
-          results.appendChild(p2);
+          answerBox.appendChild(p2);
           if (data.link) {
             var a2 = document.createElement("a");
             a2.href = data.link; a2.textContent = "Browse the case studies";
             a2.addEventListener("click", function () { track("ask_next_click", { page: page, kind: "hub" }); });
-            results.appendChild(a2);
+            answerBox.appendChild(a2);
           }
         }
       })
       .catch(function () {
-        results.innerHTML = "<p class=\"ask-msg\">The record is not answering right now. The case studies are the fastest way through it.</p>";
+        answerBox.innerHTML = "<p class=\"ask-msg\">The record is not answering right now. The case studies are the fastest way through it.</p>";
       });
   }
 
-  form.addEventListener("submit", function (ev) {
-    ev.preventDefault();
-    var q = input.value.trim();
-    if (q.length < 3) return;
-    submit(q, "typed");
-  });
-  chipEls.forEach(function (el) {
-    el.addEventListener("click", function () {
-      input.value = el.textContent;
-      submit(el.textContent, "chip");
-    });
-  });
-
-  /* Mid-page entry point: a slim bar after the first content section that
-     routes to the module below. Skipped on the home page (the intent strip
-     already does this job) and on the scorecard (the tool is the page). */
-  if (page !== "/" && page !== "/scorecard/") {
-    var main = document.querySelector("main");
-    var firstSection = main ? main.querySelector("section") : null;
-    if (firstSection && firstSection.parentNode) {
-      var entry = document.createElement("div");
-      entry.className = "ask-entry";
-      var label = document.createElement("span");
-      label.className = "ask-entry-label";
-      label.textContent = "Questions about this page?";
-      var chipBtn = document.createElement("button");
-      chipBtn.type = "button";
-      chipBtn.textContent = ctx.chips[0];
-      var openBtn = document.createElement("button");
-      openBtn.type = "button";
-      openBtn.textContent = "Ask my record";
-      entry.appendChild(label);
-      entry.appendChild(chipBtn);
-      entry.appendChild(openBtn);
-      firstSection.parentNode.insertBefore(entry, firstSection.nextSibling);
-      chipBtn.addEventListener("click", function () {
-        track("ask_entry_click", { page: page, via: "entry_chip" });
-        input.value = ctx.chips[0];
-        section.scrollIntoView({ behavior: "smooth", block: "start" });
-        submit(ctx.chips[0], "chip");
-      });
-      openBtn.addEventListener("click", function () {
-        track("ask_entry_click", { page: page, via: "entry_open" });
-        section.scrollIntoView({ behavior: "smooth", block: "start" });
-        setTimeout(function () { input.focus({ preventScroll: true }); }, 450);
-      });
-    }
+  /* ---------- Search ---------- */
+  var QWORDS = ["what", "how", "who", "when", "where", "why", "did", "does", "do", "is", "was", "were", "can", "could", "would", "should", "has", "have"];
+  function isQuestion(q) {
+    var t = (q || "").trim();
+    if (!t) return false;
+    if (t.charAt(t.length - 1) === "?") return true;
+    var words = t.split(/\s+/);
+    if (words.length >= 6) return true;
+    return QWORDS.indexOf(words[0].toLowerCase().replace(/[^a-z]/g, "")) >= 0;
   }
+  var TYPE_BY_PREFIX = [
+    ["/case-studies/", "Case study"], ["/practice/", "Practice"],
+    ["/writing/", "Essay"], ["/record/", "Record"],
+    ["/speaking/", "Speaking"], ["/scorecard/", "Tool"]
+  ];
+  var boostType = null;
+  TYPE_BY_PREFIX.forEach(function (pair) { if (page.indexOf(pair[0]) === 0) boostType = pair[1]; });
+  var optionalFilters = boostType ? ["type:" + boostType + "<score=2>"] : [];
 
-  /* Unified explore bar (A1.1): one prominent input at the top of every page.
-     Primary implementation is Algolia's own Autocomplete library over the
-     public index, with curated suggestions (this page's questions), recent
-     searches kept only in the visitor's browser, contextual boosting by the
-     page's content type, and Algolia Insights click events under a
-     session-scoped anonymous token. Question-shaped input routes to Ask My
-     Record. If the Algolia libraries fail to load, a hand-rolled fallback
-     with the same behavior takes over. */
-  (function () {
-    var main = document.querySelector("main");
-    if (!main) return;
-    var bar = document.createElement("div");
-    bar.className = "explore";
-    bar.innerHTML =
-      "<span class=\"explore-label\">Search the record, or ask it a question.</span>" +
-      "<div id=\"explore-ac\"></div>" +
-      "<div id=\"explore-fallback\" hidden><input id=\"explore-q\" type=\"text\" maxlength=\"300\" autocomplete=\"off\" aria-label=\"Search the record or ask a question\">" +
-      "<div class=\"explore-panel\" id=\"explore-panel\" hidden></div></div>";
-    main.insertBefore(bar, main.firstChild);
-
-    var QWORDS = ["what", "how", "who", "when", "where", "why", "did", "does", "do", "is", "was", "were", "can", "could", "would", "should", "has", "have"];
-    function isQuestion(q) {
-      var t = (q || "").trim();
-      if (!t) return false;
-      if (t.charAt(t.length - 1) === "?") return true;
-      var words = t.split(/\s+/);
-      if (words.length >= 6) return true;
-      return QWORDS.indexOf(words[0].toLowerCase().replace(/[^a-z]/g, "")) >= 0;
-    }
-    function routeToAsk(q) {
-      input.value = q;
-      section.scrollIntoView({ behavior: "smooth", block: "start" });
-      submit(q, "unified");
-    }
-    var TYPE_BY_PREFIX = [
-      ["/case-studies/", "Case study"], ["/practice/", "Practice"],
-      ["/writing/", "Essay"], ["/record/", "Record"],
-      ["/speaking/", "Speaking"], ["/scorecard/", "Tool"]
-    ];
-    var boostType = null;
-    TYPE_BY_PREFIX.forEach(function (pair) { if (page.indexOf(pair[0]) === 0) boostType = pair[1]; });
-    var optionalFilters = boostType ? ["type:" + boostType + "<score=2>"] : [];
-
-    var anonToken = null;
+  function getRecents() {
+    try { return JSON.parse(window.localStorage.getItem("dc-recent-searches") || "[]"); } catch (e) { return []; }
+  }
+  function saveRecent(q) {
     try {
-      anonToken = window.sessionStorage.getItem("dc_anon_token");
-      if (!anonToken) {
-        anonToken = "anon-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
-        window.sessionStorage.setItem("dc_anon_token", anonToken);
-      }
-    } catch (e) { anonToken = "anon-ephemeral"; }
+      var r = getRecents().filter(function (x) { return x !== q; });
+      r.unshift(q);
+      window.localStorage.setItem("dc-recent-searches", JSON.stringify(r.slice(0, 4)));
+    } catch (e) {}
+  }
 
-    var CDN = [
-      "https://cdn.jsdelivr.net/npm/algoliasearch@4/dist/algoliasearch-lite.umd.js",
-      "https://cdn.jsdelivr.net/npm/@algolia/autocomplete-preset-algolia@1/dist/umd/index.production.min.js",
-      "https://cdn.jsdelivr.net/npm/@algolia/autocomplete-plugin-recent-searches@1/dist/umd/index.production.min.js",
-      "https://cdn.jsdelivr.net/npm/@algolia/autocomplete-plugin-algolia-insights@1/dist/umd/index.production.min.js",
-      "https://cdn.jsdelivr.net/npm/search-insights@2/dist/search-insights.min.js",
-      "https://cdn.jsdelivr.net/npm/@algolia/autocomplete-js@1/dist/umd/index.production.min.js"
-    ];
-    function loadAll(urls, done) {
-      var left = urls.length, finished = false;
-      function step() { left--; if (left === 0 && !finished) { finished = true; done(); } }
-      urls.forEach(function (u) {
-        var sc = document.createElement("script");
-        sc.src = u; sc.async = true; sc.onload = step; sc.onerror = step;
-        document.head.appendChild(sc);
-      });
-      setTimeout(function () { if (!finished) { finished = true; done(); } }, 6000);
-    }
-
-    function initInsights() {
-      var lib = window.AlgoliaAnalytics;
-      var aa = lib && (lib.default || lib);
-      if (typeof aa !== "function") return null;
-      try {
-        aa("init", { appId: ALGOLIA_APP, apiKey: ALGOLIA_SEARCH_KEY });
-        aa("setUserToken", anonToken);
-      } catch (e) { return null; }
-      return aa;
-    }
-
-    function initAutocomplete() {
-      var acLib = window["@algolia/autocomplete-js"];
-      var preset = window["@algolia/autocomplete-preset-algolia"];
-      if (!acLib || !acLib.autocomplete || !acLib.html || !preset || !preset.getAlgoliaResults || typeof window.algoliasearch !== "function") return false;
-      var recentLib = window["@algolia/autocomplete-plugin-recent-searches"];
-      var insightsLib = window["@algolia/autocomplete-plugin-algolia-insights"];
-      var searchClient = window.algoliasearch(ALGOLIA_APP, ALGOLIA_SEARCH_KEY);
-      var plugins = [];
-      var aa = initInsights();
-      if (aa && insightsLib && insightsLib.createAlgoliaInsightsPlugin) {
-        plugins.push(insightsLib.createAlgoliaInsightsPlugin({ insightsClient: aa }));
-      }
-      if (recentLib && recentLib.createRecentSearchesPlugin) {
-        plugins.push(recentLib.createRecentSearchesPlugin({
-          localStorage: { key: "dc-recent-searches", limit: 4 },
-          transformSource: function (args) {
-            args.source.templates.header = function () { return acLib.html`<span className="aa-SourceHeader">Recent searches</span>`; };
-            return args.source;
-          }
-        }));
-      }
-      var lastTracked = "";
-      acLib.autocomplete({
-        container: "#explore-ac",
-        placeholder: ctx.placeholder,
-        plugins: plugins,
-        openOnFocus: true,
-        getSources: function (args) {
-          var query = args.query || "";
-          var sources = [];
-          if (isQuestion(query)) {
-            sources.push({
-              sourceId: "ask",
-              getItems: function () { return [{ label: query, objectID: "ask-route" }]; },
-              onSelect: function (a) { routeToAsk(a.item.label); a.setIsOpen(false); },
-              templates: {
-                item: function (a) {
-                  return acLib.html`<span className="askline">Ask my record: \u201C${a.item.label}\u201D</span>`;
-                }
-              }
-            });
-          }
-          sources.push({
-            sourceId: "pages",
-            getItems: function () {
-              return preset.getAlgoliaResults({
-                searchClient: searchClient,
-                queries: [{
-                  indexName: ALGOLIA_INDEX,
-                  params: { query: query, hitsPerPage: 6, clickAnalytics: true, optionalFilters: optionalFilters, attributesToHighlight: [] }
-                }]
-              });
-            },
-            onSelect: function (a) {
-              track("search_result_click", { page: page, destination_type: a.item.type || "" });
-              window.location.href = a.item.url;
-            },
-            templates: {
-              header: function () { return query ? acLib.html`<span className="aa-SourceHeader">Pages and essays</span>` : null; },
-              item: function (a) {
-                return acLib.html`<span className="t">${a.item.type}</span><span className="ti">${a.item.title}</span><span className="sm">${a.item.summary}</span>`;
-              },
-              noResults: function () {
-                return query && !isQuestion(query) ? acLib.html`<span className="sm">Nothing in the record matches that. Ask it as a question instead.</span>` : null;
-              }
-            }
-          });
-          if (!query) {
-            sources.push({
-              sourceId: "suggested",
-              getItems: function () { return ctx.chips.map(function (c, i) { return { label: c, objectID: "chip-" + i }; }); },
-              onSelect: function (a) { routeToAsk(a.item.label); a.setIsOpen(false); },
-              templates: {
-                header: function () { return acLib.html`<span className="aa-SourceHeader">Ask my record</span>`; },
-                item: function (a) { return acLib.html`<span className="askline">${a.item.label}</span>`; }
-              }
-            });
-          }
-          return sources;
-        },
-        onSubmit: function (a) {
-          var q = (a.state.query || "").trim();
-          if (q.length >= 3 && isQuestion(q)) routeToAsk(q);
-        },
-        onStateChange: function (a) {
-          var q = (a.state.query || "").trim();
-          if (q.length >= 3 && q !== lastTracked) {
-            lastTracked = q;
-            var has = false;
-            (a.state.collections || []).forEach(function (c) { if (c.source && c.source.sourceId === "pages" && c.items && c.items.length) has = true; });
-            track("search_query", { page: page, length: q.length, result_class: has ? "results" : "none" });
-          }
-        }
-      });
-      return true;
-    }
-
-    /* Fallback: the A1 hand-rolled behavior, same routing and measurement. */
-    function initFallback() {
-      var wrap = document.getElementById("explore-fallback");
-      wrap.hidden = false;
-      var ein = document.getElementById("explore-q");
-      ein.setAttribute("placeholder", ctx.placeholder);
-      var panel = document.getElementById("explore-panel");
-      var aa = initInsights();
-      function showChips() {
-        panel.innerHTML = "";
-        var w = document.createElement("div");
-        w.className = "explore-chips";
-        ctx.chips.forEach(function (c) {
-          var b = document.createElement("button");
-          b.type = "button"; b.className = "ask-chip"; b.textContent = c;
-          b.addEventListener("click", function () { routeToAsk(c); });
-          w.appendChild(b);
+  var activeIdx = -1;
+  function panelItems() { return panel.querySelectorAll(".explore-hit, .explore-askrow"); }
+  function setActive(i) {
+    var items = panelItems();
+    items.forEach(function (el) { el.classList.remove("active"); });
+    activeIdx = i;
+    if (i >= 0 && items[i]) items[i].classList.add("active");
+  }
+  function headRow(text) {
+    var h = document.createElement("p");
+    h.className = "explore-head"; h.textContent = text;
+    return h;
+  }
+  function showStart() {
+    panel.innerHTML = "";
+    var recents = getRecents();
+    if (recents.length) {
+      panel.appendChild(headRow("Recent searches"));
+      var rw = document.createElement("div");
+      rw.className = "explore-chips";
+      recents.forEach(function (r) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "ask-chip"; b.textContent = r;
+        b.addEventListener("click", function () {
+          ein.value = r;
+          if (isQuestion(r)) ask(r, "unified"); else runSearch(r);
         });
-        panel.appendChild(w);
-        panel.hidden = false;
-      }
-      var debounce = null, lastQuery = "";
-      function runSearch(q) {
-        fetch("https://" + ALGOLIA_APP + "-dsn.algolia.net/1/indexes/" + ALGOLIA_INDEX + "/query", {
-          method: "POST",
-          headers: { "content-type": "application/json", "X-Algolia-API-Key": ALGOLIA_SEARCH_KEY, "X-Algolia-Application-Id": ALGOLIA_APP },
-          body: JSON.stringify({ query: q, hitsPerPage: 6, attributesToHighlight: [], clickAnalytics: true, optionalFilters: optionalFilters })
-        })
-          .then(function (r) { return r.json(); })
-          .then(function (data) {
-            if (ein.value.trim() !== q) return;
-            var hits = data.hits || [], queryID = data.queryID;
-            track("search_query", { page: page, length: q.length, result_class: hits.length ? "results" : "none" });
-            panel.innerHTML = "";
-            if (!hits.length) {
-              var none = document.createElement("p");
-              none.className = "explore-none";
-              none.textContent = "Nothing in the record matches that. Try a question instead: press Enter to ask.";
-              panel.appendChild(none);
-            }
-            hits.forEach(function (h) {
-              var a = document.createElement("a");
-              a.className = "explore-hit"; a.href = h.url;
-              var t = document.createElement("span"); t.className = "t"; t.textContent = h.type || "";
-              var ti = document.createElement("span"); ti.className = "ti"; ti.textContent = h.title || "";
-              var sm = document.createElement("span"); sm.className = "sm"; sm.textContent = h.summary || "";
-              a.appendChild(t); a.appendChild(ti); a.appendChild(sm);
-              a.addEventListener("click", function () {
-                track("search_result_click", { page: page, destination_type: h.type || "" });
-                if (aa && queryID) { try { aa("clickedObjectIDsAfterSearch", { eventName: "Search Result Clicked", index: ALGOLIA_INDEX, queryID: queryID, objectIDs: [h.objectID] }); } catch (e) {} }
-              });
-              panel.appendChild(a);
-            });
-            panel.hidden = false;
-          })
-          .catch(function () { panel.hidden = true; });
-      }
-      ein.addEventListener("focus", function () {
-        track("explore_focus", { page: page });
-        if (!ein.value.trim()) showChips();
+        rw.appendChild(b);
       });
-      ein.addEventListener("input", function () {
-        var q = ein.value.trim();
-        if (debounce) clearTimeout(debounce);
-        if (q.length < 3) { if (!q) showChips(); else panel.hidden = true; return; }
-        if (isQuestion(q)) {
-          panel.innerHTML = "";
-          var row = document.createElement("button");
-          row.type = "button"; row.className = "explore-askrow";
-          row.textContent = "Ask my record: \u201C" + q + "\u201D";
-          row.addEventListener("click", function () { routeToAsk(q); });
-          panel.appendChild(row);
-          panel.hidden = false;
-          return;
-        }
-        debounce = setTimeout(function () { if (q !== lastQuery) { lastQuery = q; runSearch(q); } }, 300);
-      });
-      ein.addEventListener("keydown", function (ev) {
-        if (ev.key !== "Enter") return;
-        ev.preventDefault();
-        var q = ein.value.trim();
-        if (q.length < 3) return;
-        if (isQuestion(q)) { routeToAsk(q); return; }
-        var first = panel.querySelector(".explore-hit");
-        if (first) window.location.href = first.getAttribute("href");
-      });
-      document.addEventListener("click", function (ev) { if (!bar.contains(ev.target)) panel.hidden = true; });
+      panel.appendChild(rw);
     }
-
-    loadAll(CDN, function () {
-      var ok = false;
-      try { ok = initAutocomplete(); } catch (e) { ok = false; }
-      if (!ok) {
-        var ac = document.getElementById("explore-ac");
-        if (ac) ac.innerHTML = "";
-        initFallback();
-      } else {
-        track("explore_focus", { page: page });
-      }
+    panel.appendChild(headRow("Ask my record"));
+    var w = document.createElement("div");
+    w.className = "explore-chips";
+    ctx.chips.forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "ask-chip"; b.textContent = c;
+      b.addEventListener("click", function () { ein.value = c; ask(c, "chip"); });
+      w.appendChild(b);
     });
-  })();
+    panel.appendChild(w);
+    panel.hidden = false;
+    setActive(-1);
+  }
+  function showAskRow(q) {
+    panel.innerHTML = "";
+    var row = document.createElement("button");
+    row.type = "button"; row.className = "explore-askrow";
+    row.textContent = "Ask my record: \u201C" + q + "\u201D";
+    row.addEventListener("click", function () { ask(q, "unified"); });
+    panel.appendChild(row);
+    panel.hidden = false;
+    setActive(-1);
+  }
+  var debounce = null, lastQuery = "";
+  function runSearch(q) {
+    fetch("https://" + ALGOLIA_APP + "-dsn.algolia.net/1/indexes/" + ALGOLIA_INDEX + "/query", {
+      method: "POST",
+      headers: { "content-type": "application/json", "X-Algolia-API-Key": ALGOLIA_SEARCH_KEY, "X-Algolia-Application-Id": ALGOLIA_APP },
+      body: JSON.stringify({ query: q, hitsPerPage: 6, attributesToHighlight: [], clickAnalytics: true, optionalFilters: optionalFilters })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (ein.value.trim() !== q) return;
+        var hits = data.hits || [], queryID = data.queryID;
+        track("search_query", { page: page, length: q.length, result_class: hits.length ? "results" : "none" });
+        panel.innerHTML = "";
+        if (!hits.length) {
+          var none = document.createElement("p");
+          none.className = "explore-none";
+          none.textContent = "Nothing in the record matches that. Try a question instead: press Enter to ask.";
+          panel.appendChild(none);
+        }
+        hits.forEach(function (h) {
+          var a = document.createElement("a");
+          a.className = "explore-hit"; a.href = h.url;
+          var t = document.createElement("span"); t.className = "t"; t.textContent = h.type || "";
+          var ti = document.createElement("span"); ti.className = "ti"; ti.textContent = h.title || "";
+          var sm = document.createElement("span"); sm.className = "sm"; sm.textContent = h.summary || "";
+          a.appendChild(t); a.appendChild(ti); a.appendChild(sm);
+          a.addEventListener("click", function () {
+            track("search_result_click", { page: page, destination_type: h.type || "" });
+            saveRecent(q);
+            var aa = insights();
+            if (aa && queryID) { try { aa("clickedObjectIDsAfterSearch", { eventName: "Search Result Clicked", index: ALGOLIA_INDEX, queryID: queryID, objectIDs: [h.objectID] }); } catch (e) {} }
+          });
+          panel.appendChild(a);
+        });
+        panel.hidden = false;
+        setActive(-1);
+      })
+      .catch(function () { panel.hidden = true; });
+  }
 
+  ein.addEventListener("focus", function () {
+    track("explore_focus", { page: page });
+    if (!ein.value.trim() && answerBox.hidden) showStart();
+  });
+  ein.addEventListener("input", function () {
+    answerBox.hidden = true;
+    var q = ein.value.trim();
+    if (debounce) clearTimeout(debounce);
+    if (q.length < 3) { if (!q) showStart(); else panel.hidden = true; return; }
+    if (isQuestion(q)) { showAskRow(q); return; }
+    debounce = setTimeout(function () { if (q !== lastQuery) { lastQuery = q; runSearch(q); } }, 300);
+  });
+  ein.addEventListener("keydown", function (ev) {
+    var items = panelItems();
+    if (ev.key === "ArrowDown" && items.length) { ev.preventDefault(); setActive(Math.min(activeIdx + 1, items.length - 1)); return; }
+    if (ev.key === "ArrowUp" && items.length) { ev.preventDefault(); setActive(Math.max(activeIdx - 1, -1)); return; }
+    if (ev.key === "Escape") { panel.hidden = true; return; }
+    if (ev.key !== "Enter") return;
+    ev.preventDefault();
+    var q = ein.value.trim();
+    if (q.length < 3) return;
+    if (activeIdx >= 0 && items[activeIdx]) { items[activeIdx].click(); return; }
+    if (isQuestion(q)) { saveRecent(q); ask(q, "unified"); return; }
+    var first = panel.querySelector(".explore-hit");
+    if (first) { saveRecent(q); window.location.href = first.getAttribute("href"); }
+  });
+  document.addEventListener("click", function (ev) { if (!bar.contains(ev.target)) panel.hidden = true; });
 })();
