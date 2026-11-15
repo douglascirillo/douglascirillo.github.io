@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>What a CDP Actually Is (and Isn't) | Douglas Cirillo</title>
+<meta name="description" content="Douglas Cirillo's definition of a customer data platform: the system that creates and activates real-time customer profiles across channels, and what it is not." />
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+<meta name="author" content="Douglas Cirillo" />
+<meta name="color-scheme" content="light dark" />
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#fcfcf9" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141615" />
+<link rel="canonical" href="https://douglascirillo.com/writing/what-a-customer-data-platform-actually-is/" />
+<!-- Open Graph -->
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Douglas Cirillo" />
+<meta property="og:title" content="What a CDP Actually Is (and Isn't) | Douglas Cirillo" />
+<meta property="og:description" content="Douglas Cirillo's definition of a customer data platform: the system that creates and activates real-time customer profiles across channels, and what it is not." />
+<meta property="og:url" content="https://douglascirillo.com/writing/what-a-customer-data-platform-actually-is/" />
+<meta property="og:image" content="https://douglascirillo.com/assets/og-image.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Douglas Cirillo, Head of Digital Experience and Growth, douglascirillo.com" />
+<meta property="og:locale" content="en_US" />
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:creator" content="@DouglasCirillo" />
+<meta name="twitter:title" content="What a CDP Actually Is (and Isn't) | Douglas Cirillo" />
+<meta name="twitter:description" content="Douglas Cirillo's definition of a customer data platform: the system that creates and activates real-time customer profiles across channels, and what it is not." />
+<meta name="twitter:image" content="https://douglascirillo.com/assets/og-image.png" />
+<meta name="twitter:image:alt" content="Douglas Cirillo, Head of Digital Experience and Growth, douglascirillo.com" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTIiIGZpbGw9IiMyZjRhM2UiLz48dGV4dCB4PSIzMiIgeT0iNDMiIGZvbnQtZmFtaWx5PSJHZW9yZ2lhLCAnVGltZXMgTmV3IFJvbWFuJywgc2VyaWYiIGZvbnQtc2l6ZT0iMjciIGZpbGw9IiNmY2ZjZjkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkRDPC90ZXh0Pjwvc3ZnPgo=" />
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://douglascirillo.com/writing/what-a-customer-data-platform-actually-is/#article",
+      "headline": "What a Customer Data Platform Actually Is (and Isn't)",
+      "description": "Douglas Cirillo's definition of a customer data platform: the system that creates and activates real-time customer profiles across channels, and what it is not.",
+      "author": {
+        "@id": "https://douglascirillo.com/#person"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "Customer data platforms"
+      },
+      "mainEntityOfPage": "https://douglascirillo.com/writing/what-a-customer-data-platform-actually-is/",
+      "image": "https://douglascirillo.com/assets/writing-cdp-hero.jpg",
+      "datePublished": "2025-08-19",
+      "dateModified": "2026-11-15T09:45:00-05:00",
+      "inLanguage": "en-US"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://douglascirillo.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Writing",
+          "item": "https://douglascirillo.com/writing/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "What a Customer Data Platform Actually Is (and Isn't)",
+          "item": "https://douglascirillo.com/writing/what-a-customer-data-platform-actually-is/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root{
+    --bg:#fcfcf9;
+    --surface:#ffffff;
+    --ink:#1c1e20;
+    --ink-2:#3d4145;
+    --muted:#6e7276;
+    --line:#e6e3db;
+    --line-strong:#d8d3c6;
+    --accent:#2f4a3e;
+    --accent-light:#eef2ee;
+    --link:#2f4a3e;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#141615;
+      --surface:#1b1e1c;
+      --ink:#ece9e2;
+      --ink-2:#c9c6be;
+      --muted:#9aa09c;
+      --line:#2a2e2b;
+      --line-strong:#353a36;
+      --accent:#a8c3b2;
+      --accent-light:#1f2a24;
+      --link:#a8c3b2;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Public Sans", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--link); text-decoration-color:color-mix(in srgb, var(--link) 35%, transparent); text-underline-offset:3px}
+  a:hover{text-decoration-color:var(--link)}
+  .wrap{max-width:760px; margin:0 auto; padding:0 24px}
+  @media (min-width:860px){ .wrap{max-width:780px; padding:0 32px} }
+
+  header{padding:40px 0 0}
+  .topline{display:flex; justify-content:space-between; align-items:center; gap:16px; padding-bottom:22px; border-bottom:1px solid var(--line)}
+  .topline .brand{font-family:"Newsreader", Georgia, serif; font-size:19px; font-weight:600; color:var(--ink); text-decoration:none}
+  .topline nav{display:flex; gap:2px; flex-wrap:nowrap; justify-content:flex-end}
+  .topline nav a{font-size:13px; font-weight:500; color:var(--ink-2); text-decoration:none; padding:8px 7px; min-height:36px; display:inline-flex; align-items:center; border-radius:6px; white-space:nowrap}
+  .topline nav a:hover{background:var(--accent-light); color:var(--ink)}
+  @media (max-width:900px){
+    .topline{flex-direction:column; align-items:flex-start; gap:10px}
+    .topline nav{flex-wrap:wrap; justify-content:flex-start; margin-left:-7px}
+  }
+  @media (max-width:560px){
+    .topline{flex-direction:column; align-items:flex-start; gap:10px; padding-bottom:18px}
+    .topline nav{justify-content:flex-start; margin-left:-7px}
+  }
+  .crumbs{margin-top:26px; font-size:13.5px; color:var(--muted)}
+  .crumbs a{color:var(--muted); text-decoration:none}
+  .crumbs a:hover{color:var(--ink); text-decoration:underline}
+  .crumbs .sep{margin:0 8px; color:var(--line-strong)}
+  .kicker{margin:30px 0 0; font-size:13px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--accent)}
+  h1{
+    font-family:"Newsreader", Georgia, serif;
+    font-weight:500;
+    font-size:clamp(36px, 6vw, 52px);
+    line-height:1.05;
+    letter-spacing:-.015em;
+    margin:12px 0 20px;
+  }
+  .summary{
+    font-size:18.5px; line-height:1.65; color:var(--ink);
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    padding:22px 0; margin:0 0 8px;
+  }
+  article section{padding:30px 0 0}
+  article h2{
+    font-family:"Newsreader", Georgia, serif;
+    font-weight:500; font-size:26px; line-height:1.15; letter-spacing:-.01em; margin:0 0 14px;
+  }
+  article p{margin:0 0 18px; color:var(--ink-2)}
+  article p:last-child{margin-bottom:0}
+  .more{
+    margin-top:48px; padding:22px 0 0; border-top:1px solid var(--line);
+    font-size:15.5px; color:var(--ink-2);
+  }
+  .more p{margin:0 0 8px}
+  footer{margin-top:56px; padding:28px 0 44px; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px 24px}
+  footer p{margin:0; font-size:13.5px; color:var(--muted)}
+  @keyframes fadeUp{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
+  .fade{animation:fadeUp .55s ease both}
+  @media (prefers-reduced-motion: reduce){
+    .fade{animation:none}
+    html{scroll-behavior:auto}
+  }
+</style>
+<!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
+<script>
+  var AMPLITUDE_API_KEY = '57757d6bacdea434529e97ab93899647';
+  (function () {
+    var isConfigured = !!AMPLITUDE_API_KEY;
+    var pending = [];
+    var ready = false;
+
+    function sendOutbound(properties) {
+      if (!isConfigured) return;
+      if (ready && window.amplitude && typeof window.amplitude.track === 'function') {
+        try { window.amplitude.track('Outbound Link Click', properties); } catch (e) {}
+      } else {
+        pending.push(properties);
+      }
+    }
+
+    document.addEventListener('click', function (event) {
+      var node = event.target;
+      var link = node && node.closest ? node.closest('a[data-outbound-link]') : null;
+      if (!link) return;
+      var href = link.href || link.getAttribute('href') || '';
+      if (!href) return;
+      var label = link.getAttribute('data-link-label') || (link.textContent || '').replace(/\s+/g, ' ').trim();
+      var host = '';
+      try { host = new URL(href).hostname; } catch (e) {}
+      sendOutbound({ destination: href, destination_host: host, link_label: label });
+    }, false);
+
+    if (!isConfigured) return;
+
+    var sdk = document.createElement('script');
+    sdk.src = 'https://cdn.amplitude.com/script/' + encodeURIComponent(AMPLITUDE_API_KEY) + '.js';
+    sdk.async = true;
+    sdk.onload = function () {
+      try {
+        if (window.amplitude && typeof window.amplitude.init === 'function') {
+          window.amplitude.init(AMPLITUDE_API_KEY, {
+            fetchRemoteConfig: false,
+            autocapture: {
+              pageViews: true,
+              sessions: true,
+              formInteractions: false,
+              fileDownloads: false,
+              elementInteractions: false
+            }
+          });
+          ready = true;
+          while (pending.length) {
+            var queued = pending.shift();
+            try { window.amplitude.track('Outbound Link Click', queued); } catch (e) {}
+          }
+        }
+      } catch (e) { /* Analytics must never break the page. */ }
+    };
+    sdk.onerror = function () { /* Fail silently if the CDN is unreachable. */ };
+    document.head.appendChild(sdk);
+  })();
+</script>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="topline">
+      <a class="brand" href="/">Douglas Cirillo</a>
+      <nav aria-label="Primary">
+        <a href="/#record">Record</a>
+        <a href="/case-studies/">Case Studies</a>
+        <a href="/practice/">Practice</a>
+        <a href="/writing/">Writing</a>
+        <a href="/speaking/">Speaking and media</a>
+        <a href="/#elsewhere">Elsewhere</a>
+        <a href="#ask-h">Ask</a>
+      </nav>
+    </div>
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="/">Home</a><span class="sep" aria-hidden="true">/</span><a href="/writing/">Writing</a><span class="sep" aria-hidden="true">/</span><span aria-current="page">What a CDP Actually Is</span>
+    </nav>
+  </header>
+
+  <main>
+    <article>
+      <p class="kicker">Writing</p>
+      <h1 class="fade">What a Customer Data Platform Actually Is (and Isn&rsquo;t)</h1>
+      <p class="summary">A CDP is not a CRM, a DXP, or a silver bullet. Douglas Cirillo&rsquo;s definition, from implementing them at Sotheby&rsquo;s and Lindblad Expeditions: the system that creates and activates real-time customer profiles across channels. This essay first ran on Substack in August 2025. This edition lives next to the record it came from.</p>
+      <figure class="hero"><img src="/assets/writing-cdp-hero.jpg" alt="A dirt road through open heathland, lined with pine trees, in black and white" width="1200" height="800" loading="lazy"></figure>
+
+      <section aria-labelledby="what-h">
+        <h2 id="what-h">What is a CDP?</h2>
+        <p>Let&rsquo;s get something straight up front:</p>
+        <p>A Customer Data Platform (CDP) is not a CRM. It&rsquo;s not a DXP. It&rsquo;s not a fancy dashboard or a synonym for your warehouse. It&rsquo;s not a silver bullet.</p>
+        <p>It&rsquo;s a system for creating a shared, real-time view of the customer that other systems, and teams, can act on. Period.</p>
+        <p>And right now, it&rsquo;s also one of the most misunderstood terms in digital. CDPs have been rebranded, redefined, and co-opted by nearly every martech vendor on the market. Everyone has their own definition. Most are vague. Some are flat-out misleading.</p>
+        <p>A CDP isn&rsquo;t a magic box. And anyone who says otherwise probably hasn&rsquo;t been the one responsible for making the thing work.</p>
+        <p>What I&rsquo;ve learned, through implementation, failure, and iteration, is that a CDP is only as valuable as the clarity of its role in your ecosystem. That role has to be intentionally designed around your data maturity, your operational structure, and the actual business outcomes you need to support.</p>
+        <p>My definition: <strong>the system that creates and activates real-time customer profiles across channels.</strong></p>
+        <p>When done right, a CDP is the connective tissue between systems of insight (analytics, warehouse, BI tools) and systems of engagement (CMS, CRM, ad platforms, email, OTT, apps).</p>
+      </section>
+
+      <section aria-labelledby="kinds-h">
+        <h2 id="kinds-h">What are the two kinds of CDP?</h2>
+        <p>The path there isn&rsquo;t one-size-fits-all. There are generally two flavors of modern CDP, and choosing the right one is less about features and more about your current reality.</p>
+        <p><strong>Packaged CDPs.</strong> Purpose-built, end-to-end systems. You route data into them via SDKs, APIs, or cloud apps, and they give you real-time pipelines, identity resolution, profile stitching, built-in governance, audience creation, and downstream activation. They don&rsquo;t require a data warehouse, though you can integrate one.</p>
+        <p><strong>Best for:</strong> organizations that need velocity, governance, and clarity, without waiting on a centralized data team to model and deploy everything.</p>
+        <p><strong>Warehouse-native CDPs.</strong> These flip the model. The warehouse is your system of record. The tools sit on top, letting you model identities, define traits, build audiences, and sync enriched data into downstream tools (reverse ETL). They offer flexibility and control, but assume you already have strong internal infrastructure and people who know how to manage it.</p>
+        <p><strong>Best for:</strong> organizations with mature data teams, clean warehouse models, and a desire to keep control centralized.</p>
+        <p>I&rsquo;ve seen both models work beautifully. I&rsquo;ve also seen both crash and burn.</p>
+      </section>
+
+      <section aria-labelledby="choose-h">
+        <h2 id="choose-h">How do you choose?</h2>
+        <p>At <a href="/case-studies/lindblad-expeditions/">Lindblad Expeditions</a>, Segment was a game-changer. We didn&rsquo;t have a full-fledged data engineering team. But we needed to unify how product, marketing, and editorial understood behavior across web, email, mobile, and OTT. Segment let us establish shared schema, normalize identity, and activate audiences across tools, without months of delay. It created alignment, not just data.</p>
+        <p>Hightouch is a great fit when you&rsquo;ve already invested in warehouse infrastructure and want to expose only what&rsquo;s modeled and clean. But the assumption there is that your warehouse is in shape, and your team has the bandwidth to maintain it.</p>
+        <p>There is no universal answer. The right choice depends on where your source of truth lives, how technical your team is, how fast you need value, and whether your CDP is meant to govern, activate, or both. At <a href="/case-studies/sothebys/">Sotheby&rsquo;s</a>, the CDP sat inside a wider composable stack, and the whole stack had to work together. The <a href="/practice/composable-martech-and-customer-data/">practice page</a> carries that argument in full.</p>
+      </section>
+
+      <section aria-labelledby="does-h">
+        <h2 id="does-h">What does a real CDP do?</h2>
+        <p>The baseline capabilities:</p>
+        <ul>
+          <li><strong>Data collection.</strong> Client- and server-side event tracking, cloud app integrations, batch ingestion.</li>
+          <li><strong>Identity resolution.</strong> Persistent stitching across devices, sessions, and identifiers.</li>
+          <li><strong>Unification.</strong> Behavioral, transactional, and contextual data combined into a single view.</li>
+          <li><strong>Segmentation.</strong> Real-time audiences based on profile attributes, behaviors, and event logic.</li>
+          <li><strong>Activation.</strong> Syncing those audiences into downstream systems: ads, email, push, CRM, CMS.</li>
+          <li><strong>Governance.</strong> Schema enforcement, validation, version control, audit logging, and hygiene.</li>
+        </ul>
+        <p>Everything else, visual builders, AI assistants, prebuilt integrations, is window dressing. Helpful, but not the point.</p>
+      </section>
+
+      <section aria-labelledby="not-h">
+        <h2 id="not-h">What is a CDP not?</h2>
+        <p>A CDP isn&rsquo;t a substitute for clean source data. It isn&rsquo;t a band-aid for disjointed internal teams. It isn&rsquo;t a personalization engine, unless you&rsquo;ve already got the data layer right. And it isn&rsquo;t a magic button for growth.</p>
+        <p>You can&rsquo;t implement your way out of misalignment. You can&rsquo;t activate what you don&rsquo;t trust. And you can&rsquo;t fix identity problems if your organization doesn&rsquo;t know how to define one in the first place.</p>
+      </section>
+
+      <section aria-labelledby="takes-h">
+        <h2 id="takes-h">What does it take to make one work?</h2>
+        <p>What I&rsquo;ve learned doing this more than once:</p>
+        <ul>
+          <li>You need a clear use case before you evaluate a tool.</li>
+          <li>Taxonomy and schema discipline are non-negotiable.</li>
+          <li>Ownership and governance need to be explicit from day one.</li>
+          <li>Cross-functional buy-in will make or break your implementation.</li>
+          <li>A CDP is a product, not a project, and it needs to be treated as such.</li>
+        </ul>
+        <p>You&rsquo;ll get out what you put in. The tool is just the start. The system is what matters. And the system only works if your people are aligned around the same version of reality.</p>
+        <p>If you&rsquo;re not ready to activate trusted data in real time across teams and tools, you don&rsquo;t need a CDP.</p>
+        <p>You need a whiteboard.</p>
+        <p>Thanks for reading,<br />Doug</p>
+        <p><em>First published on <a href="https://douglascirillo.substack.com/p/what-a-customer-data-platform-actually-is" data-outbound-link data-link-label="What a Customer Data Platform Actually Is (and Isn't) on Substack">Substack</a>, August 19, 2025. The discussion lives there.</em></p>
+      </section>
+
+      <div class="more">
+        <p><a href="/writing/">All writing</a> &middot; <a href="/practice/composable-martech-and-customer-data/">The practice: composable martech and customer data</a></p>
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Douglas Cirillo</p>
+    <p>West Chester, Pennsylvania</p>
+  </footer>
+
+</div>
+<script src="/assets/ask.js" defer></script>
+</body>
+</html>
