@@ -46,18 +46,47 @@
     return loading;
   }
 
+  var LINKS = {
+    search_decline: [{ href: "/case-studies/a-place-for-mom/", label: "The A Place for Mom case study" }, { href: "/practice/ai-readiness-and-answer-discoverability/", label: "AI readiness and answer discoverability" }, { href: "https://www.linkedin.com/in/douglascirillo/", label: "Start a conversation on LinkedIn" }],
+    cdp: [{ href: "/case-studies/sothebys/", label: "The Sotheby&rsquo;s case study" }, { href: "/practice/composable-martech-and-customer-data/", label: "Composable martech and customer data" }, { href: "https://www.linkedin.com/in/douglascirillo/", label: "Start a conversation on LinkedIn" }],
+    replatform: [{ href: "/case-studies/ae-networks/", label: "The A+E Networks case study" }, { href: "/case-studies/lindblad-expeditions/", label: "The Lindblad case study" }, { href: "/practice/digital-experience-strategy/", label: "Digital experience strategy" }],
+    team: [{ href: "/case-studies/madison-square-garden/", label: "The Madison Square Garden case study" }, { href: "/case-studies/gangverk/", label: "The Gangverk case study" }, { href: "https://www.linkedin.com/in/douglascirillo/", label: "Start a conversation on LinkedIn" }],
+    speaking: [{ href: "/speaking/", label: "Speaking and media" }, { href: "https://youtu.be/1bVX-cdZekI", label: "Watch the talk" }, { href: "https://www.linkedin.com/in/douglascirillo/", label: "Start a conversation on LinkedIn" }],
+    coherence: [{ href: "/practice/digital-experience-strategy/", label: "Digital experience strategy" }, { href: "/case-studies/madison-square-garden/", label: "The Madison Square Garden case study" }, { href: "https://www.linkedin.com/in/douglascirillo/", label: "Start a conversation on LinkedIn" }],
+    measurement: [{ href: "/scorecard/", label: "Take the scorecard" }, { href: "/practice/experimentation-and-measurement/", label: "Experimentation and measurement" }, { href: "https://www.linkedin.com/in/douglascirillo/", label: "Start a conversation on LinkedIn" }]
+  };
+
   function slot() { return document.getElementById("composition"); }
+
+  function clearComposition() {
+    var el = slot();
+    if (el) { el.hidden = true; el.innerHTML = ""; }
+    Array.prototype.forEach.call(
+      document.querySelectorAll(".intent-btn"),
+      function (b) { b.setAttribute("aria-pressed", "false"); });
+    try { history.replaceState(null, "", location.pathname); } catch (e) {}
+  }
 
   function render(intent, sig) {
     var el = slot();
     if (!el || !byIntent) return;
     var entry = byIntent[intent];
     if (!entry) { el.hidden = true; el.innerHTML = ""; return; }
+    var links = LINKS[intent] || [];
+    var linksHtml = "";
+    if (links.length) {
+      linksHtml = '<p class="intent-links">' + links.map(function (l) {
+        return '<a href="' + l.href + '">' + l.label + "</a>";
+      }).join("") + "</p>";
+    }
     el.innerHTML =
-      '<h3 class="composition-h">The full picture</h3>' + entry.html +
+      '<h3 class="composition-h">The full picture</h3>' + entry.html + linksHtml +
       '<p class="composition-note">Assembled for this visit from the ' +
-      "published record. The static pages underneath do not change.</p>";
+      "published record. The static pages underneath do not change.</p>" +
+      '<p class="intent-reset"><button type="button" id="intent-reset">See the full record instead</button></p>';
     el.hidden = false;
+    var resetBtn = el.querySelector("#intent-reset");
+    if (resetBtn) resetBtn.addEventListener("click", clearComposition);
     Array.prototype.forEach.call(
       document.querySelectorAll(".intent-btn"),
       function (b) {
@@ -79,17 +108,6 @@
     var el = slot();
     if (!el) return;
     el.setAttribute("aria-live", "polite");
-    var reset = document.getElementById("intent-reset");
-    if (reset) {
-      reset.addEventListener("click", function () {
-        el.hidden = true;
-        el.innerHTML = "";
-        Array.prototype.forEach.call(
-          document.querySelectorAll(".intent-btn"),
-          function (b) { b.setAttribute("aria-pressed", "false"); });
-        try { history.replaceState(null, "", location.pathname); } catch (e) {}
-      });
-    }
     var btns = document.querySelectorAll(".intent-btn");
     Array.prototype.forEach.call(btns, function (btn) {
       btn.addEventListener("click", function () {
