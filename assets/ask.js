@@ -94,7 +94,7 @@
     },
     "/writing/what-a-customer-data-platform-actually-is/": {
       placeholder: "Ask about CDPs\u2026",
-      chips: ["What is a CDP, in his framing?", "What CDP experience does he have?", "Which CDP approach did he use at Lindblad?"],
+      chips: ["What is a CDP, in his framing?", "What CDP experience does he have?", "What was the CDP approach at Lindblad?"],
       cta: null
     },
     "/record/": {
