@@ -574,9 +574,32 @@
     var h1 = document.querySelector("h1");
     var relQ = h1 ? h1.textContent.trim() : "";
     if (relQ) {
-      queryIndex({ query: relQ, filters: "type:Essay", hitsPerPage: 8, attributesToHighlight: [] })
+      /* Related essays are ranked on the client from the full essay list:
+         Algolia's default AND word matching returns only the essay itself
+         for distinctive titles. Shared significant words score a match;
+         the most recent essays fill any remaining slots. */
+      queryIndex({ query: "", filters: "type:Essay", hitsPerPage: 50, attributesToHighlight: [] })
         .then(function (data) {
-          var hits = (data.hits || []).filter(function (h) { return h.url !== here; }).slice(0, 3);
+          var all = data.hits || [];
+          var self = null;
+          all.forEach(function (h) { if (h.url === here) self = h; });
+          var stop = { the: 1, a: 1, an: 1, and: 1, of: 1, to: 1, is: 1, it: 1, in: 1, on: 1, for: 1, what: 1, why: 1, how: 1, your: 1, you: 1, are: 1, not: 1, do: 1, does: 1, from: 1, with: 1, about: 1, into: 1, its: 1, this: 1, that: 1, just: 1, actually: 1, means: 1 };
+          function tokens(s) {
+            var out = {}, parts = (s || "").toLowerCase().split(/[^a-z0-9]+/);
+            parts.forEach(function (w) { if (w.length > 2 && !stop[w]) out[w] = 1; });
+            return out;
+          }
+          var selfTitle = tokens(self ? self.title : relQ);
+          var selfBody = tokens((self ? self.summary : "") + " " + (self && self.headings ? self.headings.join(" ") : ""));
+          var others = all.filter(function (h) { return h.url !== here; });
+          others.forEach(function (h) {
+            var ht = tokens(h.title), hb = tokens((h.summary || "") + " " + (h.headings ? h.headings.join(" ") : "")), sc = 0;
+            Object.keys(ht).forEach(function (w) { if (selfTitle[w]) sc += 3; if (selfBody[w]) sc += 1; });
+            Object.keys(hb).forEach(function (w) { if (selfTitle[w]) sc += 2; });
+            h._rel = sc;
+          });
+          others.sort(function (a, b) { return (b._rel - a._rel) || ((b.date || 0) - (a.date || 0)); });
+          var hits = others.slice(0, 3);
           if (!hits.length) return;
           var st = document.createElement("style");
           st.textContent = ".related-writing{margin:34px 0 6px;padding-top:18px;border-top:1px solid var(--line,#ddd)}.related-writing h2{font-size:20px;margin:0 0 10px}.related-writing ul{list-style:none;margin:0;padding:0}.related-writing li{padding:9px 0;border-bottom:1px solid var(--line,#ddd);font-size:15.5px;line-height:1.6;color:var(--ink-2,#444)}.related-writing li:last-child{border-bottom:none}.related-writing a{font-weight:600;color:var(--ink,inherit)}";
