@@ -278,6 +278,26 @@
   var AMPLITUDE_API_KEY = '57757d6bacdea434529e97ab93899647';
   (function () {
     var isConfigured = !!AMPLITUDE_API_KEY;
+    /* Bot classification (schema: bot-classification.md). Parsed once
+       from the user agent, set as user properties, and stamped on
+       every event by an enrichment plugin. */
+    var BOT_CLS = (function () {
+      var ua = navigator.userAgent || '';
+      var rules = [
+        ['social_preview', /(Slackbot|Twitterbot|facebookexternalhit|facebot|LinkedInBot|Discordbot|WhatsApp|TelegramBot|Pinterestbot|redditbot|Mastodon|Bluesky)/i],
+        ['ai_crawler', /(GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-User|anthropic-ai|PerplexityBot|Perplexity-User|CCBot|Bytespider|cohere-ai|Google-Extended|Applebot-Extended|Meta-ExternalAgent|Meta-ExternalFetcher|YouBot|Diffbot|ImagesiftBot|Omgilibot)/i],
+        ['search_engine_crawler', /(Googlebot|Google-InspectionTool|Storebot-Google|bingbot|BingPreview|DuckDuckBot|Slurp|Baiduspider|YandexBot|Applebot|Sogou|Exabot|PetalBot)/i],
+        ['uptime_monitor', /(Pingdom|UptimeRobot|Datadog|StatusCake|NewRelic|Site24x7|GTmetrix|Checkly|SpeedCurve|Chrome-Lighthouse|Lighthouse)/i],
+        ['security_scanner', /(HeadlessChrome|PhantomJS|Selenium|WebDriver|Puppeteer|Playwright|jsdom|nmap|sqlmap|nikto|masscan|zgrab|Censys|Shodan|python-requests|python-urllib|Go-http-client|curl\/|wget\/|libwww-perl|Scrapy|HttpClient|okhttp)/i]
+      ];
+      var type = 'human';
+      for (var i = 0; i < rules.length; i++) { if (rules[i][1].test(ua)) { type = rules[i][0]; break; } }
+      var isBot = type !== 'human';
+      if (!isBot && navigator.webdriver) { isBot = true; type = 'security_scanner'; }
+      if (!ua) { isBot = true; type = 'unknown'; }
+      return { is_bot: isBot, user_agent_type: type };
+    })();
+
     var pending = [];
     var ready = false;
 
@@ -321,6 +341,28 @@
             }
           });
           ready = true;
+          try {
+            if (typeof window.amplitude.Identify === 'function' && typeof window.amplitude.identify === 'function') {
+              var botId = new window.amplitude.Identify();
+              botId.set('is_bot', BOT_CLS.is_bot);
+              botId.set('user_agent_type', BOT_CLS.user_agent_type);
+              window.amplitude.identify(botId);
+            }
+            if (typeof window.amplitude.add === 'function') {
+              window.amplitude.add({
+                name: 'bot-classification',
+                type: 'enrichment',
+                execute: function (event) {
+                  var props = {};
+                  for (var k in event.event_properties) { props[k] = event.event_properties[k]; }
+                  props.is_bot = BOT_CLS.is_bot;
+                  props.user_agent_type = BOT_CLS.user_agent_type;
+                  event.event_properties = props;
+                  return Promise.resolve(event);
+                }
+              });
+            }
+          } catch (e) { /* Classification must never break analytics. */ }
           while (pending.length) {
             var queued = pending.shift();
             try { window.amplitude.track('Outbound Link Click', queued); } catch (e) {}
@@ -369,7 +411,7 @@
 
       <section aria-labelledby="measured-h">
         <h2 id="measured-h">How is it measured?</h2>
-        <p>Amplitude has measured the site since day one: page views, sessions, and outbound clicks. Google Search Console and Bing Webmaster Tools watch indexing, and Bing matters more than it used to because its index feeds AI answers. Semrush tracks a short list of keywords, my name and the ideas I write about. A personal site gets the same measurement discipline as a business property.</p>
+        <p>Amplitude has measured the site since day one: page views, sessions, and outbound clicks. Google Search Console and Bing Webmaster Tools watch indexing, and Bing matters more than it used to because its index feeds AI answers. Semrush tracks a short list of keywords, my name and the ideas I write about. A personal site gets the same measurement discipline as a business property. Every event also carries a bot classification, an is_bot flag and a user_agent_type category (human, search crawler, AI crawler, social preview, uptime monitor, scanner, unknown) parsed from the user agent at load, so the reporting can filter to humans and break the automated traffic down by kind.</p>
       </section>
 
       <section aria-labelledby="team-h">
@@ -520,6 +562,7 @@
           <li><strong>Cards by default.</strong> The card treatment is now the site&rsquo;s default for destination lists. The home page&rsquo;s record entries and practice areas are cards, as is the practice hub. The record cards keep their full proof text. Reference lists stay text.</li>
           <li><strong>The record, restructured.</strong> The home record now separates context from proof. Each employer carries its role, its dates, and the situation in a short context block, then compact proof points, then the related case studies as cards underneath. Gangverk carries both the A+E and Gangverk studies. Vanguard stands as context only.</li>
           <li><strong>One component, everywhere.</strong> The writing lists now use the same card component as the hubs and the record, after the first card build proved unreliable in one browser. The lists are finished cards in the page. The script no longer rewrites them.</li>
+          <li><strong>Humans, separated from bots.</strong> Every Amplitude event now carries an is_bot flag and a user_agent_type category, classified from the user agent in the page: search and AI crawlers, social preview bots, uptime monitors, and scanners are segmented from human sessions, with saved segments for each side. The schema is documented in the project tracking plan.</li>
           <li><strong>Four up.</strong> The home writing grid now shows the four most recent essays, filling its two-by-two on desktop.</li>
           <li><strong>Related studies, carded.</strong> The More case studies lists at the foot of each case study are preview cards now, the same component as everywhere else, instead of a line of text links. The Related practice line was corrected the same day, at Douglas&rsquo;s direction: it is a destination list, and it is cards now too.</li>
         </ul></div></details>
