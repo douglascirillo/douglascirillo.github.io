@@ -252,6 +252,7 @@
   ein.setAttribute("placeholder", ctx.placeholder);
   var panel = document.getElementById("explore-panel");
   var answerBox = document.getElementById("explore-answer");
+  if (answerBox) answerBox.setAttribute("aria-live", "polite");
 
   var viewed = false;
   if ("IntersectionObserver" in window) {
