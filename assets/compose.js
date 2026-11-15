@@ -58,6 +58,12 @@
       '<p class="composition-note">Assembled for this visit from the ' +
       "published record. The static pages underneath do not change.</p>";
     el.hidden = false;
+    Array.prototype.forEach.call(
+      document.querySelectorAll(".intent-btn"),
+      function (b) {
+        b.setAttribute("aria-pressed",
+          b.getAttribute("data-intent") === "intent_" + intent ? "true" : "false");
+      });
     try {
       history.replaceState(null, "", "#c=" + (sig || entry.sig));
     } catch (e) {}
@@ -72,11 +78,15 @@
   function init() {
     var el = slot();
     if (!el) return;
+    el.setAttribute("aria-live", "polite");
     var reset = document.getElementById("intent-reset");
     if (reset) {
       reset.addEventListener("click", function () {
         el.hidden = true;
         el.innerHTML = "";
+        Array.prototype.forEach.call(
+          document.querySelectorAll(".intent-btn"),
+          function (b) { b.setAttribute("aria-pressed", "false"); });
         try { history.replaceState(null, "", location.pathname); } catch (e) {}
       });
     }
