@@ -337,6 +337,17 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
 .hub-sum p{margin:0;font-size:15px;line-height:1.6;color:var(--ink-2)}
 .hub-cta{margin-top:auto;padding-top:6px;font-size:13.5px;font-weight:600;color:var(--accent)}
 .hub-static{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+
+.employer{padding:24px 0 28px;border-top:1px solid var(--line)}
+.employer:first-of-type{border-top:none;padding-top:6px}
+.emp-org{font-family:"Newsreader", Georgia, serif;font-size:25px;font-weight:600;margin:0 0 2px;color:var(--ink)}
+.emp-role{font-size:13.5px;color:var(--muted);margin:0 0 10px}
+.emp-ctx{font-size:15.5px;line-height:1.6;color:var(--ink-2);max-width:70ch;margin:0 0 12px}
+.proofpoints{list-style:none;margin:0 0 4px;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:5px 28px}
+@media (max-width:640px){.proofpoints{grid-template-columns:1fr}}
+.proofpoints li{font-size:14.5px;line-height:1.5;color:var(--ink-2);padding-left:14px;position:relative}
+.proofpoints li::before{content:"";position:absolute;left:0;top:9px;width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.emp-cards{margin:14px 0 0}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
 <script>
@@ -492,15 +503,60 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
 
     <section id="record" aria-labelledby="record-h">
       <div class="section-head"><span class="num">02</span><h2 id="record-h">The record</h2></div>
-      <div class="hub-grid">
-<article class="hub-card"><a class="hub-card-a" href="/case-studies/lindblad-expeditions/"><img class="hub-img" src="/assets/case-lindblad-expeditions.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Lindblad Expeditions</span><span class="hub-role">Digital product leader</span><span class="hub-sum"><p>Bookings <strong>up 30 percent</strong> and booking funnel completion <strong>up 82 percent</strong>, pre against post replatform, within eight months. Qualified leads up 40 percent. The rebuilt expeditions.com was named a <strong>Webby Honoree</strong>. Led a 10-person team and a $5M portfolio across product, analytics, design, and partners.</p></span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
-<article class="hub-card"><a class="hub-card-a" href="/case-studies/sothebys/"><img class="hub-img" src="/assets/case-sothebys.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Sotheby&rsquo;s</span><span class="hub-role">Digital product and growth stack</span><span class="hub-sum"><p>Organic traffic <strong>up 167 percent</strong>, on-site search click-through <strong>up 48.7 percent</strong>, consignment landing pages that doubled search placement and cut consignment ad spend <strong>50 percent</strong>. The customer data and measurement foundations established there continued to support the business after his departure.</p></span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
-<article class="hub-card"><a class="hub-card-a" href="/case-studies/madison-square-garden/"><img class="hub-img" src="/assets/case-madison-square-garden.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Madison Square Garden</span><span class="hub-role">Built and ran digital product</span><span class="hub-sum"><p>Built the digital product function and ran it for <strong>four years</strong>, 29+ websites and 4+ native apps, including the MSG GO app, Emmy-nominated. Grew digital ticket sales 400% for the Rockettes and Radio City Music Hall.</p></span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
-<article class="hub-card"><div class="hub-card-a"><img class="hub-img" src="/assets/case-ae-networks.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Gangverk and A+E Networks</span><span class="hub-role">Marketing and product strategy</span><span class="hub-sum"><p>Replatformed <strong>History.com</strong> end to end in four months; A+E adopted the architecture as its standard for migrating its web ecosystem. Grew the firm&rsquo;s active clients from <strong>1 to 60+</strong>. Carried revenue targets and hiring authority. Consulting work included a Segment-sponsored engagement with TripAdvisor on customer data platform adoption.</p></span><span class="hub-cta">Two engagements, one entry:</span><span class="hub-cta"><a href="/case-studies/ae-networks/">Read the A+E case study &rarr;</a></span><span class="hub-cta"><a href="/case-studies/gangverk/">Read the Gangverk case study &rarr;</a></span></span></div></article>
-<article class="hub-card"><a class="hub-card-a" href="/case-studies/a-place-for-mom/"><img class="hub-img" src="/assets/case-a-place-for-mom.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">A Place for Mom</span><span class="hub-sum"><p>SEO market share grew from <strong>26 percent to 68 percent</strong>; team grew from <strong>3 to more than 20</strong>.</p></span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
-<article class="hub-static"><div class="hub-card-a"><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Vanguard</span><span class="hub-role">Current role</span><span class="hub-sum"><p>Head of Digital Experience and Growth at Vanguard, leading a function supporting Personal Wealth marketing and the retail business. Building since <strong>February 2026</strong>.</p></span></span></div></article>
+<article class="employer">
+<h3 class="emp-org">Lindblad Expeditions</h3>
+<p class="emp-role">Digital product leader</p>
+<p class="emp-ctx">The experience had not kept pace with the business: a slow, fragmented site, and no clear view of how customers moved from browsing to booking. The approach was a composable replatform, run by a team of 10 across product, analytics, design, and partners, on a $5M portfolio.</p>
+<ul class="proofpoints"><li><strong>Bookings up 30%</strong> and booking funnel completion <strong>up 82%</strong>, within eight months of the replatform</li><li><strong>Qualified leads up 40%</strong></li><li>The rebuilt expeditions.com was named a <strong>Webby Honoree</strong></li></ul>
+<div class="hub-grid emp-cards">
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/lindblad-expeditions/"><img class="hub-img" src="/assets/case-lindblad-expeditions.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Lindblad Expeditions: rebuilding the booking engine</span><span class="hub-sum">Bookings up 30%, booking funnel completion up 82%, within eight months.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
 </div>
-    </section>
+</article>
+<article class="employer">
+<h3 class="emp-org">Sotheby&rsquo;s</h3>
+<p class="emp-role">Assistant Vice President, Director of Digital Product and Growth Stack &middot; 2017&ndash;2020</p>
+<p class="emp-ctx">Search was not carrying its weight, and the customer data underneath was fragmented across systems, so search, personalization, and measurement all worked from fragments. The approach was a rearchitecture: off Adobe Experience Manager, onto a composable, data-first stack.</p>
+<ul class="proofpoints"><li><strong>Organic traffic up 167%</strong></li><li><strong>On-site search click-through up 48.7%</strong></li><li>Consignment landing pages doubled search placement and cut consignment ad spend <strong>50%</strong></li><li>The data and measurement foundations kept supporting the business after his departure</li></ul>
+<div class="hub-grid emp-cards">
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/sothebys/"><img class="hub-img" src="/assets/case-sothebys.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Sotheby&rsquo;s: building the growth stack for a 275-year-old auction house</span><span class="hub-sum">Organic traffic up 167% on a composable stack that still stands.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+</div>
+</article>
+<article class="employer">
+<h3 class="emp-org">Madison Square Garden</h3>
+<p class="emp-role">Director of Product Operations &middot; 2012&ndash;2016</p>
+<p class="emp-ctx">Every brand ran its own digital property on its own aging platform: the Knicks, the Rangers, the Liberty, the Rockettes, Radio City Music Hall, and the arena itself. The approach was to build one digital product function and one operating model across all of them, including a $4M replatform he proposed and led.</p>
+<ul class="proofpoints"><li><strong>29+ websites and 4+ native apps</strong> under one operating model</li><li>The MSG GO app, <strong>New York Emmy-nominated</strong></li><li><strong>Digital ticket sales up 400%</strong> for the Rockettes and Radio City Music Hall</li></ul>
+<div class="hub-grid emp-cards">
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/madison-square-garden/"><img class="hub-img" src="/assets/case-madison-square-garden.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Madison Square Garden: building the digital product function</span><span class="hub-sum">Rockettes and Radio City ticket sales up 400% across 29+ websites and 4+ apps.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+</div>
+</article>
+<article class="employer">
+<h3 class="emp-org">Gangverk</h3>
+<p class="emp-role">Head of Marketing and Product Strategy &middot; 2022&ndash;2025</p>
+<p class="emp-ctx">Gangverk had been his vendor at Sotheby&rsquo;s, where the firm built the auction engine and catalogue platform under his direction. He joined to build its transformation portfolio and go-to-market, carrying revenue targets and hiring authority.</p>
+<ul class="proofpoints"><li>The firm&rsquo;s active clients grew from <strong>1 to 60+</strong></li><li>Consulting included a Segment-sponsored engagement with TripAdvisor on customer data platform adoption</li></ul>
+<div class="hub-grid emp-cards">
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/ae-networks/"><img class="hub-img" src="/assets/case-ae-networks.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">A+E Networks: the History.com replatform</span><span class="hub-sum">History.com replatformed in four months, then adopted as the migration standard.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/gangverk/"><img class="hub-img" src="/assets/case-gangverk.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Gangverk: building the go-to-market</span><span class="hub-sum">Client brands from 1 to 60+ while carrying revenue targets and hiring authority.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+</div>
+</article>
+<article class="employer">
+<h3 class="emp-org">A Place for Mom</h3>
+<p class="emp-role">Vice President of Digital Product Management &middot; 2020&ndash;2021</p>
+<p class="emp-ctx">Organic search was the growth engine, and it was losing power, with market share at 26 percent. The diagnosis was equal parts content and architecture, and the rebuild covered both, platform and governance included.</p>
+<ul class="proofpoints"><li><strong>SEO market share from 26% to 68%</strong></li><li><strong>Team grew from 3 to more than 20</strong></li></ul>
+<div class="hub-grid emp-cards">
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/a-place-for-mom/"><img class="hub-img" src="/assets/case-a-place-for-mom.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">A Place for Mom: equal parts content and architecture</span><span class="hub-sum">SEO market share rose from 26% to 68% once the platform underneath was rebuilt.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+</div>
+</article>
+<article class="employer">
+<h3 class="emp-org">Vanguard</h3>
+<p class="emp-role">Head of Digital Experience and Growth &middot; since February 2026</p>
+<p class="emp-ctx">Leading a function that supports Personal Wealth marketing and the retail business. The current chapter, building since February 2026.</p>
+<ul class="proofpoints"></ul>
+
+</article>
+</section>
 
     <section id="practice" aria-labelledby="practice-h">
       <div class="section-head"><span class="num">03</span><h2 id="practice-h">What I work on</h2></div>
