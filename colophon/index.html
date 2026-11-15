@@ -283,6 +283,17 @@
         <p>The home page asks what brought you here and routes you to the part of the record that answers it. The leadership scorecard runs as a self-diagnostic in your browser; nothing you enter is stored. Underneath, every claim on the site sits in a structured registry, record.json, with its source and status, published for answer engines alongside an llms.txt summary. The pages themselves stay static and crawlable. The record does not change. How you move through it does.</p>
       </section>
 
+      <section aria-labelledby="ask-h2">
+        <h2 id="ask-h2">How does Ask my record work?</h2>
+        <p>Every page on this site has a question box. It answers from one source: a public evidence registry, record.json, that holds every claim on this site as data, word for word, with its source page. The registry is the site, in machine-readable form.</p>
+        <p>A small AI model (Claude Haiku) reads the question and picks which records answer it. The model never writes the answer. Code assembles the reply from the registry verbatim and links the source. Numbers cannot drift, because the model never touches them. If no record answers, the box says so and points to the case studies. If a question is out of bounds (my employer beyond my published role, compensation, my family, whether I am looking for work), it gets one fixed refusal, every time. Some exclusions are enforced in code, not just in instructions to the model.</p>
+        <p>The box knows which page you are on. It suggests questions that page can actually answer, prefers that page&rsquo;s records when several could answer, and ends with the next step that fits the page. It runs on a serverless function (AWS Lambda) that I deployed from a script, and it is measured like everything else here: views, questions, answers, and next clicks in Amplitude.</p>
+        <p>Questions are kept for 90 days so I can read what people actually ask and improve the record. Email addresses and phone numbers are stripped automatically before anything is stored. No visitor identifiers are kept. After 90 days the log deletes itself.</p>
+        <p>Cost is capped twice: a monthly ceiling in the code, and a spend limit where the model bill actually lands. There is a kill switch on the site side and on the server side.</p>
+        <p>Before any of this shipped, it had to pass a 20-case test set: ordinary questions, scope traps, and adversarial ones. The first run passed 17. The three failures were fixed in the open: a missing record, a selection preference, and an exclusion that needed code instead of instructions. The set has to pass 20 of 20 before changes go live.</p>
+        <p><strong>Build your own.</strong> Publish your record as data, with sources. Keep every claim verbatim. Let the model select, never write. Write your refusals in advance and make them fixed. Log questions with a short fuse. Cap the spend where the bill lands. Gate changes on a test set that includes people trying to break it.</p>
+      </section>
+
       <section aria-labelledby="rules-h">
         <h2 id="rules-h">What are the rules?</h2>
         <p>Settled facts only. Every number on this site traces to work I actually did. One change at a time, then measure. And the harness checks from my writing, Brand Out-of-Bounds, Contextual Switch, and Guardrails, apply to the team that builds this site too. Gates, not prompts.</p>
