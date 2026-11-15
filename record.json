@@ -50,14 +50,14 @@
     },
     {
       "id": "lindblad-funnel",
-      "claim": "Within eight months of the Lindblad Expeditions replatform, booking funnel completion rose 82%, measured from booking start to completed booking, before and after the replatform.",
+      "claim": "The Lindblad booking funnel improvement came from the composable replatform Douglas Cirillo led: data foundation first, CDP and CRM data flows integrated, the UX overhauled, and a modern lead capture system introduced. Booking funnel completion rose 82% within eight months of the replatform, measured from booking start to completed booking, before and after the replatform.",
       "class": "fact",
       "source": "https://douglascirillo.com/case-studies/lindblad-expeditions/",
       "evidence": "Booking funnel completion up 82%.",
       "context": "Lindblad Expeditions, 2021-2022",
       "attribution": "Led digital product",
       "status": "approved",
-      "verified": "2026-11-14"
+      "verified": "2026-11-15"
     },
     {
       "id": "lindblad-leads",
@@ -360,6 +360,17 @@
       "attribution": "Authored",
       "status": "approved",
       "verified": "2026-11-14"
+    },
+    {
+      "id": "principle-harness-checks",
+      "claim": "The harness checks are Brand Out-of-Bounds, Contextual Switch, and Guardrails. A prompt is a request; a gate is a control.",
+      "class": "principle",
+      "source": "/colophon/",
+      "evidence": "The colophon names the three checks verbatim, and the same three checks are published in the Cycle 2 essay, Own Your Harness.",
+      "context": "The checks Douglas Cirillo applies to AI-assisted work, including the team that builds his site.",
+      "attribution": "Douglas Cirillo",
+      "status": "approved",
+      "verified": "2026-11-15"
     },
     {
       "id": "principle-approval",
