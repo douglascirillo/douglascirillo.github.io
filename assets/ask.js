@@ -6,7 +6,7 @@
    page path is sent with the question so the service can prefer that page's
    records when several answer equally well.
    Amplitude: ask_module_viewed, ask_submitted, ask_answered, ask_no_evidence,
-   ask_refused, ask_next_click. Every event carries the page path. */
+   ask_refused, ask_next_click, ask_entry_click. Every event carries the page path. */
 (function () {
   var ASK_ENABLED = true;
   var ASK_ENDPOINT = "https://7i3yr1dzge.execute-api.us-east-1.amazonaws.com/ask";
@@ -114,7 +114,11 @@
     ".ask .ask-item p{margin:0 0 6px;font-size:16.5px;line-height:1.55}",
     ".ask .ask-item a{font-size:14px}",
     ".ask .ask-msg{font-size:16.5px;line-height:1.55}",
-    ".ask .ask-next{margin-top:14px;font-size:15px}"
+    ".ask .ask-next{margin-top:14px;font-size:15px}",
+    ".ask-entry{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 18px;border:1px solid var(--line);border-radius:10px;margin:22px 0}",
+    ".ask-entry .ask-entry-label{font-size:15px;color:var(--ink-2)}",
+    ".ask-entry button{font:inherit;font-size:13.5px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-2);cursor:pointer;text-align:left}",
+    ".ask-entry button:hover{border-color:var(--accent);color:var(--ink)}"
   ].join("\n");
   var style = document.createElement("style");
   style.textContent = css;
@@ -237,4 +241,40 @@
       submit(el.textContent, "chip");
     });
   });
+
+  /* Mid-page entry point: a slim bar after the first content section that
+     routes to the module below. Skipped on the home page (the intent strip
+     already does this job) and on the scorecard (the tool is the page). */
+  if (page !== "/" && page !== "/scorecard/") {
+    var main = document.querySelector("main");
+    var firstSection = main ? main.querySelector("section") : null;
+    if (firstSection && firstSection.parentNode) {
+      var entry = document.createElement("div");
+      entry.className = "ask-entry";
+      var label = document.createElement("span");
+      label.className = "ask-entry-label";
+      label.textContent = "Questions about this page?";
+      var chipBtn = document.createElement("button");
+      chipBtn.type = "button";
+      chipBtn.textContent = ctx.chips[0];
+      var openBtn = document.createElement("button");
+      openBtn.type = "button";
+      openBtn.textContent = "Ask my record";
+      entry.appendChild(label);
+      entry.appendChild(chipBtn);
+      entry.appendChild(openBtn);
+      firstSection.parentNode.insertBefore(entry, firstSection.nextSibling);
+      chipBtn.addEventListener("click", function () {
+        track("ask_entry_click", { page: page, via: "entry_chip" });
+        input.value = ctx.chips[0];
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+        submit(ctx.chips[0], "chip");
+      });
+      openBtn.addEventListener("click", function () {
+        track("ask_entry_click", { page: page, via: "entry_open" });
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+        setTimeout(function () { input.focus({ preventScroll: true }); }, 450);
+      });
+    }
+  }
 })();
