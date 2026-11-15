@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /bridges.json
 
 Sitemap: https://douglascirillo.com/sitemap.xml
