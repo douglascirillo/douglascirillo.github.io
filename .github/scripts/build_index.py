@@ -62,6 +62,8 @@ for html_file in sorted(SITE.rglob("index.html")):
     desc_m = re.search(r'<meta name="description" content="(.*?)"', text, re.S)
     summary = desc_m.group(1).strip() if desc_m else ""
     headings = [re.sub(r"<[^>]+>", "", h).strip() for h in re.findall(r"<h2[^>]*>(.*?)</h2>", text, re.S)]
+    hero_m = re.search(r'<figure class="hero"><img src="([^"]+)"', text)
+    image = hero_m.group(1) if hero_m else ""
     headings = [h for h in headings if h and h != "Ask my record"]
     date_m = re.search(r'"datePublished":\s*"([^"]+)"', text)
     date_ts = 0
@@ -73,7 +75,7 @@ for html_file in sorted(SITE.rglob("index.html")):
     oid = "home" if rel == "/" else rel.strip("/").replace("/", "-")
     objects.append({"objectID": oid, "title": title, "summary": summary,
                     "url": rel, "type": page_type(rel), "headings": headings,
-                    "date": date_ts})
+                    "date": date_ts, "image": image})
 
 print(f"{len(objects)} objects")
 # fresh tmp index
@@ -84,7 +86,7 @@ except Exception:
     pass
 s = req("PUT", f"{BASE}/{TMP}/settings", {
     "searchableAttributes": ["title", "headings", "summary"],
-    "attributesToRetrieve": ["title", "summary", "url", "type", "date"],
+    "attributesToRetrieve": ["title", "summary", "url", "type", "date", "image"],
     "attributesForFaceting": ["type"],
     "attributesToHighlight": [],
 })
