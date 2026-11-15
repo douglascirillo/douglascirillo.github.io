@@ -276,6 +276,19 @@
 .related-writing .bridge-tag{display:inline-block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-right:8px;vertical-align:1px}
 .related-writing li.dynamic-more{padding:6px 2px 0;font-size:15.5px}
 .related-writing li.dynamic-more a{font-weight:600;color:var(--ink)}
+
+.hub-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0 22px}
+@media (max-width:640px){.hub-grid{grid-template-columns:1fr}}
+.hub-card{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden;transition:border-color .15s ease,transform .15s ease}
+.hub-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.hub-card-a{display:flex;flex-direction:column;height:100%;text-decoration:none;color:inherit}
+.hub-img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.hub-body{display:flex;flex-direction:column;gap:5px;padding:14px 16px 16px}
+.hub-meta{display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--muted)}
+.hub-tag{letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:0 5px;font-weight:600}
+.hub-title{font-family:"Newsreader", Georgia, serif;font-size:20px;font-weight:600;line-height:1.25;color:var(--ink)}
+.hub-sum{font-size:14.5px;line-height:1.5;color:var(--ink-2)}
+.hub-cta{margin-top:auto;padding-top:6px;font-size:13.5px;font-weight:600;color:var(--accent)}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
 <script>
@@ -433,12 +446,12 @@
   <section class="related-writing" aria-label="Related writing">
 <h2>Related writing</h2>
 <p class="bridge" data-nosnippet><span class="bridge-tag">AI-generated</span>These essays explore strategy, decision-making, and the foundations required for agents and AI systems to work effectively.</p>
-<ul>
-<li class="dl-card"><a class="dl-card-a" href="/writing/the-hardest-part-of-strategy-is-letting-go/"><img class="dl-img" src="/assets/writing-the-hardest-part-of-strategy-is-letting-go-hero.jpg" alt="" loading="lazy" /><span class="dl-body"><span class="dl-meta"><span class="dl-tag">Essay</span><span>Sep 23, 2025</span></span><span class="dl-title">The Hardest Part of Strategy: Letting Go</span><span class="dl-sum">Real strategy is not about being right. Douglas Cirillo on letting go, disagreeing and committing, and creating space for teams to move forward.</span><span class="dl-cta">Read the essay &rarr;</span></span></a></li>
-<li class="dl-card"><a class="dl-card-a" href="/writing/own-your-harness/"><img class="dl-img" src="/assets/writing-own-your-harness-hero.jpg" alt="" loading="lazy" /><span class="dl-body"><span class="dl-meta"><span class="dl-tag">Essay</span><span>Nov 8, 2026</span></span><span class="dl-title">Own Your Harness</span><span class="dl-sum">Own your harness, your data, your runtime. Douglas Cirillo on the Monday test: three checks before trusting any agent setup, and why gates beat prompts.</span><span class="dl-cta">Read the essay &rarr;</span></span></a></li>
-<li class="dl-card"><a class="dl-card-a" href="/writing/data-first-ai-second/"><img class="dl-img" src="/assets/writing-data-first-ai-second-hero.jpg" alt="" loading="lazy" /><span class="dl-body"><span class="dl-meta"><span class="dl-tag">Essay</span><span>Nov 1, 2026</span></span><span class="dl-title">Data First, AI Second</span><span class="dl-sum">Data first, AI second. Douglas Cirillo on why agents only scale good decisions when the data underneath is governed, structured, and machine-readable.</span><span class="dl-cta">Read the essay &rarr;</span></span></a></li>
-<li class="dynamic-more"><a href="/writing/">All writing</a></li>
-</ul>
+<div class="hub-grid">
+<article class="hub-card"><a class="hub-card-a" href="/writing/the-hardest-part-of-strategy-is-letting-go/"><img class="hub-img" src="/assets/writing-the-hardest-part-of-strategy-is-letting-go-hero.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Essay</span><span>Sep 23, 2025</span></span><span class="hub-title">The Hardest Part of Strategy: Letting Go</span><span class="hub-sum">Real strategy is not about being right. Douglas Cirillo on letting go, disagreeing and committing, and creating space for teams to move forward.</span><span class="hub-cta">Read the essay &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/writing/own-your-harness/"><img class="hub-img" src="/assets/writing-own-your-harness-hero.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Essay</span><span>Nov 8, 2026</span></span><span class="hub-title">Own Your Harness</span><span class="hub-sum">Own your harness, your data, your runtime. Douglas Cirillo on the Monday test: three checks before trusting any agent setup, and why gates beat prompts.</span><span class="hub-cta">Read the essay &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/writing/data-first-ai-second/"><img class="hub-img" src="/assets/writing-data-first-ai-second-hero.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Essay</span><span>Nov 1, 2026</span></span><span class="hub-title">Data First, AI Second</span><span class="hub-sum">Data first, AI second. Douglas Cirillo on why agents only scale good decisions when the data underneath is governed, structured, and machine-readable.</span><span class="hub-cta">Read the essay &rarr;</span></span></a></article>
+</div>
+<p class="dynamic-more"><a href="/writing/">All writing</a></p>
 </section>
 </main>
 
