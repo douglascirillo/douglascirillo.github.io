@@ -250,6 +250,15 @@
     .fade{animation:none}
     html{scroll-behavior:auto}
   }
+
+.diagram{width:100%;height:auto;display:block;margin:20px 0 10px}
+.diagram rect{fill:var(--accent-light);stroke:var(--line)}
+.diagram rect.band{fill:none}
+.diagram text{fill:var(--ink)}
+.diagram .dt{font-size:14px;font-weight:600}
+.diagram .ds{font-size:12.5px}
+.diagram .dl{font-size:11.5px;font-style:italic}
+.diagram line{stroke:var(--ink);stroke-width:1.5}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
 <script>
@@ -391,6 +400,62 @@
         <p>Each record page is a frozen composition: blocks of approved text, assembled once and published as a static page. The proof blocks trace to the case studies, and the figures carry their scope with them. Nothing on these pages is generated at visit time. The writing lists update as new essays are approved. The proof does not change without re-approval.</p>
       </section>
 
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How is the site put together?</h2>
+        <p>Three layers, one rule: a model can select and arrange. It cannot invent.</p>
+        <svg class="diagram" viewBox="0 0 720 452" role="img" aria-label="Diagram of the site architecture: a visitor uses the record bar, which routes keyword searches to an Algolia index built from the published pages and questions to a Lambda function that selects records from the static registry, with DynamoDB for the cost counter and question log, an offline checked generation step, and Amplitude measurement throughout.">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--ink)"></path>
+            </marker>
+          </defs>
+          <rect x="270" y="8" width="180" height="38" rx="8"></rect>
+          <text class="dt" x="360" y="32" text-anchor="middle">Visitor</text>
+          <line x1="360" y1="46" x2="360" y2="62" marker-end="url(#arr)"></line>
+          <rect x="210" y="64" width="300" height="44" rx="8"></rect>
+          <text class="dt" x="360" y="84" text-anchor="middle">The record bar</text>
+          <text class="ds" x="360" y="100" text-anchor="middle">One input on every page</text>
+          <line x1="300" y1="108" x2="190" y2="138" marker-end="url(#arr)"></line>
+          <text class="dl" x="212" y="118">keywords</text>
+          <line x1="420" y1="108" x2="530" y2="138" marker-end="url(#arr)"></line>
+          <text class="dl" x="462" y="118">questions</text>
+          <rect x="40" y="140" width="290" height="58" rx="8"></rect>
+          <text class="dt" x="56" y="163">Algolia index</text>
+          <text class="ds" x="56" y="180">Built only from published pages</text>
+          <text class="ds" x="56" y="195">Search and the writing lists</text>
+          <rect x="390" y="140" width="290" height="58" rx="8"></rect>
+          <text class="dt" x="406" y="163">Ask my record (AWS Lambda)</text>
+          <text class="ds" x="406" y="180">A model selects the records</text>
+          <text class="ds" x="406" y="195">Code assembles the answer word for word</text>
+          <line x1="185" y1="230" x2="185" y2="200" marker-end="url(#arr)"></line>
+          <line x1="535" y1="198" x2="535" y2="230" marker-end="url(#arr)"></line>
+          <rect x="40" y="232" width="290" height="58" rx="8"></rect>
+          <text class="dt" x="56" y="255">The static record (GitHub Pages)</text>
+          <text class="ds" x="56" y="272">Plain HTML pages + record.json</text>
+          <text class="ds" x="56" y="287">Every approved claim, with its source</text>
+          <rect x="390" y="232" width="290" height="58" rx="8"></rect>
+          <text class="dt" x="406" y="255">DynamoDB</text>
+          <text class="ds" x="406" y="272">Monthly cost counter</text>
+          <text class="ds" x="406" y="287">Question log, kept 90 days, details stripped</text>
+          <line x1="185" y1="290" x2="185" y2="322" marker-end="url(#arr)"></line>
+          <rect x="40" y="324" width="290" height="58" rx="8"></rect>
+          <text class="dt" x="56" y="347">Generation, offline</text>
+          <text class="ds" x="56" y="364">Introductions written ahead of time</text>
+          <text class="ds" x="56" y="379">Checked by code and a second model</text>
+          <rect x="390" y="324" width="290" height="58" rx="8"></rect>
+          <text class="dt" x="406" y="347">Amplitude</text>
+          <text class="ds" x="406" y="364">Measurement for the whole site</text>
+          <text class="ds" x="406" y="379">Joined to Algolia under one anonymous ID</text>
+          <rect class="band" x="40" y="404" width="640" height="36" rx="8"></rect>
+          <text class="ds" x="360" y="427" text-anchor="middle">Every change is a git commit, byte-verified on deploy. Each layer has its own kill switch.</text>
+        </svg>
+        <p>The record layer is static: plain HTML pages and one data file, record.json, holding every approved claim with its source. GitHub Pages serves them, and every change is a git commit.</p>
+        <p>The retrieval layer answers. Keyword searches go to an Algolia index built only from the published pages. Questions go to a small function on AWS: a Claude model picks the records that answer, and code assembles the reply from those records word for word. Nothing in the answer is written by the model.</p>
+        <p>The generative layer is narrow on purpose. The introductions over the writing lists are written ahead of time by an offline script, from the listed essays&rsquo; own summaries. A mechanical checker and a second model review each line before it is stored, and the site serves the stored file. Nothing is generated while a visitor waits.</p>
+        <p>Measurement runs through Amplitude, joined to Algolia under one anonymous ID, so search behavior and site behavior can be read together. No names, no emails. Each layer can be switched off on its own; the static record serves either way.</p>
+      </section>
+
       <section aria-labelledby="rules-h">
         <h2 id="rules-h">What are the rules?</h2>
         <p>Settled facts only. Every number on this site traces to work I actually did. One change at a time, then measure. And the harness checks from my writing, Brand Out-of-Bounds, Contextual Switch, and Guardrails, apply to the team that builds this site too. Gates, not prompts.</p>
@@ -410,6 +475,16 @@
         <p><strong>Nov 15: record pages.</strong> The first composed evidence page, on diagnosing an organic search decline, built from approved blocks.</p>
         <p><strong>Nov 15: the footer.</strong> This colophon is now linked from the footer of every page.</p>
 <p><strong>Nov 15: the first generated text.</strong> One-line introductions above the related writing lists, AI-generated ahead of time from the essays&rsquo; own summaries, checked before use, and labeled.</p>
+<p><strong>Nov 15: the roadmap and the architecture.</strong> This page gains a diagram of how the layers fit together, and a public roadmap to sit alongside the change log.</p>
+      </section>
+
+      <section aria-labelledby="roadmap-h">
+        <h2 id="roadmap-h">Where is this going?</h2>
+        <p>The record does not change. What changes is how much of the experience around it can assemble itself, under the same gates.</p>
+        <p>Next: the generated introductions extend to the home page writing list, once a regeneration cycle runs clean. Ask gains connective writing between the records it cites, after a review period of real visitor questions, with the verbatim answer kept as the fallback.</p>
+        <p>Then composition: pages that assemble around a visitor&rsquo;s intent from the approved block library, precomputed and checked the way the introductions are checked. The static pages stay underneath as the canonical record, and any composition can be switched off without touching them.</p>
+        <p>In a private lab, not linked from this site: vendor generative tooling, tested against the same gates before anything is adopted.</p>
+        <p>Not on the roadmap: personalization based on who a visitor works for, and generated text a visitor sees before it has been checked against the record.</p>
       </section>
 
       <div class="more">
