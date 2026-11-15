@@ -220,6 +220,23 @@
     .fade{animation:none}
     html{scroll-behavior:auto}
   }
+
+.hub-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0 22px}
+@media (max-width:640px){.hub-grid{grid-template-columns:1fr}}
+.hub-card{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden;transition:border-color .15s ease,transform .15s ease}
+.hub-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.hub-card-a{display:flex;flex-direction:column;height:100%;text-decoration:none;color:inherit}
+a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;color:inherit}
+.hub-img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.hub-body{display:flex;flex-direction:column;gap:5px;padding:14px 16px 16px}
+.hub-meta{display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--muted)}
+.hub-tag{letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:0 5px;font-weight:600}
+.hub-title{font-family:"Newsreader", Georgia, serif;font-size:20px;font-weight:600;line-height:1.25;color:var(--ink)}
+.hub-role{font-size:13px;color:var(--muted)}
+.hub-sum{font-size:14.5px;line-height:1.5;color:var(--ink-2)}
+.hub-sum p{margin:0;font-size:15px;line-height:1.6;color:var(--ink-2)}
+.hub-cta{margin-top:auto;padding-top:6px;font-size:13.5px;font-weight:600;color:var(--accent)}
+.hub-static{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
 <script>
@@ -306,28 +323,12 @@
     <h1 class="fade">What I work on</h1>
     <p class="intro">Douglas Cirillo builds digital and data functions at audience brands, then runs them. These are the practice areas that work sits in. Each area page gives the definition, the method, and the proof.</p>
 
-    <ul class="studies">
-      <li>
-        <h2><a href="/practice/digital-experience-strategy/">Digital experience strategy</a></h2>
-        <p>Digital experience strategy is the work of deciding what a brand&rsquo;s website and apps should do, then building the team and the data to do it. What gets built, in what order, and how the organization knows it worked.</p>
-        <a class="read" href="/practice/digital-experience-strategy/">Read the practice page &rarr;</a>
-      </li>
-      <li>
-        <h2><a href="/practice/composable-martech-and-customer-data/">Composable martech and customer data</a></h2>
-        <p>Composable martech is a stack built from best-of-breed tools, connected through a warehouse-first customer data platform, instead of a single vendor suite. Warehouse-first foundations, CDPs, and decisioning built to test against the objective, not the screen.</p>
-        <a class="read" href="/practice/composable-martech-and-customer-data/">Read the practice page &rarr;</a>
-      </li>
-      <li>
-        <h2><a href="/practice/experimentation-and-measurement/">Experimentation and measurement</a></h2>
-        <p>Tests aimed at a specific outcome, with definitions a whole company can agree on.</p>
-        <a class="read" href="/practice/experimentation-and-measurement/">Read the practice page &rarr;</a>
-      </li>
-      <li>
-        <h2><a href="/practice/ai-readiness-and-answer-discoverability/">AI readiness and answer discoverability</a></h2>
-        <p>How brands make their content and data useful to both people and AI agents.</p>
-        <a class="read" href="/practice/ai-readiness-and-answer-discoverability/">Read the practice page &rarr;</a>
-      </li>
-    </ul>
+    <div class="hub-grid">
+<article class="hub-card"><a class="hub-card-a" href="/practice/digital-experience-strategy/"><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Practice</span></span><span class="hub-title">Digital experience strategy</span><span class="hub-sum">Digital experience strategy is the work of deciding what a brand&rsquo;s website and apps should do, then building the team and the data to do it. What gets built, in what order, and how the organization knows it worked.</span><span class="hub-cta">Read the practice page &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/practice/composable-martech-and-customer-data/"><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Practice</span></span><span class="hub-title">Composable martech and customer data</span><span class="hub-sum">Composable martech is a stack built from best-of-breed tools, connected through a warehouse-first customer data platform, instead of a single vendor suite. Warehouse-first foundations, CDPs, and decisioning built to test against the objective, not the screen.</span><span class="hub-cta">Read the practice page &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/practice/experimentation-and-measurement/"><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Practice</span></span><span class="hub-title">Experimentation and measurement</span><span class="hub-sum">Tests aimed at a specific outcome, with definitions a whole company can agree on.</span><span class="hub-cta">Read the practice page &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/practice/ai-readiness-and-answer-discoverability/"><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Practice</span></span><span class="hub-title">AI readiness and answer discoverability</span><span class="hub-sum">How brands make their content and data useful to both people and AI agents.</span><span class="hub-cta">Read the practice page &rarr;</span></span></a></article>
+</div>
   </main>
 
   <footer>
