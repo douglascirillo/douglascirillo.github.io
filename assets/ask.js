@@ -10,6 +10,9 @@
 (function () {
   var ASK_ENABLED = true;
   var ASK_ENDPOINT = "https://7i3yr1dzge.execute-api.us-east-1.amazonaws.com/ask";
+  var ALGOLIA_APP = "AL1TQKLUI7";
+  var ALGOLIA_SEARCH_KEY = "63308c453ec399e4360c003851faa733";
+  var ALGOLIA_INDEX = "site_public";
   if (!ASK_ENABLED) return;
 
   var LINKEDIN = "https://www.linkedin.com/in/douglascirillo/";
@@ -138,7 +141,22 @@
     ".ask-entry{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 18px;border:1px solid var(--line);border-radius:10px;margin:22px 0}",
     ".ask-entry .ask-entry-label{font-size:15px;color:var(--ink-2)}",
     ".ask-entry button{font:inherit;font-size:13.5px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-2);cursor:pointer;text-align:left}",
-    ".ask-entry button:hover{border-color:var(--accent);color:var(--ink)}"
+    ".ask-entry button:hover{border-color:var(--accent);color:var(--ink)}",
+    ".explore{margin:26px 0 4px;padding:18px 18px 10px;border:1px solid var(--line);border-radius:12px}",
+    ".explore .explore-label{display:block;font-size:15px;color:var(--ink-2);margin:0 0 10px}",
+    ".explore input{font:inherit;font-size:16px;width:100%;box-sizing:border-box;padding:11px 16px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink)}",
+    ".explore input:focus{outline:none;border-color:var(--accent)}",
+    ".explore .explore-panel{margin-top:12px}",
+    ".explore .explore-hit{display:block;padding:10px 14px;border:1px solid var(--line);border-radius:10px;margin:0 0 8px;text-decoration:none;color:var(--ink)}",
+    ".explore .explore-hit:hover{border-color:var(--accent)}",
+    ".explore .explore-hit .t{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 2px}",
+    ".explore .explore-hit .ti{display:block;font-size:16px;font-weight:600;margin:0 0 2px}",
+    ".explore .explore-hit .sm{display:block;font-size:14px;color:var(--ink-2);line-height:1.45}",
+    ".explore .explore-askrow{display:block;width:100%;text-align:left;font:inherit;font-size:15px;padding:10px 14px;border:1px solid var(--accent);border-radius:10px;background:transparent;color:var(--ink);cursor:pointer;margin:0 0 8px}",
+    ".explore .explore-none{font-size:14.5px;color:var(--muted);margin:2px 0 10px}",
+    ".explore .explore-chips{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 8px}",
+    ".explore .ask-chip{font:inherit;font-size:13.5px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-2);cursor:pointer;text-align:left}",
+    ".explore .ask-chip:hover{border-color:var(--accent);color:var(--ink)}"
   ].join("\n");
   var style = document.createElement("style");
   style.textContent = css;
@@ -297,4 +315,120 @@
       });
     }
   }
+
+  /* Unified explore bar (A1): one prominent input under the header on every
+     page. Keyword-style input returns instant Algolia results from the public
+     index; question-style input routes to Ask My Record below. One field,
+     two engines, separated behind the glass. */
+  (function () {
+    var main = document.querySelector("main");
+    if (!main) return;
+    var bar = document.createElement("div");
+    bar.className = "explore";
+    bar.innerHTML =
+      "<label class=\"explore-label\" for=\"explore-q\">Search the record, or ask it a question.</label>" +
+      "<input id=\"explore-q\" type=\"text\" maxlength=\"300\" autocomplete=\"off\" aria-label=\"Search the record or ask a question\">" +
+      "<div class=\"explore-panel\" id=\"explore-panel\" hidden></div>";
+    main.insertBefore(bar, main.firstChild);
+    var ein = document.getElementById("explore-q");
+    ein.setAttribute("placeholder", ctx.placeholder);
+    var panel = document.getElementById("explore-panel");
+    var QWORDS = ["what", "how", "who", "when", "where", "why", "did", "does", "do", "is", "was", "were", "can", "could", "would", "should", "has", "have"];
+    function isQuestion(q) {
+      var t = q.trim();
+      if (!t) return false;
+      if (t.charAt(t.length - 1) === "?") return true;
+      var words = t.split(/\s+/);
+      if (words.length >= 6) return true;
+      return QWORDS.indexOf(words[0].toLowerCase().replace(/[^a-z]/g, "")) >= 0;
+    }
+    function routeToAsk(q) {
+      panel.hidden = true;
+      input.value = q;
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+      submit(q, "unified");
+    }
+    function showChips() {
+      panel.innerHTML = "";
+      var wrap = document.createElement("div");
+      wrap.className = "explore-chips";
+      ctx.chips.forEach(function (c) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "ask-chip"; b.textContent = c;
+        b.addEventListener("click", function () { routeToAsk(c); });
+        wrap.appendChild(b);
+      });
+      panel.appendChild(wrap);
+      panel.hidden = false;
+    }
+    var debounce = null, lastQuery = "";
+    function runSearch(q) {
+      fetch("https://" + ALGOLIA_APP + "-dsn.algolia.net/1/indexes/" + ALGOLIA_INDEX + "/query", {
+        method: "POST",
+        headers: { "content-type": "application/json", "X-Algolia-API-Key": ALGOLIA_SEARCH_KEY, "X-Algolia-Application-Id": ALGOLIA_APP },
+        body: JSON.stringify({ query: q, hitsPerPage: 6, attributesToHighlight: [] })
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (ein.value.trim() !== q) return;
+          var hits = data.hits || [];
+          track("search_query", { page: page, length: q.length, result_class: hits.length ? "results" : "none" });
+          panel.innerHTML = "";
+          if (!hits.length) {
+            var none = document.createElement("p");
+            none.className = "explore-none";
+            none.textContent = "Nothing in the record matches that. Try a question instead: press Enter to ask.";
+            panel.appendChild(none);
+          }
+          hits.forEach(function (h) {
+            var a = document.createElement("a");
+            a.className = "explore-hit"; a.href = h.url;
+            var t = document.createElement("span"); t.className = "t"; t.textContent = h.type || "";
+            var ti = document.createElement("span"); ti.className = "ti"; ti.textContent = h.title || "";
+            var sm = document.createElement("span"); sm.className = "sm"; sm.textContent = h.summary || "";
+            a.appendChild(t); a.appendChild(ti); a.appendChild(sm);
+            a.addEventListener("click", function () { track("search_result_click", { page: page, destination_type: h.type || "" }); });
+            panel.appendChild(a);
+          });
+          panel.hidden = false;
+        })
+        .catch(function () { panel.hidden = true; });
+    }
+    ein.addEventListener("focus", function () {
+      track("explore_focus", { page: page });
+      var q = ein.value.trim();
+      if (!q) showChips();
+    });
+    ein.addEventListener("input", function () {
+      var q = ein.value.trim();
+      if (debounce) clearTimeout(debounce);
+      if (q.length < 3) { if (!q) showChips(); else panel.hidden = true; return; }
+      if (isQuestion(q)) {
+        panel.innerHTML = "";
+        var row = document.createElement("button");
+        row.type = "button"; row.className = "explore-askrow";
+        row.textContent = "Ask my record: \u201C" + q + "\u201D";
+        row.addEventListener("click", function () { routeToAsk(q); });
+        panel.appendChild(row);
+        panel.hidden = false;
+        return;
+      }
+      debounce = setTimeout(function () {
+        if (q !== lastQuery) { lastQuery = q; runSearch(q); }
+      }, 300);
+    });
+    ein.addEventListener("keydown", function (ev) {
+      if (ev.key !== "Enter") return;
+      ev.preventDefault();
+      var q = ein.value.trim();
+      if (q.length < 3) return;
+      if (isQuestion(q)) { routeToAsk(q); return; }
+      var first = panel.querySelector(".explore-hit");
+      if (first) window.location.href = first.getAttribute("href");
+    });
+    document.addEventListener("click", function (ev) {
+      if (!bar.contains(ev.target)) panel.hidden = true;
+    });
+  })();
+
 })();
