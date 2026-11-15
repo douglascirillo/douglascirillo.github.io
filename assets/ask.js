@@ -33,7 +33,7 @@
     "<p class=\"ask-sub\">Answers come only from what is published on this site, quoted word for word, with the source. If it is not in the record, the answer says so.</p>" +
     "<form id=\"ask-form\"><input id=\"ask-q\" type=\"text\" maxlength=\"300\" autocomplete=\"off\" placeholder=\"What did he build at Sotheby&rsquo;s?\" aria-label=\"Ask a question about the published record\">" +
     "<button type=\"submit\">Ask</button></form>" +
-    "<p class=\"ask-note\">Questions are read by Douglas to improve the record. Nothing else is stored.</p>" +
+    "<p class=\"ask-note\">Questions are kept for 90 days and read by Douglas to improve the record. Please leave out personal details.</p>" +
     "<div class=\"ask-results\" id=\"ask-results\" aria-live=\"polite\"></div>";
 
   var footer = document.querySelector("footer");
