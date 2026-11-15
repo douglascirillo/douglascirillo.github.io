@@ -629,6 +629,9 @@
       .catch(function () {});
   }
   var here = window.location.pathname;
+  var staticRelated = document.querySelector("section.related-writing");
+  if (staticRelated) { /* Static related section is baked into the page; the dynamic build stands down. */ }
+  else
   if (/^\/writing\/[^/]+\/$/.test(here)) {
     var h1 = document.querySelector("h1");
     var relQ = h1 ? h1.textContent.trim() : "";
