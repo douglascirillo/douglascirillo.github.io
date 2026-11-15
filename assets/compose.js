@@ -114,6 +114,15 @@
         load().then(function () { render(intentOfButton(btn)); });
       });
     });
+    window.addEventListener("hashchange", function () {
+      var hm = /#c=([0-9a-f]{24})/.exec(location.hash || "");
+      if (!hm) { clearComposition(); return; }
+      load().then(function () {
+        var e2 = bySig && bySig[hm[1]];
+        if (e2) render(e2.intent, hm[1]);
+        else clearComposition();
+      });
+    });
     var m = /#c=([0-9a-f]{24})/.exec(location.hash || "");
     if (m) {
       load().then(function () {
