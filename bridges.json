@@ -60,6 +60,10 @@
     "related_writing|writing-what-customer-centric-actually-means|writing-data-first-ai-second,writing-own-your-harness,writing-what-a-customer-data-platform-actually-is": {
       "text": "These essays cover the path from CDP definition through data ownership to the governed, structured data that allows good decisions to scale.",
       "source_hash": "529b9d796cb19e2a"
+    },
+    "selected_writing|home|writing-data-first-ai-second,writing-own-your-harness,writing-seo-is-just-ux-done-right,writing-the-hardest-part-of-strategy-is-letting-go": {
+      "text": "The essays move from agent verification through data governance, strategic commitment, and user-centered design.",
+      "source_hash": "a3f198b5af1f6a28"
     }
   }
 }
