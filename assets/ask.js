@@ -87,6 +87,16 @@
       chips: ["What is a CDP, in his framing?", "How did he grow organic traffic at Sotheby\u2019s?", "What are the harness checks?"],
       cta: { label: "Work through the practice areas", href: "/practice/" }
     },
+    "/record/": {
+      placeholder: "Ask my record anything\u2026",
+      chips: ["What does Douglas do now?", "What is a CDP, in his framing?", "What were the results at Sotheby\u2019s?"],
+      cta: null
+    },
+    "/record/organic-search-decline/": {
+      placeholder: "Ask about this diagnosis\u2026",
+      chips: ["What was the A Place for Mom diagnosis?", "How did search market share change at A Place for Mom?", "How did he grow organic traffic at Sotheby\u2019s?"],
+      cta: null
+    },
     "/colophon/": {
       placeholder: "Ask about how this site runs\u2026",
       chips: ["What are the harness checks?", "What is the approval rule for publishing?"],
