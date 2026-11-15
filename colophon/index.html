@@ -377,6 +377,7 @@
         <p>The same input searches the site. It runs on Algolia, the on-site search and recommendations tool from my Sotheby&rsquo;s stack, over a public index built from the published pages: titles, fixed summaries, headings. Nothing else. Restricted records never enter it, and results show the fixed summary rather than a raw snippet, so a figure cannot be separated from its scope. The index rebuilds on every publish, into a temporary index that swaps in only on success, so the site and the index never disagree.</p>
         <p>Type a few words, get pages. Ask a full question, and the input routes to Ask My Record instead. Results lean toward the kind of page you are already on.</p>
         <p>The writing list on the home page and the related essays under each article are served from the same index. Publish a new essay and the index rebuilds itself, so the lists update on their own. Lists show the three most relevant items, with a link through to the full list.</p>
+        <p>The one-line introductions above the writing lists are AI-generated. Each is written ahead of time from the listed essays&rsquo; own summaries, checked against them before use, and labeled. If a check fails, the list appears without one.</p>
         <p>Search queries are measured by length and result count, never stored as text. Result clicks are sent to Algolia under the same anonymous ID that Amplitude uses, so I can read search behavior and site behavior together. No names, no emails, nothing that identifies a person.</p>
       </section>
 
@@ -408,6 +409,7 @@
         <p><strong>Nov 15: Algolia search and dynamic lists.</strong> Search and questions share one input. The writing lists render from the index and rebuild themselves on every publish.</p>
         <p><strong>Nov 15: record pages.</strong> The first composed evidence page, on diagnosing an organic search decline, built from approved blocks.</p>
         <p><strong>Nov 15: the footer.</strong> This colophon is now linked from the footer of every page.</p>
+<p><strong>Nov 15: the first generated text.</strong> One-line introductions above the related writing lists, AI-generated ahead of time from the essays&rsquo; own summaries, checked before use, and labeled.</p>
       </section>
 
       <div class="more">
@@ -422,6 +424,6 @@
   </footer>
 
 </div>
-<script src="/assets/ask.js?v=20261115-4" defer></script>
+<script src="/assets/ask.js?v=20261115-5" defer></script>
 </body>
 </html>
