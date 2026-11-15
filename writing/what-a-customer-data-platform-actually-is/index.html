@@ -250,6 +250,12 @@
     .fade{animation:none}
     html{scroll-behavior:auto}
   }
+
+.keypoints{border:1px solid var(--line);border-radius:8px;padding:16px 20px 8px;margin:22px 0 6px;background:var(--accent-light)}
+.kp-head{font-weight:600;color:var(--ink);margin:0 0 10px;display:flex;align-items:center;gap:10px}
+.kp-tag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+.keypoints ul{margin:0 0 8px;padding-left:20px;color:var(--ink-2)}
+.keypoints li{margin:0 0 8px;line-height:1.55}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
 <script>
@@ -337,6 +343,15 @@
       <p class="kicker">Writing</p>
       <h1 class="fade">What a Customer Data Platform Actually Is (and Isn&rsquo;t)</h1>
       <p class="summary">A CDP is not a CRM, a DXP, or a silver bullet. Douglas Cirillo&rsquo;s definition, from implementing them at Sotheby&rsquo;s and Lindblad Expeditions: the system that creates and activates real-time customer profiles across channels. This essay first ran on Substack in August 2025. This edition lives next to the record it came from.</p>
+      <div class="keypoints">
+        <p class="kp-head">Key points <span class="kp-tag">AI-generated</span></p>
+        <ul>
+          <li>A CDP isn&#x27;t a personalization engine unless the data layer is already correct.</li>
+          <li>A CDP cannot activate data that an organization doesn&#x27;t trust or fix identity problems when the organization cannot define identity.</li>
+          <li>You need a clear use case before evaluating a CDP tool.</li>
+          <li>Taxonomy and schema discipline are non-negotiable requirements for making a CDP work.</li>
+        </ul>
+      </div>
       <p class="byline">By Douglas Cirillo &middot; First published on Substack, August 19, 2025 &middot; Site edition, November 2025</p>
       <figure class="hero"><img src="/assets/writing-cdp-hero.jpg" alt="A dirt road through open heathland, lined with pine trees, in black and white" width="1200" height="800" loading="lazy"></figure>
 
