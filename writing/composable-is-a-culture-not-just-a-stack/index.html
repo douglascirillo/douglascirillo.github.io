@@ -256,6 +256,26 @@
 .kp-tag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
 .keypoints ul{margin:0 0 8px;padding-left:20px;color:var(--ink-2)}
 .keypoints li{margin:0 0 8px;line-height:1.55}
+
+.dl-card{list-style:none;margin:0 0 10px}
+.dl-card-a{display:flex;gap:14px;text-decoration:none;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface);color:inherit;transition:border-color .15s ease,transform .15s ease}
+.dl-card-a:hover{border-color:var(--accent);transform:translateY(-1px)}
+.dl-img{width:112px;min-height:88px;object-fit:cover;border-radius:8px;flex:none}
+.dl-body{display:flex;flex-direction:column;gap:4px;min-width:0}
+.dl-meta{display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--muted)}
+.dl-tag{letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:0 5px;font-weight:600}
+.dl-title{font-family:"Newsreader", Georgia, serif;font-size:18.5px;font-weight:600;line-height:1.25;color:var(--ink)}
+.dl-sum{font-size:14px;line-height:1.5;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dl-cta{margin-top:auto;padding-top:2px;font-size:13.5px;font-weight:600;color:var(--accent)}
+@media (max-width:560px){.dl-img{width:84px}}
+
+.related-writing{margin:34px 0 6px;padding-top:18px;border-top:1px solid var(--line)}
+.related-writing h2{font-size:20px;margin:0 0 10px}
+.related-writing ul{list-style:none;margin:0;padding:0}
+.related-writing .bridge{margin:0 0 10px;font-size:15.5px;line-height:1.6;color:var(--ink-2)}
+.related-writing .bridge-tag{display:inline-block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-right:8px;vertical-align:1px}
+.related-writing li.dynamic-more{padding:6px 2px 0;font-size:15.5px}
+.related-writing li.dynamic-more a{font-weight:600;color:var(--ink)}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
 <script>
@@ -423,7 +443,17 @@
         <p><a href="/writing/">All writing</a> &middot; <a href="/practice/composable-martech-and-customer-data/">The practice: composable martech and customer data</a></p>
       </div>
     </article>
-  </main>
+  <section class="related-writing" aria-label="Related writing">
+<h2>Related writing</h2>
+<p class="bridge" data-nosnippet><span class="bridge-tag">AI-generated</span>These essays examine ownership at three levels: what you control technically, what you govern in data, and what you release to teams.</p>
+<ul>
+<li class="dl-card"><a class="dl-card-a" href="/writing/own-your-harness/"><img class="dl-img" src="/assets/writing-own-your-harness-hero.jpg" alt="" loading="lazy" /><span class="dl-body"><span class="dl-meta"><span class="dl-tag">Essay</span><span>Nov 8, 2026</span></span><span class="dl-title">Own Your Harness</span><span class="dl-sum">Own your harness, your data, your runtime. Douglas Cirillo on the Monday test: three checks before trusting any agent setup, and why gates beat prompts.</span><span class="dl-cta">Read the essay &rarr;</span></span></a></li>
+<li class="dl-card"><a class="dl-card-a" href="/writing/data-first-ai-second/"><img class="dl-img" src="/assets/writing-data-first-ai-second-hero.jpg" alt="" loading="lazy" /><span class="dl-body"><span class="dl-meta"><span class="dl-tag">Essay</span><span>Nov 1, 2026</span></span><span class="dl-title">Data First, AI Second</span><span class="dl-sum">Data first, AI second. Douglas Cirillo on why agents only scale good decisions when the data underneath is governed, structured, and machine-readable.</span><span class="dl-cta">Read the essay &rarr;</span></span></a></li>
+<li class="dl-card"><a class="dl-card-a" href="/writing/the-hardest-part-of-strategy-is-letting-go/"><img class="dl-img" src="/assets/writing-the-hardest-part-of-strategy-is-letting-go-hero.jpg" alt="" loading="lazy" /><span class="dl-body"><span class="dl-meta"><span class="dl-tag">Essay</span><span>Sep 23, 2025</span></span><span class="dl-title">The Hardest Part of Strategy: Letting Go</span><span class="dl-sum">Real strategy is not about being right. Douglas Cirillo on letting go, disagreeing and committing, and creating space for teams to move forward.</span><span class="dl-cta">Read the essay &rarr;</span></span></a></li>
+<li class="dynamic-more"><a href="/writing/">All writing</a></li>
+</ul>
+</section>
+</main>
 
   <footer>
     <p>&copy; 2026 Douglas Cirillo</p>
