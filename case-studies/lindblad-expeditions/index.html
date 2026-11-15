@@ -252,6 +252,20 @@
 .kp-tag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
 .keypoints ul{margin:0 0 8px;padding-left:20px;color:var(--ink-2)}
 .keypoints li{margin:0 0 8px;line-height:1.55}
+
+.hub-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0 22px}
+@media (max-width:640px){.hub-grid{grid-template-columns:1fr}}
+.hub-card{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden;transition:border-color .15s ease,transform .15s ease}
+.hub-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.hub-card-a{display:flex;flex-direction:column;height:100%;text-decoration:none;color:inherit}
+.hub-img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.hub-body{display:flex;flex-direction:column;gap:5px;padding:14px 16px 16px}
+.hub-meta{display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--muted)}
+.hub-tag{letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:0 5px;font-weight:600}
+.hub-title{font-family:"Newsreader", Georgia, serif;font-size:20px;font-weight:600;line-height:1.25;color:var(--ink)}
+.hub-sum{font-size:14.5px;line-height:1.5;color:var(--ink-2)}
+.hub-cta{margin-top:auto;padding-top:6px;font-size:13.5px;font-weight:600;color:var(--accent)}
+.more-cards-h{font-size:15.5px;margin:18px 0 4px;color:var(--ink)}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
 <script>
@@ -374,7 +388,14 @@
 
       <div class="more">
         <p><strong>Related practice:</strong> <a href="/practice/digital-experience-strategy/">Digital experience strategy</a> &middot; <a href="/practice/experimentation-and-measurement/">Experimentation and measurement</a></p>
-        <p><strong>More case studies:</strong> <a href="/case-studies/sothebys/">Sotheby&rsquo;s: building the growth stack for a 275-year-old auction house</a> &middot; <a href="/case-studies/ae-networks/">A+E Networks: the History.com replatform</a> &middot; <a href="/case-studies/a-place-for-mom/">A Place for Mom: the problem was the platform</a> &middot; <a href="/case-studies/madison-square-garden/">Madison Square Garden: building the digital product function</a> &middot; <a href="/case-studies/gangverk/">Gangverk: building the go-to-market</a></p>
+        <p class="more-cards-h"><strong>More case studies</strong></p>
+<div class="hub-grid">
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/sothebys/"><img class="hub-img" src="/assets/case-sothebys.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Sotheby&rsquo;s: building the growth stack for a 275-year-old auction house</span><span class="hub-sum">Organic traffic up 167% on a composable stack that still stands.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/ae-networks/"><img class="hub-img" src="/assets/case-ae-networks.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">A+E Networks: the History.com replatform</span><span class="hub-sum">History.com replatformed in four months, then adopted as the migration standard.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/a-place-for-mom/"><img class="hub-img" src="/assets/case-a-place-for-mom.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">A Place for Mom: equal parts content and architecture</span><span class="hub-sum">SEO market share rose from 26% to 68% once the platform underneath was rebuilt.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/madison-square-garden/"><img class="hub-img" src="/assets/case-madison-square-garden.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Madison Square Garden: building the digital product function</span><span class="hub-sum">Rockettes and Radio City ticket sales up 400% across 29+ websites and 4+ apps.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/gangverk/"><img class="hub-img" src="/assets/case-gangverk.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Gangverk: building the go-to-market</span><span class="hub-sum">Client brands from 1 to 60+ while carrying revenue targets and hiring authority.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+</div>
         <p><a href="/case-studies/">All case studies</a> &middot; <a href="/#record">Back to the full record</a></p>
       </div>
     </article>
