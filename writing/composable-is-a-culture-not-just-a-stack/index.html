@@ -255,12 +255,7 @@
 .kp-head{font-weight:600;color:var(--ink);margin:0 0 10px;display:flex;align-items:center;gap:10px}
 .kp-tag{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
 .keypoints ul{margin:0 0 8px;padding-left:20px;color:var(--ink-2)}
-.keypoints li{margin:0 0 8px;line-height:1.55}
-
-.dl-card{list-style:none;margin:0 0 10px}
-.dl-card-a{display:flex;gap:14px;text-decoration:none;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface);color:inherit;transition:border-color .15s ease,transform .15s ease}
-.dl-card-a:hover{border-color:var(--accent);transform:translateY(-1px)}
-.dl-img{width:112px;min-height:88px;object-fit:cover;border-radius:8px;flex:none}
+.keypoints li{margin:0 0 8px;line-height:1.55}.dl-img{width:112px;min-height:88px;object-fit:cover;border-radius:8px;flex:none}
 .dl-body{display:flex;flex-direction:column;gap:4px;min-width:0}
 .dl-meta{display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--muted)}
 .dl-tag{letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:0 5px;font-weight:600}
@@ -289,6 +284,10 @@
 .hub-title{font-family:"Newsreader", Georgia, serif;font-size:20px;font-weight:600;line-height:1.25;color:var(--ink)}
 .hub-sum{font-size:14.5px;line-height:1.5;color:var(--ink-2)}
 .hub-cta{margin-top:auto;padding-top:6px;font-size:13.5px;font-weight:600;color:var(--accent)}
+
+  .skip-link{position:absolute;left:16px;top:-80px;z-index:200;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:6px;font-weight:600;text-decoration:none}
+  .skip-link:focus-visible{top:14px}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
 <script>
@@ -393,6 +392,7 @@
 </script>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
 <div class="wrap">
 
   <header>
@@ -413,7 +413,7 @@
     </nav>
   </header>
 
-  <main>
+  <main id="main">
     <article>
       <p class="kicker">Writing</p>
       <h1 class="fade">Composable Is a Culture, Not Just a Stack</h1>
