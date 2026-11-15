@@ -87,6 +87,16 @@
       chips: ["What is a CDP, in his framing?", "How did he grow organic traffic at Sotheby\u2019s?", "What are the harness checks?"],
       cta: { label: "Work through the practice areas", href: "/practice/" }
     },
+    "/writing/": {
+      placeholder: "Ask my record anything\u2026",
+      chips: ["What does Douglas do now?", "What is a CDP, in his framing?", "What were the results at Sotheby\u2019s?"],
+      cta: null
+    },
+    "/writing/what-a-customer-data-platform-actually-is/": {
+      placeholder: "Ask about CDPs\u2026",
+      chips: ["What is a CDP, in his framing?", "What CDP experience does he have?", "Which CDP approach did he use at Lindblad?"],
+      cta: null
+    },
     "/record/": {
       placeholder: "Ask my record anything\u2026",
       chips: ["What does Douglas do now?", "What is a CDP, in his framing?", "What were the results at Sotheby\u2019s?"],
