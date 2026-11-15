@@ -452,4 +452,69 @@
     if (first) { saveRecent(q); window.location.href = first.getAttribute("href"); }
   });
   document.addEventListener("click", function (ev) { if (!bar.contains(ev.target)) panel.hidden = true; });
+
+  /* Dynamic lists (Phase B): rendered from the same public index.
+     Static HTML stays as the fallback; if the index does not answer,
+     nothing changes. Lists show title + fixed summary only. */
+  function queryIndex(body) {
+    return fetch("https://" + ALGOLIA_APP + "-dsn.algolia.net/1/indexes/" + ALGOLIA_INDEX + "/query", {
+      method: "POST",
+      headers: { "content-type": "application/json", "X-Algolia-API-Key": ALGOLIA_SEARCH_KEY, "X-Algolia-Application-Id": ALGOLIA_APP },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json(); });
+  }
+  function listClick(surface, h) {
+    track("dynamic_list_click", { surface: surface, destination_type: h.type || "" });
+    var aa = insights();
+    if (aa) { try { aa("clickedObjectIDs", { eventName: "List Item Clicked", index: ALGOLIA_INDEX, objectIDs: [h.objectID] }); } catch (e) {} }
+  }
+  function renderEssayList(ul, hits, surface) {
+    ul.innerHTML = "";
+    hits.forEach(function (h) {
+      var li = document.createElement("li");
+      var a = document.createElement("a");
+      a.href = h.url; a.textContent = h.title || "";
+      a.addEventListener("click", function () { listClick(surface, h); });
+      li.appendChild(a);
+      li.appendChild(document.createTextNode(": " + (h.summary || "")));
+      ul.appendChild(li);
+    });
+  }
+  var homeList = document.querySelector("ul.selected-writing[data-dynamic-list='essays']");
+  if (homeList) {
+    queryIndex({ query: "", filters: "type:Essay", hitsPerPage: 50, attributesToHighlight: [] })
+      .then(function (data) {
+        var hits = (data.hits || []).slice().sort(function (a, b) { return (b.date || 0) - (a.date || 0); });
+        if (!hits.length) return;
+        renderEssayList(homeList, hits, "home_writing");
+        track("dynamic_list_rendered", { surface: "home_writing", count: hits.length });
+      })
+      .catch(function () {});
+  }
+  var here = window.location.pathname;
+  if (/^\/writing\/[^/]+\/$/.test(here)) {
+    var h1 = document.querySelector("h1");
+    var relQ = h1 ? h1.textContent.trim() : "";
+    if (relQ) {
+      queryIndex({ query: relQ, filters: "type:Essay", hitsPerPage: 8, attributesToHighlight: [] })
+        .then(function (data) {
+          var hits = (data.hits || []).filter(function (h) { return h.url !== here; }).slice(0, 3);
+          if (!hits.length) return;
+          var st = document.createElement("style");
+          st.textContent = ".related-writing{margin:34px 0 6px;padding-top:18px;border-top:1px solid var(--line,#ddd)}.related-writing h2{font-size:20px;margin:0 0 10px}.related-writing ul{list-style:none;margin:0;padding:0}.related-writing li{padding:9px 0;border-bottom:1px solid var(--line,#ddd);font-size:15.5px;line-height:1.6;color:var(--ink-2,#444)}.related-writing li:last-child{border-bottom:none}.related-writing a{font-weight:600;color:var(--ink,inherit)}";
+          document.head.appendChild(st);
+          var main = document.querySelector("main") || document.body;
+          var sec = document.createElement("section");
+          sec.className = "related-writing";
+          sec.setAttribute("aria-label", "Related writing");
+          var hd = document.createElement("h2"); hd.textContent = "Related writing";
+          var ul = document.createElement("ul");
+          sec.appendChild(hd); sec.appendChild(ul);
+          renderEssayList(ul, hits, "related_writing");
+          main.appendChild(sec);
+          track("dynamic_list_rendered", { surface: "related_writing", count: hits.length });
+        })
+        .catch(function () {});
+    }
+  }
 })();
