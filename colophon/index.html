@@ -376,6 +376,7 @@
         <h2 id="search-h">How does search work?</h2>
         <p>The same input searches the site. It runs on Algolia, the on-site search and recommendations tool from my Sotheby&rsquo;s stack, over a public index built from the published pages: titles, fixed summaries, headings. Nothing else. Restricted records never enter it, and results show the fixed summary rather than a raw snippet, so a figure cannot be separated from its scope. The index rebuilds on every publish, into a temporary index that swaps in only on success, so the site and the index never disagree.</p>
         <p>Type a few words, get pages. Ask a full question, and the input routes to Ask My Record instead. Results lean toward the kind of page you are already on.</p>
+        <p>The writing list on the home page and the related essays under each article are served from the same index. Publish a new essay, rebuild the index, and the lists update themselves.</p>
         <p>Search queries are measured by length and result count, never stored as text. Result clicks are sent to Algolia under the same anonymous ID that Amplitude uses, so I can read search behavior and site behavior together. No names, no emails, nothing that identifies a person.</p>
       </section>
 
