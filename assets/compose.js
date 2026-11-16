@@ -18,11 +18,33 @@
    block spec is validated against /blocks.json and rendered for this
    visit only (no share code, the URL does not change). Refusals return
    in the same shape as a genuine no-match, so both leave the
-   no-evidence answer exactly as it was. */
+   no-evidence answer exactly as it was.
+
+   Increment 0 (full generative experience): a page that carries the
+   mount with a data-compose-page attribute runs in page mode instead.
+   On arrival the page's enumerated starting spec (its own anchor
+   block, its proof, the fitting practice, the contact block) is
+   validated against the page's payload slice (blocks-<type>s.json)
+   and rendered in place ahead of the static body, which stays
+   complete underneath. "View this page as published" dismisses the
+   assembly. Page assemblies carry a self-describing share code
+   (#a=v1.<page-slug>.<block>:<length>,...) that is re-validated on
+   arrival; a code that fails validation serves the static page.
+   Only fragments starting with a= are codes (any other fragment is
+   a section link and is left untouched), and a default render
+   writes no code: the URL carries one only for an assembly that
+   differs from the page's starting spec (P-1116-02, edits 1, 3).
+   No prompts or classification run in page mode in this increment.
+   Kill switches: COMPOSE_PAGES[type] = false, or COMPOSITIONS_ENABLED
+   = false for everything. */
 (function () {
   "use strict";
   var COMPOSITIONS_ENABLED = true;
   if (!COMPOSITIONS_ENABLED) return;
+
+  // Increment 0 kill switch, per page type: a type set to false
+  // leaves its pages exactly as published (no fetch, no assembly).
+  var COMPOSE_PAGES = { "case-study": true };
 
   var byIntent = null; // intent -> {sig, html}
   var bySig = null;    // sig -> {intent, html}
@@ -248,11 +270,18 @@
       ? '<span class="visually-hidden">(opens in new tab)</span>' : "";
   }
 
-  // Port of compose.py's validate() plus the two free-form additions
-  // from the Stage 2 design (block-count cap, frame-or-contact anchor).
+  // Port of compose.py's validate() plus the free-form additions
+  // from the Stage 2 design (block-count cap, frame-or-contact
+  // anchor, and the one-frame cap added Nov 16, 2026).
   // The payload itself carries only servable blocks: a withdrawn
   // record's block is absent, so a spec naming it fails as unknown.
-  function validateSpec(spec, payload) {
+  // Increment 0 generalizes the anchor rule: the anchor block of
+  // the page the spec is assembled for (kind page_anchor, carried
+  // in the payload's page_anchors array or inside a page slice)
+  // also anchors, only when `page` names its own page and only in
+  // first position; a page-anchor block anywhere else fails the
+  // spec. Mirrors the Lambda validator and compose.py.
+  function validateSpec(spec, payload, page) {
     if (!spec || !payload || !payload.blocks) return false;
     var items = spec.blocks;
     if (!Array.isArray(items)) return false;
@@ -260,11 +289,13 @@
     if (items.length < 1 || items.length > maxBlocks) return false;
     var byId = {};
     payload.blocks.forEach(function (b) { byId[b.id] = b; });
+    (payload.page_anchors || []).forEach(function (b) { byId[b.id] = b; });
     var anchors = {};
     (payload.anchor_kinds || ["intro", "intent_frame", "contact"])
       .forEach(function (k) { anchors[k] = true; });
     var seen = {};
     var anchored = false;
+    var frames = 0;
     for (var i = 0; i < items.length; i++) {
       var item = items[i] || {};
       var block = byId[item.id];
@@ -278,9 +309,17 @@
         if (text.indexOf(scope[j]) === -1) return false; // scope dropped
       }
       if (anchors[block.kind]) anchored = true;
+      if (block.kind === "page_anchor") {
+        if (!page || block.page !== page || i !== 0) return false;
+        anchored = true;
+      }
+      if (block.kind === "intent_frame") frames++;
       if (block.kind === "contact" && i !== items.length - 1) return false;
     }
     if (!anchored) return false;
+    // One-frame cap (Nov 16, 2026; mirror of the Lambda validator
+    // and compose.py): at most one intent-frame block per spec.
+    if (frames > 1) return false;
     // Restricted-block placement rule (mirror of the Lambda validator
     // and compose.py; P-1115-16, edit 4): a block with forbidden_intents
     // (today only speaking-synapse) may appear only in a spec it leads
@@ -359,6 +398,145 @@
     track("Composition Rendered", { intent: null, via: "spec" });
   }
 
+  /* ----- Increment 0: page composition (landing context) -----
+     A mount carrying data-compose-page runs in page mode: fetch the
+     page type's payload slice, take the spec from the share code if
+     one is present (re-validated on arrival) else the enumerated
+     starting spec, validate, and render in place ahead of the
+     static body, which is never touched. Dismissal empties the
+     mount and restores the pure published page. */
+  var PAGE_SLICE_FILES = { "case-study": "/blocks-case-studies.json" };
+
+  function pageSlug(path) {
+    var parts = String(path || "").split("/").filter(function (s) { return s; });
+    return parts.length ? parts[parts.length - 1] : "";
+  }
+
+  // Self-describing share code: version, the page's slug, and the
+  // ordered block list. It carries no authority: the client
+  // re-validates the decoded spec against the page's slice before
+  // rendering anything, so the worst a forged or stale code yields
+  // is a valid reordering of public blocks, or the plain page.
+  function encodePageCode(page, spec) {
+    return "v1." + pageSlug(page) + "." + spec.blocks.map(function (b) {
+      return b.id + ":" + b.length;
+    }).join(",");
+  }
+
+  function decodePageCode(code, sliceData) {
+    var m = /^v1\.([^.]+)\.([A-Za-z0-9_:\-,]+)$/.exec(code || "");
+    if (!m || !sliceData || !sliceData.pages) return null;
+    var page = null;
+    Object.keys(sliceData.pages).forEach(function (p) {
+      if (pageSlug(p) === m[1]) page = p;
+    });
+    if (!page) return null;
+    var bad = false;
+    var items = m[2].split(",").map(function (pair) {
+      var kv = pair.split(":");
+      if (kv.length !== 2 || !kv[0] || !kv[1]) { bad = true; return null; }
+      return { id: kv[0], length: kv[1] };
+    });
+    if (bad) return null;
+    return { page: page, spec: { blocks: items } };
+  }
+
+  function sameSpec(a, b) {
+    if (!a || !b || !a.blocks || !b.blocks) return false;
+    if (a.blocks.length !== b.blocks.length) return false;
+    for (var i = 0; i < a.blocks.length; i++) {
+      if (a.blocks[i].id !== b.blocks[i].id ||
+          a.blocks[i].length !== b.blocks[i].length) return false;
+    }
+    return true;
+  }
+
+  function renderPageComposition(el, page, pageEntry, view, spec, source) {
+    el.innerHTML =
+      '<h3 class="composition-h">The full picture</h3>' +
+      '<p class="composition-from-intent">Assembled from the published ' +
+      "record, starting from " + esc(pageEntry.page_name) + ".</p>" +
+      renderFragmentHtml(spec, view) +
+      '<p class="composition-note">Assembled for this visit. The page ' +
+      "as published stands underneath, unchanged.</p>" +
+      '<p class="intent-reset"><button type="button" id="page-published">' +
+      "View this page as published</button></p>";
+    el.hidden = false;
+    el.setAttribute("data-render-key", "page:" + page);
+    el.setAttribute("data-render-source", source);
+    var btn = el.querySelector("#page-published");
+    if (btn) btn.addEventListener("click", function () {
+      el.hidden = true; el.innerHTML = "";
+      el.removeAttribute("data-render-key");
+      el.removeAttribute("data-render-source");
+      // Clear the URL only when it carries one of our codes; a
+      // section fragment in the URL is the visitor's, not ours.
+      if ((location.hash || "").indexOf("#a=") === 0) {
+        try { history.replaceState(null, "", location.pathname); } catch (e) {}
+      }
+      track("Page Composition Dismissed",
+        { page: page, page_type: pageEntry.type, source: source });
+    });
+    // No code on a default render (P-1116-02, edit 3): the URL
+    // carries a code only when the assembly differs from the page's
+    // starting spec, so a later arrival by a coded URL is honestly
+    // logged as share_code rather than as a default render.
+    if (!sameSpec(spec, pageEntry.starting_spec)) {
+      try {
+        history.replaceState(null, "", "#a=" + encodePageCode(page, spec));
+      } catch (e) {}
+    }
+    track("Page Composition Rendered", {
+      page: page, page_type: pageEntry.type, source: source,
+      block_count: spec.blocks.length
+    });
+  }
+
+  function pageInit(el) {
+    var page = el.getAttribute("data-compose-page");
+    var type = el.getAttribute("data-compose-type");
+    if (!page || !type || COMPOSE_PAGES[type] === false) return;
+    var file = PAGE_SLICE_FILES[type];
+    if (!file) return;
+    el.setAttribute("aria-live", "polite");
+    fetch(file)
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !data.pages || !data.pages[page]) return;
+        var entry = data.pages[page];
+        var view = {
+          blocks: entry.blocks,
+          max_blocks: data.max_blocks,
+          anchor_kinds: data.anchor_kinds
+        };
+        // Only a fragment that starts with a= is a share code
+        // (P-1116-02, edit 1). Any other fragment (a section deep
+        // link, the #main and #ask-h in-page links the case-study
+        // pages already carry) runs the starting spec silently: no
+        // Fallback event, and the fragment and its scroll target
+        // are left exactly as they were.
+        var rawHash = location.hash || "";
+        if (rawHash.indexOf("#a=") === 0) {
+          var hm = /^#a=([A-Za-z0-9_.:\-,]+)$/.exec(rawHash);
+          var decoded = hm ? decodePageCode(hm[1], data) : null;
+          if (decoded && decoded.page === page &&
+              validateSpec(decoded.spec, view, page)) {
+            renderPageComposition(el, page, entry, view, decoded.spec,
+              "share_code");
+          } else {
+            track("Page Composition Fallback",
+              { page: page, page_type: type });
+          }
+          return;
+        }
+        var start = entry.starting_spec;
+        if (start && validateSpec(start, view, page)) {
+          renderPageComposition(el, page, entry, view, start, "arrival");
+        }
+      })
+      .catch(function () { /* the static page serves, unchanged */ });
+  }
+
   function classifyProblem(text) {
     var seq = ++classifySeq;
     showPending();
@@ -411,6 +589,7 @@
   function init() {
     var el = slot();
     if (!el) return;
+    if (el.hasAttribute("data-compose-page")) { pageInit(el); return; }
     el.setAttribute("aria-live", "polite");
     document.addEventListener("dc:problem", function (ev) {
       var text = ev && ev.detail && ev.detail.text;
@@ -450,8 +629,13 @@
   }
 
   // Exposed for the eval harness: the shipped validator, exercised
-  // against the shipped payload by run_specs_stage2.py.
-  window.DCCompose = { validateSpec: validateSpec };
+  // against the shipped payload by run_specs_stage2.py, and the
+  // page share-code codec, exercised by the jsdom page fixtures.
+  window.DCCompose = {
+    validateSpec: validateSpec,
+    encodePageCode: encodePageCode,
+    decodePageCode: decodePageCode
+  };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
