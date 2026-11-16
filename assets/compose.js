@@ -90,7 +90,7 @@
     var linksHtml = "";
     if (links.length) {
       linksHtml = '<p class="intent-links">' + links.map(function (l) {
-        return '<a href="' + l.href + '">' + l.label + "</a>";
+        return '<a href="' + l.href + '"' + extAttr(l.href) + '>' + l.label + "</a>";
       }).join("") + "</p>";
     }
     // A classified render (the visitor described the problem in their
@@ -224,6 +224,15 @@
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
+  /* Outbound rule (Douglas, Nov 15): external links open in a new tab;
+     internal links stay in the same tab. Returns the attribute string
+     to splice into a built anchor tag. */
+  function extAttr(href) {
+    var m = /^https?:\/\/([^\/]+)/i.exec(href || "");
+    return m && m[1].toLowerCase() !== "douglascirillo.com"
+      ? ' target="_blank" rel="noopener"' : "";
+  }
+
   // Port of compose.py's validate() plus the two free-form additions
   // from the Stage 2 design (block-count cap, frame-or-contact anchor).
   // The payload itself carries only servable blocks: a withdrawn
@@ -295,10 +304,10 @@
         return "<p>" + esc(p) + "</p>";
       }).join("");
       if (block.kind === "proof" && block.link) {
-        paras += '<p><a href="' + esc(block.link) + '">Read the case study</a></p>';
+        paras += '<p><a href="' + esc(block.link) + '"' + extAttr(block.link) + '>Read the case study</a></p>';
       }
       if (block.kind === "contact" && block.link) {
-        paras = '<p><a href="' + esc(block.link) + '">' + esc(text) + "</a></p>";
+        paras = '<p><a href="' + esc(block.link) + '"' + extAttr(block.link) + '>' + esc(text) + "</a></p>";
       }
       return '<section data-block="' + esc(block.id) + '" data-length="' +
         esc(item.length) + '">' + paras + "</section>";
