@@ -316,6 +316,23 @@
   .cp-thread-fold{display:none}
   @media (max-width:640px){.cp-has-fold>.cp-thread{display:none}.cp-thread-fold{display:block;margin-top:6px}.cp-thread-fold-h{font-size:13.5px;color:var(--muted);margin:0 0 4px}}
   @media print{.cp-dock{display:none}body{padding-bottom:0 !important}}
+  .cp-stream{overflow-anchor:none}
+  .cp-controls{display:flex;flex:none;flex-wrap:wrap;gap:6px 16px;margin:0 0 6px}
+  .cp-control,.stream-expand{font:inherit;font-size:13.5px;background:none;border:none;padding:0;color:var(--accent);cursor:pointer;text-decoration:underline}
+  .cp-starters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px}
+  .cp-starter{font:inherit;font-size:14px;background:var(--surface);border:1px solid var(--line-strong);border-radius:999px;padding:10px 14px;color:var(--ink-2);cursor:pointer}
+  .cp-live-region{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .stream-marker,.stream-dropped{font-size:13.5px;color:var(--muted);margin:0 0 8px}
+  .stream-card-head{margin:0 0 10px}
+  .stream-card-title{margin:0 0 4px}
+  .stream-card-orient{color:var(--ink-2);margin:0 0 6px}
+  .stream-opening-collapsed .stream-card-head{border:1px solid var(--line);border-radius:10px;padding:12px 16px;background:var(--surface)}
+  .stream-prompt{font-size:16.5px;line-height:1.55;border-left:2px solid var(--line-strong);padding:2px 0 2px 14px;margin:22px 0 10px;white-space:pre-line}
+  .stream-response{margin:0 0 10px}
+  .stream-response:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+  .stream-receipt{margin:10px 0 0}
+  .stream-starters{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+  @media (max-width:640px){body.cp-engaged header nav{display:none}}
   /* /control-plane */
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
@@ -600,12 +617,17 @@
 
       <section aria-labelledby="answers-h">
         <h2 id="answers-h">The page answers</h2>
-        <p>The composer used to sort every line typed into it. A question went one way, a search another, and a request to rebuild the page had to fail both before it was heard. That sorting is gone. Type what you need, in the words you would use in a chat, and the site gives one response: an answer from the published record when you asked something, the page rebuilt around it when there is more to show, a pointer when another page covers it, and a plain no when the record does not hold it. Your prompts stay listed in the frame as you go, so the visit reads as one conversation. The facts did not loosen. Every claim still comes from the record, word for word, and the same gates still decide what the site may say.</p>
+        <p>The composer used to sort every line typed into it. A question went one way, a search another, and a request to rebuild the page had to fail both before it was heard. That sorting is gone. Type what you need, in the words you would use in a chat, and the site gives one response: an answer from the published record when you asked something, the page rebuilt around it when there is more to show, a pointer when another page covers it, and a plain no when the record does not hold it. Your prompts stay in the conversation as you go, each followed by its answer. The facts did not loosen. Every claim still comes from the record, word for word, and the same gates still decide what the site may say.</p>
       </section>
 
       <section aria-labelledby="docks-h">
         <h2 id="docks-h">The composer docks</h2>
-        <p>The composer used to sit under the topline, where websites keep the search box, and it scrolled away with the page. Now it docks at the foot of the screen, where chat interfaces keep theirs, and stays put while the page scrolls above it. When there is something to show, the receipt, your prompts from this visit, and the controls for what this site remembers sit just above it. The page reserves the dock&rsquo;s height, so the last line of every page stays readable.</p>
+        <p>The composer used to sit under the topline, where websites keep the search box, and it scrolled away with the page. Now it docks at the foot of the screen, where chat interfaces keep theirs, and stays put while the page scrolls above it. When there is something to show, the receipt and the controls for what this site remembers sit just above it. The page reserves the dock&rsquo;s height, so the last line of every page stays readable.</p>
+      </section>
+
+      <section aria-labelledby="conversation-h">
+        <h2 id="conversation-h">The page becomes a conversation</h2>
+        <p>The pages still load as pages. Ask one something and it steps back into the first turn of a conversation. Answers, rebuilt views, and pointers arrive as turns, in the order you asked. The conversation follows you from page to page in this tab, and it is gone when you close it. The plain published page is always one tap away.</p>
       </section>
 
       <section aria-labelledby="arch-h">
@@ -728,6 +750,7 @@
           <li><strong>The page answers:</strong> the composer no longer sorts a line into search, question, or rebuild; it answers once, with an answer, a rebuilt page, or a pointer, as the need requires, and keeps the visit&rsquo;s prompts listed in the frame.</li>
           <li><strong>The composer docks:</strong> it moved from under the topline to the foot of the screen and stays there as you scroll; the receipt, this visit&rsquo;s prompts, and the memory controls sit just above it, and the page reserves its height so nothing hides beneath it.</li>
           <li><strong>A correction:</strong> the Ask section above described the input as sitting at the top of every page. It docks at the foot of the screen now, and the section says so.</li>
+          <li><strong>The page becomes a conversation:</strong> once a visitor asks, the published page becomes the opening turn of a conversation that follows the visit; answers, rebuilt views, and pointers render as turns, and the plain page is always one tap away.</li>
         </ul></div></details>
       </section>
 
@@ -752,9 +775,9 @@
   </footer>
 
 </div>
-<script src="/assets/surface.js?v=20261116-3"></script>
+<script src="/assets/surface.js?v=20261116-4"></script>
 <script src="/assets/ledger.js?v=20261116-5"></script>
 <script src="/assets/ask.js?v=20261116-6"></script>
-<script src="/assets/compose.js?v=20261116-8" defer></script>
+<script src="/assets/compose.js?v=20261116-9" defer></script>
 </body>
 </html>
