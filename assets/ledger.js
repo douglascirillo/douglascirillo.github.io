@@ -1197,6 +1197,7 @@
     try {
       var css = [
         ".dc-ledger-gate{position:fixed;left:16px;right:16px;bottom:16px;z-index:9998;max-width:720px;margin:0 auto;padding:14px 16px;border:1px solid var(--line,#ddd);border-radius:12px;background:var(--surface,#fff);color:var(--ink,#111);font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;font-size:14.5px;line-height:1.5;box-shadow:0 8px 30px rgba(0,0,0,.18)}",
+        ".dc-ledger-gate--band{position:static;left:auto;right:auto;bottom:auto;z-index:auto;max-width:none;margin:0;padding:12px 0;border:none;border-top:1px solid var(--line,#ddd);border-bottom:1px solid var(--line,#ddd);border-radius:0;background:transparent;box-shadow:none;font-family:inherit}",
         ".dc-ledger-gate p{margin:0 0 10px}",
         ".dc-ledger-gate-actions{margin:0;display:flex;gap:8px;flex-wrap:wrap;align-items:center}",
         ".dc-ledger-btn{font:inherit;font-size:14px;padding:8px 14px;border:1px solid var(--line,#bbb);border-radius:999px;background:transparent;color:inherit;cursor:pointer}",
@@ -1278,7 +1279,17 @@
       actions.appendChild(yes); actions.appendChild(no);
       actions.appendChild(dismiss);
       gateEl.appendChild(actions);
-      document.body.appendChild(gateEl);
+      // Surface build (A7.4): when the page carries the control
+      // plane's consent mount, the gate presents as a slim band
+      // inside the frame, in flow, never an overlay on the
+      // canvas. Without the mount, today's fixed overlay stands.
+      var cpMount = document.getElementById("cp-consent");
+      if (cpMount) {
+        gateEl.className = "dc-ledger-gate dc-ledger-gate--band";
+        cpMount.appendChild(gateEl);
+      } else {
+        document.body.appendChild(gateEl);
+      }
     } catch (e) { gateEl = null; }
   }
 
