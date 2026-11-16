@@ -43,16 +43,29 @@
    mirrors the turn hook exactly: gated on this layer being
    active, fail-open to the layered triage when absent. Thread
    entries are the visitor's own words: they render through
-   textContent only, never markup. */
+   textContent only, never markup.
+
+   Engaged-mode batch (Nov 16, 2026; amendment E1 to E10,
+   build sheet sections 6, 7, 9, 10, 12): behind the
+   ENGAGED_ENABLED flag, exposed read-only as
+   DCSurface.engaged, the plane gains the stream controls
+   row (#cp-controls), the dock starter row (#cp-starters),
+   the live region (#cp-live-region) behind announce(), and
+   receipt rendering into a supplied container
+   (setReceiptIn). With the flag off none of these render
+   and every shipped API behaves exactly as shipped. */
 (function () {
   "use strict";
 
   var SURFACE_ENABLED = true;
+  var ENGAGED_ENABLED = true;
 
   var statesModel = null;   // {states:[{name}], current, onActivate}
   var receiptModel = null;  // {historyLabel, aiFraming, expandedHtml, onRestore}
   var threadModel = null;   // {entries:[{label}], dropped, inert, onActivate}
   var threadOpen = false;
+  var startersModel = null; // engaged batch: {starters, onTap}
+  var controlsModel = null; // engaged batch: {exited, on*}
   var turnSubmitFn = null;
   var unifiedSubmitFn = null;
   var focusOrigin = null;
@@ -135,42 +148,41 @@
       });
   }
 
-  function renderReceipt() {
-    var box = $("cp-receipt");
-    if (!box) return;
-    if (!receiptModel) {
-      box.innerHTML = "";
-      box.hidden = true;
-      refreshBand();
-      return;
-    }
+  /* The receipt's markup and wiring, shared by the dock node
+     and a supplied container inside a stream turn
+     (renderReceiptInto, sheet section 9). The dock form
+     (fold) carries the states and thread folds; a turn's
+     receipt carries neither. */
+  function receiptHtml(model, fold) {
     var line = "Built from the published record";
-    if (receiptModel.historyLabel) {
-      line += ", weighted by " + esc(receiptModel.historyLabel) +
+    if (model.historyLabel) {
+      line += ", weighted by " + esc(model.historyLabel) +
         " you opened here on earlier visits";
     }
     var collapsed = '<p class="cp-receipt-line">' + line +
-      (receiptModel.aiFraming
+      (model.aiFraming
         ? '<span aria-hidden="true"> \u00B7 </span>Framing written by AI'
         : "") +
-      (receiptModel.historyLabel
+      (model.historyLabel
         ? '<span aria-hidden="true"> \u00B7 </span>' + DOOR_BUTTON
         : "") +
       ' <button type="button" class="cp-why" aria-expanded="false">' +
       "Why this view?</button></p>";
     var expanded = '<div class="cp-receipt-full" hidden>' +
-      (receiptModel.expandedHtml || "") +
-      (receiptModel.historyLabel
+      (model.expandedHtml || "") +
+      (model.historyLabel
         ? '<p class="ledger-door">' + DOOR_BUTTON + "</p>" : "") +
-      '<div class="cp-states-fold" id="cp-states-fold"></div>' +
-      threadFoldHtml() +
-      (receiptModel.onRestore
+      (fold ? '<div class="cp-states-fold" id="cp-states-fold"></div>' +
+        threadFoldHtml() : "") +
+      (model.onRestore
         ? '<p class="cp-restore"><button type="button" ' +
           'class="cp-published">View this page as published</button></p>'
         : "") +
       "</div>";
-    box.innerHTML = collapsed + expanded;
-    box.hidden = false;
+    return collapsed + expanded;
+  }
+
+  function wireReceipt(box, model) {
     var why = box.querySelector(".cp-why");
     var full = box.querySelector(".cp-receipt-full");
     if (why && full) {
@@ -181,15 +193,41 @@
       });
     }
     var pub = box.querySelector(".cp-published");
-    if (pub && receiptModel.onRestore) {
+    if (pub && model.onRestore) {
       pub.addEventListener("click", function () {
-        receiptModel.onRestore();
+        model.onRestore();
       });
     }
     wireDoor(box);
+  }
+
+  function renderReceipt() {
+    var box = $("cp-receipt");
+    if (!box) return;
+    if (!receiptModel) {
+      box.innerHTML = "";
+      box.hidden = true;
+      refreshBand();
+      return;
+    }
+    box.innerHTML = receiptHtml(receiptModel, true);
+    box.hidden = false;
+    wireReceipt(box, receiptModel);
     renderStates();
     renderThread();
     refreshBand();
+  }
+
+  function renderReceiptInto(container, model) {
+    if (!container) return;
+    if (!model) {
+      container.innerHTML = "";
+      container.hidden = true;
+      return;
+    }
+    container.innerHTML = receiptHtml(model, false);
+    container.hidden = false;
+    wireReceipt(container, model);
   }
 
   /* ---- The thread (unified batch, sheet section 4) ----
@@ -296,6 +334,90 @@
       });
   }
 
+  /* ---- Engaged-mode plane furniture (sheet sections 6, 7,
+     10) ---- Created lazily by their first render, so a
+     flag-off document's DOM is exactly today's. The controls
+     row is the session region's first child; its labels are
+     the approved strings. While exited the row carries
+     Clear alone: Exit hides itself (section 6), and Restore
+     hides too — re-entry happens through the next submit
+     (flagged item C, ruled Nov 16, 2026). */
+  function lazyRow(id, parent) {
+    var row = $(id);
+    if (row || !parent) return row;
+    row = document.createElement("div");
+    row.className = id;
+    row.id = id;
+    parent.insertBefore(row, parent.firstChild);
+    return row;
+  }
+
+  function renderControls() {
+    var row = lazyRow("cp-controls", $("cp-session"));
+    if (!row) return;
+    row.innerHTML = "";
+    if (!controlsModel) {
+      row.hidden = true;
+      if (document.body) document.body.classList.remove("cp-engaged");
+      refreshBand();
+      return;
+    }
+    row.hidden = false;
+    function btn(label, key) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "cp-control";
+      b.textContent = label;
+      b.addEventListener("click", function () {
+        if (controlsModel && controlsModel[key]) controlsModel[key]();
+      });
+      return b;
+    }
+    if (!controlsModel.exited) {
+      row.appendChild(btn("Start of this page", "onRestore"));
+      row.appendChild(btn("Exit to the published page", "onExit"));
+    }
+    row.appendChild(btn("Clear the conversation", "onClear"));
+    if (document.body) document.body.classList.toggle("cp-engaged", !controlsModel.exited);
+    refreshBand();
+  }
+
+  function renderStarters() {
+    var row = lazyRow("cp-starters",
+      document.querySelector(".cp-dock-bar"));
+    if (!row) return;
+    row.innerHTML = "";
+    if (!startersModel || !startersModel.starters ||
+        !startersModel.starters.length) {
+      row.hidden = true;
+      return;
+    }
+    row.hidden = false;
+    startersModel.starters.forEach(function (s) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "cp-starter";
+      b.textContent = s.text;
+      b.addEventListener("click", function () {
+        if (startersModel && startersModel.onTap) startersModel.onTap(s);
+      });
+      row.appendChild(b);
+    });
+  }
+
+  function announce(text) {
+    if (!text) return;
+    var el = $("cp-live-region");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "cp-live-region";
+      el.className = "cp-live-region";
+      el.setAttribute("aria-live", "polite");
+      (dockEl || document.body).appendChild(el);
+    }
+    el.textContent = text;
+  }
+
   function refreshBand() {
     var band = $("cp-session");
     if (!band) return;
@@ -304,11 +426,20 @@
       turns.innerHTML.replace(/<[^>]*>/g, "").trim());
     var hasThread = !!(threadModel && threadModel.entries.length);
     band.hidden = !(statesModel || receiptModel || hasTurns ||
-      hasThread);
+      hasThread || controlsModel);
   }
 
   var api = {
     active: false,
+    engaged: false,
+    registerStarters: function (model) {
+      startersModel = model || null; renderStarters();
+    },
+    registerControls: function (model) {
+      controlsModel = model || null; renderControls();
+    },
+    announce: announce,
+    setReceiptIn: renderReceiptInto,
     registerStates: function (model) {
       statesModel = model || null;
       renderStates();
@@ -411,11 +542,15 @@
       receiptModel = null;
       threadModel = null;
       threadOpen = false;
+      startersModel = null;
+      controlsModel = null;
       turnSubmitFn = null;
       unifiedSubmitFn = null;
       renderStates();
       renderReceipt();
       renderThread();
+      renderStarters();
+      renderControls();
       var turns = $("cp-turns");
       if (turns) turns.innerHTML = "";
       api.setScope(null);
@@ -618,6 +753,7 @@
     setupSkipLink();
     setupShortcut();
     api.active = true;
+    if (ENGAGED_ENABLED) api.engaged = true;
   } catch (e) {
     // Fail open: the layered presentation stands, untouched.
     api.active = false;
