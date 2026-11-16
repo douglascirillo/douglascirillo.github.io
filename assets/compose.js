@@ -44,7 +44,23 @@
    differs from the page's starting spec (P-1116-02, edits 1, 3).
    No prompts or classification run in page mode in this increment.
    Kill switches: COMPOSE_PAGES[type] = false, or COMPOSITIONS_ENABLED
-   = false for everything. */
+   = false for everything.
+
+   Increment 1 (the persistent prompt field, design:
+   site-generative/increment1-persistent-prompt-design.md): on pages
+   listed in PROMPT_PAGES (default: none), the assembled view gains a
+   session layer: a chips row of restorable states (chip zero is the
+   published page), a prompt field at the foot of the assembly, and
+   receipts rendered from session state. A submitted prompt goes to
+   the Ask endpoint's compose_turn mode; the server re-validates and
+   returns a whole spec, a pointer to a covering page, a release
+   offer, or the null shape. Turns carry forward as validated specs,
+   never as text the server re-reads. Scope widens only when the
+   visitor confirms the named transition on screen. Session state
+   lives in sessionStorage for the page and dies with the tab; no
+   share code is ever written for a session build, and the URL stays
+   the published page's. With PROMPT_PAGES empty the layer is inert
+   and every page behaves exactly as Increment 0 left it. */
 (function () {
   "use strict";
   var COMPOSITIONS_ENABLED = true;
@@ -53,6 +69,27 @@
   // Increment 0 kill switch, per page type: a type set to false
   // leaves its pages exactly as published (no fetch, no assembly).
   var COMPOSE_PAGES = { "case-study": true };
+
+  // Increment 1 allowlist, per page path: which pages may render
+  // the prompt field. A separate switch from COMPOSE_PAGES because
+  // the field is a different surface with a different risk (it
+  // spends money per interaction). Pilot scope (Increment 1 Step 3
+  // launch): the Lindblad Expeditions case study only. Emptying this
+  // map is the client-side kill switch for the layer.
+  var PROMPT_PAGES = { "/case-studies/lindblad-expeditions/": true };
+
+  // Increment 1 session constants. The copy strings are Douglas's
+  // decided values (Nov 16, 2026): the invitation, the placeholder,
+  // the button, the pointer and confirmation lines, and the session
+  // cap of 10 submitted prompts.
+  var PROMPT_CAP = 10;
+  var PROMPT_INVITATION = "This is a starting point. Prompt to rebuild it around your question.";
+  var PROMPT_PLACEHOLDER = "Describe the view you need";
+  var PROMPT_BUTTON = "Rebuild";
+  var PROMPT_PENDING_LINE = "Rebuilding this view\u2026";
+  var PROMPT_NONE_LINE = "That is not something the published record covers here. The view above is unchanged.";
+  var PROMPT_CAP_LINE = "You have reached this session\u2019s prompt limit. Your builds above and the published page remain.";
+  var PROMPT_START_LINE = "Assembled as a starting point.";
 
   var byIntent = null; // intent -> {sig, html}
   var bySig = null;    // sig -> {intent, html}
@@ -545,7 +582,7 @@
           var decoded = hm ? decodePageCode(hm[1], data) : null;
           if (decoded && decoded.page === page &&
               validateSpec(decoded.spec, view, page)) {
-            renderPageComposition(el, page, entry, view, decoded.spec,
+            renderArrival(el, page, entry, view, decoded.spec,
               "share_code");
           } else {
             track("Page Composition Fallback",
@@ -555,10 +592,514 @@
         }
         var start = entry.starting_spec;
         if (start && validateSpec(start, view, page)) {
-          renderPageComposition(el, page, entry, view, start, "arrival");
+          renderArrival(el, page, entry, view, start, "arrival");
         }
       })
       .catch(function () { /* the static page serves, unchanged */ });
+  }
+
+  /* ----- Increment 1: the session layer (persistent prompt) -----
+     Active only on PROMPT_PAGES pages, and only once an assembly
+     has rendered: the field lives inside the assembled view, never
+     on the published page. State model (design section 2): chips
+     are the session's states; chip zero is the published page,
+     chip one the starting view, and each served turn adds a chip
+     carrying its validated spec, its action, its scope, and the
+     visitor's own prompt (their words live only in their browser).
+     Restoring a chip is local and free. A new prompt from a
+     restored chip branches the row from that point. Scope is a
+     property of a chip: a confirmed release creates released
+     chips; the grounding rules never change. The server is
+     stateless and re-validates everything it is sent; this layer
+     validates every served spec again before rendering it. */
+
+  function renderArrival(el, page, entry, view, spec, source) {
+    if (PROMPT_PAGES[page]) {
+      initSession(el, page, entry, view, spec, source);
+    } else {
+      renderPageComposition(el, page, entry, view, spec, source);
+    }
+  }
+
+  // The client's deterministic extension matcher (design section
+  // 3): extension is an explicit instruction to keep the current
+  // view and change part of it. Conservative on purpose: when in
+  // doubt, the turn is a re-compose. The server treats the result
+  // as a hint only; the validation path is identical either way.
+  function matchTurnKind(text) {
+    var t = String(text || "").trim().toLowerCase();
+    if (/^(add|also|plus)\b/.test(t)) return "extend";
+    if (/\balso include\b/.test(t)) return "extend";
+    if (/^keep\b/.test(t) && /\b(add|include)\b/.test(t)) return "extend";
+    if (/\bkeep this\b/.test(t) && /\badd\b/.test(t)) return "extend";
+    return "recompose";
+  }
+
+  var pageSession = null;
+
+  function sessionStoreKey(page) { return "dc.prompt." + page; }
+
+  function saveSession(S) {
+    try {
+      sessionStorage.setItem(sessionStoreKey(S.page), JSON.stringify({
+        chips: S.chips, current: S.current, submits: S.submits
+      }));
+    } catch (e) { /* storage unavailable: the session is in-memory */ }
+  }
+
+  function loadStoredSession(S) {
+    try {
+      var raw = sessionStorage.getItem(sessionStoreKey(S.page));
+      if (!raw) return false;
+      var data = JSON.parse(raw);
+      if (!data || !Array.isArray(data.chips) || data.chips.length < 2) {
+        return false;
+      }
+      // Stored state is re-validated before any of it renders: a
+      // chip whose spec no longer validates is dropped, and a
+      // session with nothing valid left is a fresh session.
+      var chips = [data.chips[0]];
+      for (var i = 1; i < data.chips.length; i++) {
+        var chip = data.chips[i];
+        if (chip && chip.spec &&
+            validateSessionSpec(S, chip.spec, chip.scope)) {
+          chips.push(chip);
+        }
+      }
+      if (chips.length < 2) return false;
+      S.chips = chips;
+      S.current = Math.min(data.current || 1, chips.length - 1);
+      S.submits = data.submits || 0;
+      return true;
+    } catch (e) { return false; }
+  }
+
+  // The client mirror of the server's scope gate: a page-scope
+  // spec must validate against the page slice with the page anchor
+  // leading and every block in the slice; a released spec must
+  // validate against the home library under the home rules.
+  function validateSessionSpec(S, spec, scope) {
+    if (scope === "released") {
+      if (!blocksPayload) return false;
+      return validateSpec(spec, blocksPayload);
+    }
+    if (!validateSpec(spec, S.view, S.page)) return false;
+    if (!spec.blocks.length ||
+        spec.blocks[0].id !== S.entry.anchor) return false;
+    var inSlice = {};
+    S.view.blocks.forEach(function (b) { inSlice[b.id] = true; });
+    return spec.blocks.every(function (b) { return inSlice[b.id]; });
+  }
+
+  function chipScopeLine(S, chip) {
+    if (chip.scope === "released") {
+      return "Assembled from the published record, beyond " +
+        esc(S.entry.page_name) + ".";
+    }
+    return "Assembled from the published record, starting from " +
+      esc(S.entry.page_name) + ".";
+  }
+
+  function chipTurnLine(chip) {
+    if (chip.action === "start") return PROMPT_START_LINE;
+    if (chip.action === "extend") {
+      return "Added for: \u201C" + esc(chip.prompt || "") + "\u201D";
+    }
+    if (chip.action === "recompose") {
+      return "Rebuilt for: \u201C" + esc(chip.prompt || "") + "\u201D";
+    }
+    return PROMPT_START_LINE;
+  }
+
+  function chipLabel(chip, idx) {
+    if (idx === 0) return "Published page";
+    if (chip.action === "start") return "Starting view";
+    var words = String(chip.prompt || "").trim().split(/\s+/).slice(0, 4)
+      .join(" ");
+    return "Turn " + chip.turn + (words ? " \u00B7 " + words : "");
+  }
+
+  function initSession(el, page, entry, view, spec, source) {
+    var S = {
+      el: el, page: page, entry: entry, view: view, source: source,
+      chips: [{ turn: 0, action: "published", spec: null, scope: "page",
+                prompt: null },
+              { turn: 0, action: "start", spec: spec, scope: "page",
+                prompt: null }],
+      current: 1, submits: 0, pending: null, ui: "field",
+      status: "", docked: false, dead: false, inFlight: false,
+      capFired: false, lastBuilt: 1
+    };
+    pageSession = S;
+    var restored = loadStoredSession(S);
+    S.lastBuilt = S.current;
+    // The arrival assembly's own measurement stands either way;
+    // a restored session re-renders its current chip instead of
+    // the starting view.
+    track("Page Composition Rendered", {
+      page: page, page_type: entry.type, source: source,
+      block_count: spec.blocks.length
+    });
+    if (!restored && !sameSpec(spec, entry.starting_spec)) {
+      try {
+        history.replaceState(null, "", "#a=" + encodePageCode(page, spec));
+      } catch (e) {}
+    }
+    renderSession();
+  }
+
+  function sessionViewFor(S, chip) {
+    // renderFragmentHtml reads payload.blocks: the slice view for
+    // page-scope chips, the home payload for released chips (its
+    // blocks are the home library; page anchors are not in it and
+    // never render from a released spec).
+    if (chip.scope === "released" && blocksPayload) {
+      return blocksPayload;
+    }
+    return S.view;
+  }
+
+  function renderSession() {
+    var S = pageSession;
+    if (!S) return;
+    var el = S.el;
+    var chipsHtml = '<div class="prompt-chips" role="list" ' +
+      'aria-label="Build history">' + S.chips.map(function (chip, i) {
+        return '<button type="button" class="prompt-chip" role="listitem"' +
+          (i === S.current ? ' aria-current="true"' : "") +
+          ' data-chip="' + i + '">' + esc(chipLabel(chip, i)) + "</button>";
+      }).join("") + "</div>";
+    if (S.current === 0) {
+      // Chip zero: the published page. The field is gone; the
+      // session strip is what remains, and any chip re-enters
+      // without a model call.
+      el.innerHTML = chipsHtml +
+        '<p class="prompt-strip">You&rsquo;re viewing the published ' +
+        'page &middot; <button type="button" id="prompt-resume">Resume ' +
+        "building</button></p>";
+      el.hidden = false;
+      el.setAttribute("data-render-key", "page:" + S.page);
+      el.setAttribute("data-render-source", S.source);
+      wireSession(S);
+      return;
+    }
+    var chip = S.chips[S.current];
+    var html = chipsHtml +
+      '<h3 class="composition-h">The full picture</h3>' +
+      '<p class="composition-from-intent">' + chipScopeLine(S, chip) +
+      "</p>" +
+      '<p class="composition-from-intent prompt-turnline">' +
+      chipTurnLine(chip) + "</p>" +
+      renderFragmentHtml(chip.spec, sessionViewFor(S, chip), S.page) +
+      '<p class="composition-note">Assembled for this visit. The page ' +
+      "as published stands underneath, unchanged.</p>" +
+      '<p class="intent-reset"><button type="button" ' +
+      'id="page-published">View this page as published</button></p>' +
+      sessionAreaHtml(S);
+    el.innerHTML = html;
+    el.hidden = false;
+    el.setAttribute("data-render-key", "page:" + S.page);
+    el.setAttribute("data-render-source", S.source);
+    wireSession(S);
+  }
+
+  function sessionAreaHtml(S) {
+    if (S.dead) return "";
+    var status = S.status
+      ? '<p class="composition-from-intent prompt-status">' +
+        esc(S.status) + "</p>" : "";
+    if (S.ui === "pointer" && S.pending) {
+      return '<div class="prompt-card"><p>That&rsquo;s covered in ' +
+        esc(S.pending.covering_name) + '.</p><p class="prompt-actions">' +
+        '<a href="' + esc(S.pending.covering_page) + '">Open it</a>' +
+        '<button type="button" id="prompt-build-here">Build it here ' +
+        "instead</button></p></div>";
+    }
+    if (S.ui === "confirm") {
+      return '<div class="prompt-card"><p>You&rsquo;re moving beyond ' +
+        esc(S.entry.page_name) + ". Build from the broader record " +
+        "instead?</p>" +
+        '<p class="prompt-actions"><button type="button" ' +
+        'id="prompt-release-confirm">Build from the broader record' +
+        '</button><button type="button" id="prompt-release-decline">' +
+        "Stay on this page</button></p></div>";
+    }
+    if (S.submits >= PROMPT_CAP) {
+      return status + '<p class="composition-from-intent">' +
+        PROMPT_CAP_LINE + "</p>";
+    }
+    var dock = S.docked ? " prompt-docked" : "";
+    return status +
+      '<form class="prompt-form' + dock + '" id="prompt-form">' +
+      '<label class="prompt-invitation" for="prompt-input">' +
+      PROMPT_INVITATION + "</label>" +
+      '<span class="prompt-row"><input type="text" id="prompt-input" ' +
+      'maxlength="300" placeholder="' + PROMPT_PLACEHOLDER + '" ' +
+      'autocomplete="off"><button type="submit">' + PROMPT_BUTTON +
+      '</button></span><button type="button" class="prompt-pill-btn">' +
+      "Build on this view</button></form>";
+  }
+
+  function wireSession(S) {
+    var el = S.el;
+    Array.prototype.forEach.call(
+      el.querySelectorAll(".prompt-chip"),
+      function (btn) {
+        btn.addEventListener("click", function () {
+          goChip(S, parseInt(btn.getAttribute("data-chip"), 10));
+        });
+      });
+    var publishedBtn = el.querySelector("#page-published");
+    if (publishedBtn) {
+      publishedBtn.addEventListener("click", function () {
+        if ((location.hash || "").indexOf("#a=") === 0) {
+          try { history.replaceState(null, "", location.pathname); }
+          catch (e) {}
+        }
+        track("Page Composition Dismissed", {
+          page: S.page, page_type: S.entry.type, source: S.source
+        });
+        goChip(S, 0);
+      });
+    }
+    var resumeBtn = el.querySelector("#prompt-resume");
+    if (resumeBtn) {
+      resumeBtn.addEventListener("click", function () {
+        goChip(S, S.lastBuilt || 1);
+      });
+    }
+    var form = el.querySelector("#prompt-form");
+    if (form) {
+      form.addEventListener("submit", function (ev) {
+        ev.preventDefault();
+        var input = el.querySelector("#prompt-input");
+        var text = (input && input.value || "").trim();
+        if (text) submitPrompt(S, text);
+      });
+      var pillBtn = form.querySelector(".prompt-pill-btn");
+      if (pillBtn) {
+        pillBtn.addEventListener("click", function () {
+          form.classList.remove("prompt-pill");
+          var input = form.querySelector("#prompt-input");
+          if (input) input.focus();
+        });
+      }
+      // Once docked, the form collapses to a pill ("Build on this
+      // view") while the visitor is reading deep in the static
+      // body, and re-expands on tap (design section 5). Wired once
+      // per session; the class lives on whichever form is current.
+      if (S.docked && !S.scrollWired) {
+        S.scrollWired = true;
+        window.addEventListener("scroll", function () {
+          var f = S.el.querySelector("#prompt-form.prompt-docked");
+          if (!f) return;
+          var rect = S.el.getBoundingClientRect();
+          var away = rect.bottom < 0 || rect.top > window.innerHeight;
+          f.classList.toggle("prompt-pill", !!away);
+        }, { passive: true });
+      }
+    }
+    var openHere = el.querySelector("#prompt-build-here");
+    if (openHere) {
+      openHere.addEventListener("click", function () {
+        S.ui = "confirm";
+        track("Prompt Release Offered", { page: S.page });
+        renderSession();
+      });
+    }
+    var confirmBtn = el.querySelector("#prompt-release-confirm");
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", function () {
+        track("Prompt Release Confirmed", { page: S.page });
+        confirmRelease(S);
+      });
+    }
+    var declineBtn = el.querySelector("#prompt-release-decline");
+    if (declineBtn) {
+      declineBtn.addEventListener("click", function () {
+        track("Prompt Release Declined", { page: S.page });
+        S.ui = "field"; S.pending = null; S.status = "";
+        renderSession();
+      });
+    }
+  }
+
+  function goChip(S, idx) {
+    if (idx < 0 || idx >= S.chips.length) return;
+    if (idx !== 0) S.lastBuilt = idx;
+    S.current = idx;
+    S.ui = "field"; S.pending = null; S.status = "";
+    saveSession(S);
+    renderSession();
+    track("Prompt History Restored",
+      { page: S.page, restored_turn: S.chips[idx].turn });
+  }
+
+  function priorSpecsFor(S) {
+    var out = [];
+    for (var i = 1; i < S.current; i++) {
+      if (S.chips[i].spec) out.push({ spec: S.chips[i].spec });
+    }
+    return out;
+  }
+
+  function submitPrompt(S, text) {
+    if (S.inFlight) return;
+    var chip = S.chips[S.current];
+    // Repeat discipline (design section 5): the identical prompt
+    // against the identical current view is answered from the
+    // chip state, with no model call and no submit counted.
+    if (chip.prompt === text && S.current === S.chips.length - 1) {
+      S.status = REPEAT_LINE;
+      renderSession();
+      return;
+    }
+    if (S.submits >= PROMPT_CAP) return;
+    S.submits += 1;
+    var turnNo = S.submits;
+    var kind = matchTurnKind(text);
+    track("Prompt Submitted", {
+      page: S.page, turn_number: turnNo, scope: chip.scope,
+      turn_kind: kind
+    });
+    S.status = PROMPT_PENDING_LINE;
+    S.inFlight = true;
+    renderSession();
+    var input = S.el.querySelector("#prompt-input");
+    if (input) { input.disabled = true; }
+    postTurn(S, {
+      mode: "compose_turn", page: S.page, prompt: text,
+      turn_kind: kind, scope: chip.scope, current_spec: chip.spec,
+      prior_specs: priorSpecsFor(S), turn: turnNo
+    }).then(function (data) {
+      handleTurnResponse(S, data, { prompt: text, turn: turnNo });
+    });
+  }
+
+  function postTurn(S, body) {
+    return fetch(ASK_ENDPOINT, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || data.type !== "turn") {
+          // The turn surface is absent (an older Lambda behind a
+          // newer client): the field hides and the page continues
+          // as pure Increment 0 (design section 5).
+          S.dead = true; S.ui = "field"; S.status = "";
+          renderSession();
+          return null;
+        }
+        return data;
+      })
+      .catch(function () {
+        S.dead = true; S.ui = "field"; S.status = "";
+        renderSession();
+        return null;
+      });
+  }
+
+  function handleTurnResponse(S, data, ctx) {
+    S.inFlight = false;
+    if (!data) return; // postTurn already applied the failure state
+    if (data.action === "recompose" || data.action === "extend") {
+      var spec = data.spec;
+      var scope = data.scope || S.chips[S.current].scope;
+      var apply = function () {
+        if (!validateSessionSpec(S, spec, scope)) {
+          // A served spec that fails the client gate is a contract
+          // break: the failure discipline applies, the view and
+          // the chips are exactly as they were.
+          S.status = PROMPT_NONE_LINE;
+          renderSession();
+          return;
+        }
+        // A new prompt from a restored chip branches the row from
+        // that point.
+        S.chips = S.chips.slice(0, S.current + 1);
+        S.chips.push({
+          turn: ctx.turn, action: data.action, spec: spec,
+          scope: scope, prompt: ctx.prompt
+        });
+        S.current = S.chips.length - 1;
+        S.lastBuilt = S.current;
+        S.docked = true;
+        S.ui = "field"; S.pending = null; S.status = "";
+        saveSession(S);
+        renderSession();
+        track("Prompt Turn Rendered", {
+          page: S.page, turn_number: ctx.turn, action: data.action,
+          block_count: spec.blocks.length, scope: scope
+        });
+        afterSubmit(S);
+      };
+      if (scope === "released" && !blocksPayload) {
+        loadBlocks().then(apply);
+      } else {
+        apply();
+      }
+      return;
+    }
+    if (data.action === "pointer") {
+      S.pending = {
+        prompt: ctx.prompt, turn: ctx.turn,
+        covering_page: data.covering_page,
+        covering_name: data.covering_name
+      };
+      S.ui = "pointer"; S.status = "";
+      renderSession();
+      track("Prompt Pointer Shown",
+        { page: S.page, covering_page: data.covering_page });
+      afterSubmit(S);
+      return;
+    }
+    if (data.action === "release_offer") {
+      S.pending = { prompt: ctx.prompt, turn: ctx.turn };
+      S.ui = "confirm"; S.status = "";
+      renderSession();
+      track("Prompt Release Offered", { page: S.page });
+      afterSubmit(S);
+      return;
+    }
+    // The null shape: the view, the chips, and the scroll position
+    // are exactly as they were; one fixed line, naming no topic.
+    S.ui = "field"; S.pending = null;
+    S.status = PROMPT_NONE_LINE;
+    renderSession();
+    afterSubmit(S);
+  }
+
+  function afterSubmit(S) {
+    if (S.submits >= PROMPT_CAP && !S.capFired) {
+      S.capFired = true;
+      track("Prompt Cap Reached", { page: S.page });
+      if (S.ui === "field") renderSession();
+    }
+    saveSession(S);
+  }
+
+  function confirmRelease(S) {
+    var pending = S.pending;
+    if (!pending) { S.ui = "field"; renderSession(); return; }
+    var chip = S.chips[S.current];
+    S.ui = "field";
+    S.status = PROMPT_PENDING_LINE;
+    S.inFlight = true;
+    renderSession();
+    // The confirm re-send is the same prompt at the same turn
+    // number, in the widened scope: not a new submitted prompt,
+    // so the cap does not count it again.
+    postTurn(S, {
+      mode: "compose_turn", page: S.page, prompt: pending.prompt,
+      turn_kind: "recompose", scope: "released",
+      current_spec: chip.spec, prior_specs: priorSpecsFor(S),
+      turn: pending.turn, release_confirm: true
+    }).then(function (data) {
+      S.pending = null;
+      handleTurnResponse(S, data,
+        { prompt: pending.prompt, turn: pending.turn });
+    });
   }
 
   function classifyProblem(text) {
@@ -658,7 +1199,8 @@
   window.DCCompose = {
     validateSpec: validateSpec,
     encodePageCode: encodePageCode,
-    decodePageCode: decodePageCode
+    decodePageCode: decodePageCode,
+    matchTurnKind: matchTurnKind
   };
 
   if (document.readyState === "loading") {
