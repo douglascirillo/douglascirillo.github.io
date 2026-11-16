@@ -248,6 +248,124 @@
     }
   }
 
+  /* ---------- Increment 3: ledger writes from Ask ----------
+     The Ask payload carries items as {claim, source} with no
+     record ID, so ask_records and records are populated by
+     matching each item, client-side, against the approved
+     records in the public /record.json: claims serve verbatim,
+     so an exact {claim, source} match is deterministic. The
+     registry is fetched lazily, once per page lifetime, on the
+     first answer render; it is cached as a promise, bounded by
+     a 3-second timeout, never retried, and the answer render
+     never waits on it. Unmatched or ambiguous items are skipped
+     and a failed fetch records nothing. Every DCLedger call is
+     guarded: a missing or inert ledger changes nothing. */
+  var _registryPromise = null;
+  var _registryMap = null;
+
+  function ledgerAskOutcome(cls) {
+    try {
+      if (window.DCLedger && window.DCLedger.enabled &&
+          typeof window.DCLedger.recordAskOutcome === "function") {
+        window.DCLedger.recordAskOutcome(cls);
+      }
+    } catch (e) { /* the ledger never breaks the page */ }
+  }
+
+  function ensureRegistry() {
+    if (_registryPromise) return _registryPromise;
+    var fetchPromise;
+    try {
+      var fetchOpts = { credentials: "omit" };
+      try {
+        if (typeof AbortController !== "undefined") {
+          var controller = new AbortController();
+          fetchOpts.signal = controller.signal;
+          setTimeout(function () {
+            try { controller.abort(); } catch (e) {}
+          }, 3000);
+        }
+      } catch (e) { /* timeout race below still bounds the wait */ }
+      fetchPromise = fetch("/record.json", fetchOpts)
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; });
+    } catch (e) {
+      fetchPromise = Promise.resolve(null);
+    }
+    var timeoutPromise = new Promise(function (resolve) {
+      setTimeout(function () { resolve(null); }, 3000);
+    });
+    _registryPromise = Promise.race([fetchPromise, timeoutPromise])
+      .then(function (data) {
+        if (!data || !data.records || !data.records.length) return null;
+        var map = {};
+        var ambiguous = {};
+        data.records.forEach(function (rec) {
+          if (!rec || rec.status !== "approved" || !rec.id ||
+              typeof rec.claim !== "string" ||
+              typeof rec.source !== "string") return;
+          var key = rec.claim + "\n" + rec.source;
+          if (Object.prototype.hasOwnProperty.call(map, key) &&
+              map[key] !== rec.id) {
+            ambiguous[key] = true;
+          } else {
+            map[key] = rec.id;
+          }
+        });
+        Object.keys(ambiguous).forEach(function (key) {
+          delete map[key];
+        });
+        _registryMap = { map: map, ambiguous: ambiguous };
+        return _registryMap;
+      })
+      .catch(function () { return null; });
+    return _registryPromise;
+  }
+
+  function registryIdForItem(it) {
+    if (!_registryMap || !it || typeof it.claim !== "string" ||
+        typeof it.source !== "string") return null;
+    var key = it.claim + "\n" + it.source;
+    if (_registryMap.ambiguous[key]) return null;
+    return _registryMap.map[key] || null;
+  }
+
+  function ledgerAskRecords(items) {
+    try {
+      if (!(window.DCLedger && window.DCLedger.enabled) ||
+          !items || !items.length) return;
+    } catch (e) { return; }
+    ensureRegistry().then(function (reg) {
+      try {
+        if (!reg) return;
+        if (!(window.DCLedger && window.DCLedger.enabled &&
+              typeof window.DCLedger.recordAskRecords === "function")) {
+          return;
+        }
+        var ids = [];
+        items.forEach(function (it) {
+          var id = registryIdForItem(it);
+          if (id) ids.push(id);
+        });
+        if (ids.length) window.DCLedger.recordAskRecords(ids);
+      } catch (e) { /* the ledger never breaks the page */ }
+    });
+  }
+
+  function ledgerRecordOpened(it) {
+    try {
+      if (!(window.DCLedger && window.DCLedger.enabled &&
+            typeof window.DCLedger.recordRecordOpened === "function")) {
+        return;
+      }
+      // The click write uses only the match map the answer render
+      // already built; it never triggers a fetch of its own.
+      if (!_registryMap) return;
+      var id = registryIdForItem(it);
+      if (id) window.DCLedger.recordRecordOpened(id);
+    } catch (e) { /* the ledger never breaks the page */ }
+  }
+
   /* ---------- the bar ---------- */
   var main = document.querySelector("main");
   if (!main) return;
@@ -358,6 +476,8 @@
         answerBox.innerHTML = "";
         if (data.type === "answer" && data.items && data.items.length) {
           track("Ask Answered", { page: page, records: data.items.length, generated: !!data.generated });
+          ledgerAskOutcome(data.generated ? "answer_prose" : "answer");
+          ledgerAskRecords(data.items);
           if (data.generated && data.prose) {
             var lead = document.createElement("p");
             lead.className = "ask-prose";
@@ -373,17 +493,19 @@
             div.className = "ask-item";
             var p = document.createElement("p"); p.textContent = it.claim;
             var a = document.createElement("a"); a.href = it.source; a.textContent = "Read it in context"; extAttrs(a);
-            a.addEventListener("click", function () { track("Ask Next Click", { page: page, kind: "source" }); });
+            a.addEventListener("click", function () { track("Ask Next Click", { page: page, kind: "source" }); ledgerRecordOpened(it); });
             div.appendChild(p); div.appendChild(a);
             answerBox.appendChild(div);
           });
           var ns = nextStep(); if (ns) answerBox.appendChild(ns);
         } else if (data.type === "refusal") {
           track("Ask Refused", { page: page });
+          ledgerAskOutcome("refuse");
           var p1 = document.createElement("p"); p1.className = "ask-msg"; p1.textContent = data.text;
           answerBox.appendChild(p1);
         } else {
           track("Ask No Evidence", { page: page });
+          ledgerAskOutcome("none");
           var p2 = document.createElement("p"); p2.className = "ask-msg"; p2.textContent = data.text || "";
           answerBox.appendChild(p2);
           if (data.link) {
