@@ -215,8 +215,8 @@
   var css = [
     ".explore{margin:26px 0 4px;padding:18px 18px 12px;border:1px solid var(--line);border-radius:12px}",
     ".explore .explore-label{display:block;font-size:15px;color:var(--ink-2);margin:0 0 10px}",
-    ".explore input{font:inherit;font-size:16px;width:100%;box-sizing:border-box;padding:11px 16px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink)}",
-    ".explore input:focus{outline:none;border-color:var(--accent)}",
+    ".explore textarea{font:inherit;font-size:16px;width:100%;box-sizing:border-box;padding:11px 16px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);resize:none;display:block}",
+    ".explore textarea:focus{outline:none;border-color:var(--accent)}",
     ".explore .explore-note{margin:10px 0 0;font-size:13px;color:var(--muted)}",
     ".explore .explore-panel{margin-top:12px}",
     ".explore .explore-hit{display:block;padding:10px 14px;border:1px solid var(--line);border-radius:10px;margin:0 0 8px;text-decoration:none;color:var(--ink)}",
@@ -374,13 +374,78 @@
   bar.id = "ask-h";
   bar.innerHTML =
     "<span class=\"explore-label\">Search the record, or ask it a question.</span>" +
-    "<input id=\"explore-q\" type=\"text\" maxlength=\"300\" autocomplete=\"off\" aria-label=\"Search the record or ask a question\">" +
+    "<textarea id=\"explore-q\" rows=\"1\" maxlength=\"300\" autocomplete=\"off\" enterkeyhint=\"send\" aria-label=\"Search the record or ask a question\"></textarea>" +
     "<div class=\"explore-panel\" id=\"explore-panel\" hidden></div>" +
     "<div class=\"explore-answer\" id=\"explore-answer\" hidden></div>" +
     "<p class=\"explore-note\">Questions are kept for 90 days and read by Douglas to improve the record. Searches are measured by length and result only. Please leave out personal details.</p>";
-  main.insertBefore(bar, main.firstChild);
+  /* Docked-composer batch (sheet section 2): surface.js runs
+     first and builds the dock, so when a dock exists the bar is
+     born inside #cp-composer in the dock. When none does (the
+     surface layer off, bot-gated, or failed), the bar stages at
+     the top of main, exactly as it always has. */
+  var dockMount = document.getElementById("cp-composer");
+  if (dockMount && document.getElementById("cp-dock")) {
+    dockMount.appendChild(bar);
+  } else {
+    main.insertBefore(bar, main.firstChild);
+  }
   var ein = document.getElementById("explore-q");
   ein.setAttribute("placeholder", ctx.placeholder);
+
+  /* Auto-grow (docked-composer batch, sheet section 5): the
+     composer is a textarea. While the surface layer is active
+     it grows from its one-line rest height to the content's
+     height, capped at five lines, past which it scrolls
+     internally. On the layered path it holds one line and
+     overflow scrolls internally, so the kill path's at-rest
+     layout is the shipped layout. Growth is measured once
+     (rest height, line height, border) and is pure progressive
+     enhancement: any failure leaves a working one-line input. */
+  var restHeight = 0, lineHeight = 0, borderH = 0;
+  function measureInput() {
+    if (restHeight) return;
+    try {
+      var cs = window.getComputedStyle(ein);
+      lineHeight = parseFloat(cs.lineHeight) || 0;
+      restHeight = ein.offsetHeight || 0;
+      borderH = restHeight - (ein.clientHeight || 0);
+      if (borderH < 0) borderH = 0;
+    } catch (e) { /* ungrown is fine */ }
+  }
+  function growInput() {
+    if (!(window.DCSurface && window.DCSurface.active)) return;
+    measureInput();
+    if (!restHeight || !lineHeight) return;
+    try {
+      ein.style.height = restHeight + "px";
+      var sh = ein.scrollHeight || 0;
+      if (!sh) { ein.style.height = ""; return; }
+      var max = restHeight + lineHeight * 4;
+      /* Priority rule (sheet section 4): when the dock's cap
+         is small, the input's growth yields first. surface.js
+         publishes the cap as --cp-dock-cap on the dock; the
+         reserve below is the bar's fixed furniture (label,
+         note, scope line, paddings). Unset, no clamp applies. */
+      var dock = document.getElementById("cp-dock");
+      if (dock) {
+        var capPx = parseFloat(
+          window.getComputedStyle(dock)
+            .getPropertyValue("--cp-dock-cap")) || 0;
+        if (capPx > 0) {
+          max = Math.min(max, Math.max(restHeight, capPx - 110));
+        }
+      }
+      var target = Math.min(Math.max(sh + borderH, restHeight), max);
+      ein.style.height = target + "px";
+      ein.style.overflowY = (sh + borderH) > max ? "auto" : "hidden";
+    } catch (e) { /* the input still works ungrown */ }
+  }
+  function resetInputHeight() {
+    try {
+      ein.style.height = "";
+      ein.style.overflowY = "";
+    } catch (e) {}
+  }
   var panel = document.getElementById("explore-panel");
   var answerBox = document.getElementById("explore-answer");
   if (answerBox) answerBox.setAttribute("aria-live", "polite");
@@ -682,6 +747,7 @@
     if (!ein.value.trim() && answerBox.hidden) showStart();
   });
   ein.addEventListener("input", function () {
+    growInput();
     answerBox.hidden = true;
     var q = ein.value.trim();
     if (debounce) clearTimeout(debounce);
@@ -711,6 +777,7 @@
     panel.hidden = true;
     answerBox.hidden = true;
     ein.value = "";
+    resetInputHeight();
     lastSearch = null;
     return true;
   }
@@ -720,6 +787,12 @@
     if (ev.key === "ArrowUp" && items.length) { ev.preventDefault(); setActive(Math.max(activeIdx - 1, -1)); return; }
     if (ev.key === "Escape") { panel.hidden = true; return; }
     if (ev.key !== "Enter") return;
+    /* Textarea discipline (sheet section 5): Enter during an
+       IME composition confirms the composition, never submits;
+       Shift+Enter inserts a newline and never submits. A plain
+       Enter submits, exactly as the shipped input behaved. */
+    if (ev.isComposing || ev.keyCode === 229) return;
+    if (ev.shiftKey) return;
     ev.preventDefault();
     var q = ein.value.trim();
     if (q.length < 3) return;
@@ -738,6 +811,7 @@
       panel.hidden = true;
       answerBox.hidden = true;
       ein.value = "";
+      resetInputHeight();
       lastSearch = null;
     }
   });
