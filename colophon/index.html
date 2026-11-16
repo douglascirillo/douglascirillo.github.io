@@ -477,8 +477,8 @@
 
       <section aria-labelledby="compose-h">
         <h2 id="compose-h">How do compositions work?</h2>
-        <p>Pick a problem on the home page and the site assembles the full picture for it on the spot: the intent frame, the proof, and the practice behind it, drawn from the same approved blocks as the record pages. The set of possible assemblies is fixed in advance and checked by a validator before any of them can serve. A link can carry a composition, the address ends in a short code, but it cannot invent one: an unrecognized code serves the ordinary page. Nothing is written at visit time, and switching compositions off changes nothing underneath.</p>
-        <p>A visitor can also describe the problem in their own words. A classifier matches the description to the closest of the fixed intents, or honestly to none of them, and the same checked assembly serves, labeled as assembled from the stated intent. A description that falls outside the site&rsquo;s perimeter is declined the same way the record bar declines a question, and a description with no close match leaves the standard page in place.</p>
+        <p>Pick a problem on the home page and the site assembles the full picture for it on the spot: the intent frame, the proof, and the practice behind it, drawn from the same approved blocks as the record pages. Every assembly is checked by a validator before it can serve. A link can carry a composition, the address ends in a short code, but it cannot invent one: an unrecognized code serves the ordinary page. Nothing is written at visit time, and switching compositions off changes nothing underneath.</p>
+        <p>There is one input on the home page, the record bar, and it works two ways. Asked a question, it answers from the record. When no record answers directly, the same words are read as the problem they describe: a classifier matches them to the closest of the seven intents or, when no single intent fits, assembles a new combination from the same block library. A new combination passes the same validator before it serves, carries no share code, and lives only for that visit. The view is labeled as assembled for the problem stated. A description outside the site&rsquo;s perimeter receives the same plain no-match as any other, so the boundary cannot be mapped by asking, and a description with no assembly to offer leaves the standard page in place.</p>
       </section>
 
       <section aria-labelledby="arch-h">
@@ -582,6 +582,7 @@
           <li><strong>Four up.</strong> The home writing grid now shows the four most recent essays, filling its two-by-two on desktop.</li>
           <li><strong>Related studies, carded.</strong> The More case studies lists at the foot of each case study are preview cards now, the same component as everywhere else, instead of a line of text links. The Related practice line was corrected the same day, at Douglas&rsquo;s direction: it is a destination list, and it is cards now too.</li>
           <li><strong>Describe the problem.</strong> The entry card now takes a problem in the visitor&rsquo;s own words and matches it to the closest of the seven intents, assembling the same checked full picture and labeling it as assembled from the stated intent. No close match leaves the standard page in place, and the perimeter classes decline here too. The classifier ships behind a 40-case intent eval set: every perimeter and hostile case refuses, and the paraphrases map 14 of 14.</li>
+          <li><strong>One input, and a fuller picture.</strong> The separate describe-the-problem field is retired the same day it shipped. The record bar is the home page&rsquo;s only input again: it answers a question from the record, and when the record has no direct answer, it reads the words as a problem and assembles a view for it, matching one of the seven intents or combining blocks into a new assembly that passes the same validator before it serves. New assemblies carry no share code and live only for the visit. A repeat submission never sits silent: the view on screen is acknowledged, updated, or replaced. A 24-case spec eval set joins the intent set: perimeter cases return the same shape as an honest no-match, and every proposed assembly is checked by three validators before it can serve.</li>
         </ul></div></details>
       </section>
 
@@ -606,6 +607,6 @@
   </footer>
 
 </div>
-<script src="/assets/ask.js?v=20261115-9" defer></script>
+<script src="/assets/ask.js?v=20261115-10" defer></script>
 </body>
 </html>
