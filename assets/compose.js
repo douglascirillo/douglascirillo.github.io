@@ -8,7 +8,17 @@
    build-time artifact rendered from approved block texts by our own
    pipeline, the same trust level as the page itself.
    Kill switch: COMPOSITIONS_ENABLED = false, or ship an empty
-   compositions.json. */
+   compositions.json.
+
+   Unified input (Stage 1 + Stage 2): the home page has ONE text input,
+   the record bar (ask.js). When a question gets the no-evidence answer,
+   ask.js dispatches a "dc:problem" event with the same text and this
+   file offers it to the Ask endpoint's classify mode. A matched intent
+   renders exactly like a button click (manifest code included); a novel
+   block spec is validated against /blocks.json and rendered for this
+   visit only (no share code, the URL does not change). Refusals return
+   in the same shape as a genuine no-match, so both leave the
+   no-evidence answer exactly as it was. */
 (function () {
   "use strict";
   var COMPOSITIONS_ENABLED = true;
@@ -60,7 +70,11 @@
 
   function clearComposition() {
     var el = slot();
-    if (el) { el.hidden = true; el.innerHTML = ""; }
+    if (el) {
+      el.hidden = true; el.innerHTML = "";
+      el.removeAttribute("data-render-key");
+      el.removeAttribute("data-render-source");
+    }
     Array.prototype.forEach.call(
       document.querySelectorAll(".intent-btn"),
       function (b) { b.setAttribute("aria-pressed", "false"); });
@@ -79,18 +93,25 @@
         return '<a href="' + l.href + '">' + l.label + "</a>";
       }).join("") + "</p>";
     }
-    // A classified render (Stage 1: the visitor described the problem in
-    // their own words and the classifier matched it) carries a distinct
-    // line under the heading. Button renders do not.
-    var fromIntent = (opts && opts.classified)
-      ? '<p class="composition-from-intent">Assembled from the intent you described.</p>'
-      : "";
+    // A classified render (the visitor described the problem in their
+    // own words and the classifier matched it) carries a line under the
+    // heading that a button render does not: the connection line when
+    // the unified input supplies one, else the stated-intent label.
+    var fromIntent = "";
+    if (opts && opts.connectionLine) {
+      fromIntent = '<p class="composition-from-intent">' + opts.connectionLine + "</p>";
+    } else if (opts && opts.classified) {
+      fromIntent = '<p class="composition-from-intent">Assembled from the intent you described.</p>';
+    }
     el.innerHTML =
       '<h3 class="composition-h">The full picture</h3>' + fromIntent + entry.html + linksHtml +
       '<p class="composition-note">Assembled for this visit from the ' +
       "published record. The static pages underneath do not change.</p>" +
       '<p class="intent-reset"><button type="button" id="intent-reset">See the full record instead</button></p>';
     el.hidden = false;
+    el.setAttribute("data-render-key", "intent:" + intent);
+    el.setAttribute("data-render-source",
+      (opts && (opts.classified || opts.connectionLine)) ? "classified" : "button");
     var resetBtn = el.querySelector("#intent-reset");
     if (resetBtn) resetBtn.addEventListener("click", clearComposition);
     Array.prototype.forEach.call(
@@ -110,76 +131,267 @@
     return raw.replace(/^intent_/, "");
   }
 
-  /* Stage 1 intent classification: the free-text field in the entry card
-     posts the visitor's stated problem to the Ask endpoint in classify
-     mode. A matched intent renders exactly like a button click, plus the
-     stated-intent label. The endpoint returns refusals in the same shape
-     as a genuine no-match, so both show the same quiet line and the
-     client cannot distinguish them. A disabled classifier or any error
-     changes nothing on the page. */
+  /* ---------- Unified input: classify fall-through (Stage 1 + 2) ------
+     ask.js owns the one input. On a no-evidence answer it dispatches
+     "dc:problem" with the visitor's text; this listener offers the text
+     to classify mode. Outcomes:
+     - intent: render like a button click, with the connection line.
+     - spec: validate against /blocks.json, render for this visit only.
+     - null (which includes refusals, by the oracle design), disabled,
+       or any error: the no-evidence answer stands exactly as rendered.
+     A submission is never left looking dead: the slot shows a pending
+     line while classify runs (unless a button composition is on
+     screen), a match scrolls the composition into view, and a match
+     for the composition already on screen updates its line instead of
+     silently re-rendering identical HTML. */
   var ASK_ENDPOINT = "https://7i3yr1dzge.execute-api.us-east-1.amazonaws.com/ask";
+  var CONNECTION_LINE = "No direct answer in the record. This view is assembled for the problem you described.";
+  var REPEAT_LINE = "That maps to the view already on screen.";
+  var PENDING_LINE = "Checking for a view that fits the problem you described.";
+  var classifySeq = 0;
 
-  function wireClassify() {
-    var form = document.getElementById("intent-freeform");
-    if (!form) return;
-    var input = document.getElementById("intent-text");
-    var go = document.getElementById("intent-go");
-    var noneLine = document.getElementById("intent-none");
-    function classifiedEvent(intent, outcome) {
-      track("composition_intent_classified",
-        { intent_id: intent, outcome: outcome });
+  function classifiedEvent(intent, outcome, source) {
+    track("composition_intent_classified",
+      { intent_id: intent, outcome: outcome, source: source });
+  }
+
+  function scrollSlotIntoView(el) {
+    try { if (el.scrollIntoView) el.scrollIntoView({ block: "nearest" }); } catch (e) {}
+  }
+
+  function showPending() {
+    var el = slot();
+    if (!el) return;
+    // A composition already on screen (button or classified) stays
+    // untouched while classify runs: replacing it with the pending
+    // line would destroy the very render a repeat match needs to
+    // acknowledge, and the answer box already shows the record being
+    // checked. The pending line appears only when the slot is empty.
+    if (!el.hidden) return;
+    el.innerHTML = '<p class="composition-from-intent">' + PENDING_LINE + "</p>";
+    el.hidden = false;
+    el.setAttribute("data-render-key", "pending");
+    el.setAttribute("data-render-source", "classified");
+  }
+
+  function hideSlot() {
+    var el = slot();
+    if (!el) return;
+    el.hidden = true; el.innerHTML = "";
+    el.removeAttribute("data-render-key");
+    el.removeAttribute("data-render-source");
+  }
+
+  // True when the requested composition is already on screen: update
+  // its connection line and scroll it into view rather than
+  // re-rendering identical HTML with no visible acknowledgment.
+  function repeatIfSame(key) {
+    var el = slot();
+    if (!el || el.hidden) return false;
+    if (el.getAttribute("data-render-key") !== key) return false;
+    var line = el.querySelector(".composition-from-intent");
+    if (!line) return false;
+    line.textContent = REPEAT_LINE;
+    scrollSlotIntoView(el);
+    return true;
+  }
+
+  function renderClassifiedIntent(intent) {
+    if (repeatIfSame("intent:" + intent)) return;
+    render(intent, null, { connectionLine: CONNECTION_LINE });
+    scrollSlotIntoView(slot());
+  }
+
+  /* ----- Stage 2: blocks payload, validator port, spec renderer ----- */
+  var blocksPayload = null;
+  var blocksLoading = null;
+
+  function loadBlocks() {
+    if (blocksPayload) return Promise.resolve(blocksPayload);
+    if (blocksLoading) return blocksLoading;
+    blocksLoading = fetch("/blocks.json")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        blocksPayload = (data && data.blocks) ? data : null;
+        return blocksPayload;
+      })
+      .catch(function () { blocksPayload = null; return null; });
+    return blocksLoading;
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  // Port of compose.py's validate() plus the two free-form additions
+  // from the Stage 2 design (block-count cap, frame-or-contact anchor).
+  // The payload itself carries only servable blocks: a withdrawn
+  // record's block is absent, so a spec naming it fails as unknown.
+  function validateSpec(spec, payload) {
+    if (!spec || !payload || !payload.blocks) return false;
+    var items = spec.blocks;
+    if (!Array.isArray(items)) return false;
+    var maxBlocks = payload.max_blocks || 6;
+    if (items.length < 1 || items.length > maxBlocks) return false;
+    var byId = {};
+    payload.blocks.forEach(function (b) { byId[b.id] = b; });
+    var anchors = {};
+    (payload.anchor_kinds || ["intro", "intent_frame", "contact"])
+      .forEach(function (k) { anchors[k] = true; });
+    var seen = {};
+    var anchored = false;
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i] || {};
+      var block = byId[item.id];
+      if (!block) return false;                    // unknown block
+      if (seen[item.id]) return false;             // duplicate block
+      seen[item.id] = true;
+      var text = block.lengths ? block.lengths[item.length] : undefined;
+      if (typeof text !== "string") return false; // unapproved length
+      var scope = block.scope_required || [];
+      for (var j = 0; j < scope.length; j++) {
+        if (text.indexOf(scope[j]) === -1) return false; // scope dropped
+      }
+      if (anchors[block.kind]) anchored = true;
+      if (block.kind === "contact" && i !== items.length - 1) return false;
     }
-
-    form.addEventListener("submit", function (ev) {
-      ev.preventDefault();
-      var text = (input.value || "").trim();
-      if (text.length < 3) return;
-      if (go) go.disabled = true;
-      fetch(ASK_ENDPOINT, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode: "classify", text: text })
-      }).then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (data) {
-          if (go) go.disabled = false;
-          if (!data || data.disabled) {
-            classifiedEvent(null, "not_matched");
-            return;
-          }
-          if (data.type === "intent" && data.intent) {
-            var intent = data.intent;
-            if (noneLine) noneLine.hidden = true;
-            classifiedEvent(intent, "matched");
-            load().then(function () { render(intent, null, { classified: true }); });
-            return;
-          }
-          if (data.type === "intent") {
-            if (noneLine) noneLine.hidden = false;
-            classifiedEvent(null, "not_matched");
-            return;
-          }
-          classifiedEvent(null, "not_matched");
-        })
-        .catch(function () {
-          if (go) go.disabled = false;
-          classifiedEvent(null, "not_matched");
-        });
+    if (!anchored) return false;
+    // Restricted-block placement rule (mirror of the Lambda validator
+    // and compose.py; P-1115-16, edit 4): a block with forbidden_intents
+    // (today only speaking-synapse) may appear only in a spec it leads
+    // (first position) or one carrying the anchor frame of an intent it
+    // is not forbidden on (for speaking-synapse, intent-frame-speaking).
+    var frameIntent = {};
+    payload.blocks.forEach(function (b) {
+      if (b.kind === "intent_frame" && b.id.indexOf("intent-frame-") === 0) {
+        frameIntent[b.id] = b.id.slice("intent-frame-".length).replace(/-/g, "_");
+      }
     });
-    // A button click supersedes a pending no-match line.
+    for (var r = 0; r < items.length; r++) {
+      var rb = byId[items[r].id];
+      var forbidden = (rb && rb.forbidden_intents) || [];
+      if (!forbidden.length || r === 0) continue;
+      var okRestricted = false;
+      Object.keys(frameIntent).forEach(function (fid) {
+        if (seen[fid] && forbidden.indexOf(frameIntent[fid]) === -1) {
+          okRestricted = true;
+        }
+      });
+      if (!okRestricted) return false;
+    }
+    return true;
+  }
+
+  // Mirror of compose.py's render_fragment(): approved payload text,
+  // escaped; links come from the payload only.
+  function renderFragmentHtml(spec, payload) {
+    var byId = {};
+    payload.blocks.forEach(function (b) { byId[b.id] = b; });
+    return spec.blocks.map(function (item) {
+      var block = byId[item.id];
+      var text = block.lengths[item.length];
+      var paras = text.split("\n\n").map(function (p) {
+        return "<p>" + esc(p) + "</p>";
+      }).join("");
+      if (block.kind === "proof" && block.link) {
+        paras += '<p><a href="' + esc(block.link) + '">Read the case study</a></p>';
+      }
+      if (block.kind === "contact" && block.link) {
+        paras = '<p><a href="' + esc(block.link) + '">' + esc(text) + "</a></p>";
+      }
+      return '<section data-block="' + esc(block.id) + '" data-length="' +
+        esc(item.length) + '">' + paras + "</section>";
+    }).join("\n");
+  }
+
+  function specKey(spec) {
+    return "spec:" + spec.blocks.map(function (b) {
+      return b.id + ":" + b.length;
+    }).join(",");
+  }
+
+  function renderSpec(spec, payload) {
+    var el = slot();
+    if (!el) return;
+    el.innerHTML =
+      '<h3 class="composition-h">The full picture</h3>' +
+      '<p class="composition-from-intent">' + CONNECTION_LINE + "</p>" +
+      renderFragmentHtml(spec, payload) +
+      '<p class="composition-note">Assembled for this visit from the ' +
+      "published record. The static pages underneath do not change.</p>" +
+      '<p class="intent-reset"><button type="button" id="intent-reset">See the full record instead</button></p>';
+    el.hidden = false;
+    el.setAttribute("data-render-key", specKey(spec));
+    el.setAttribute("data-render-source", "classified");
+    var resetBtn = el.querySelector("#intent-reset");
+    if (resetBtn) resetBtn.addEventListener("click", clearComposition);
     Array.prototype.forEach.call(
       document.querySelectorAll(".intent-btn"),
-      function (b) {
-        b.addEventListener("click", function () {
-          if (noneLine) noneLine.hidden = true;
-        });
+      function (b) { b.setAttribute("aria-pressed", "false"); });
+    // No share code for a novel spec (manifest-only rule): the render
+    // is session-only and the URL is not modified.
+    scrollSlotIntoView(el);
+    track("composition_rendered", { intent: null, via: "spec" });
+  }
+
+  function classifyProblem(text) {
+    var seq = ++classifySeq;
+    showPending();
+    fetch(ASK_ENDPOINT, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode: "classify", text: text })
+    }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (seq !== classifySeq) return; // a newer submission owns the slot
+        if (!data || data.disabled || data.type !== "intent") {
+          hideSlot();
+          classifiedEvent(null, "not_matched", "typed_intent");
+          return;
+        }
+        if (data.spec && data.spec.blocks) {
+          loadBlocks().then(function (payload) {
+            if (seq !== classifySeq) return;
+            if (payload && validateSpec(data.spec, payload)) {
+              if (!repeatIfSame(specKey(data.spec))) {
+                renderSpec(data.spec, payload);
+              }
+              classifiedEvent(null, "matched", "typed_spec");
+            } else {
+              hideSlot();
+              classifiedEvent(null, "not_matched", "typed_spec");
+            }
+          });
+          return;
+        }
+        if (data.intent) {
+          var intent = data.intent;
+          load().then(function () {
+            if (seq !== classifySeq) return;
+            renderClassifiedIntent(intent);
+            classifiedEvent(intent, "matched", "typed_intent");
+          });
+          return;
+        }
+        hideSlot();
+        classifiedEvent(null, "not_matched", "typed_intent");
+      })
+      .catch(function () {
+        if (seq !== classifySeq) return;
+        hideSlot();
+        classifiedEvent(null, "not_matched", "typed_intent");
       });
   }
 
   function init() {
     var el = slot();
     if (!el) return;
-    wireClassify();
     el.setAttribute("aria-live", "polite");
+    document.addEventListener("dc:problem", function (ev) {
+      var text = ev && ev.detail && ev.detail.text;
+      if (text) classifyProblem(text);
+    });
     var btns = document.querySelectorAll(".intent-btn");
     Array.prototype.forEach.call(btns, function (btn) {
       btn.addEventListener("click", function () {
@@ -212,6 +424,10 @@
       });
     }
   }
+
+  // Exposed for the eval harness: the shipped validator, exercised
+  // against the shipped payload by run_specs_stage2.py.
+  window.DCCompose = { validateSpec: validateSpec };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
