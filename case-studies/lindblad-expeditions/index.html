@@ -280,6 +280,34 @@
   .composition-from-intent{font-size:13.5px;color:var(--muted);margin:0 0 8px}
   .intent-reset{margin:6px 0 0}
   .intent-reset button{font:inherit;font-size:13.5px;background:none;border:none;padding:0;color:var(--muted);cursor:pointer;text-decoration:underline}
+
+  /* Increment 1 session layer (persistent prompt field; staged,
+     dark: renders only when compose.js lists this page in
+     PROMPT_PAGES). */
+  .prompt-chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:thin}
+  .prompt-chip{font:inherit;font-size:12.5px;white-space:nowrap;background:none;border:1px solid var(--line-strong);border-radius:999px;padding:3px 10px;color:var(--ink-2);cursor:pointer}
+  .prompt-chip[aria-current="true"]{background:var(--accent-light);border-color:var(--accent);color:var(--ink);font-weight:600}
+  .prompt-strip{font-size:14px;color:var(--muted);margin:4px 0 0}
+  .prompt-strip button{font:inherit;background:none;border:none;padding:0;color:var(--link);cursor:pointer;text-decoration:underline}
+  .prompt-turnline{margin-top:-4px}
+  .prompt-form{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+  .prompt-invitation{display:block;font-size:13.5px;color:var(--muted);margin:0 0 6px}
+  .prompt-row{display:flex;gap:8px}
+  .prompt-row input{flex:1;font:inherit;font-size:15px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--ink);min-width:0}
+  .prompt-row button{font:inherit;font-size:14px;font-weight:600;padding:8px 14px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:var(--bg);cursor:pointer}
+  .prompt-row button:disabled{opacity:.55;cursor:default}
+  .prompt-form.prompt-docked{position:sticky;bottom:0;background:var(--bg);padding-bottom:10px;z-index:5}
+  @media (max-width:640px){
+    .prompt-form.prompt-docked{position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line-strong);box-shadow:0 -4px 16px rgba(0,0,0,.08)}
+  }
+  .prompt-pill-btn{display:none;font:inherit;font-size:13.5px;font-weight:600;padding:6px 12px;border:1px solid var(--accent);border-radius:999px;background:var(--accent-light);color:var(--ink);cursor:pointer}
+  .prompt-form.prompt-pill .prompt-pill-btn{display:inline-block}
+  .prompt-form.prompt-pill .prompt-invitation,.prompt-form.prompt-pill .prompt-row{display:none}
+  .prompt-card{margin-top:12px;border:1px solid var(--line-strong);border-radius:8px;padding:12px 14px;background:var(--accent-light)}
+  .prompt-card p{margin:0 0 8px}
+  .prompt-actions{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:0}
+  .prompt-actions button{font:inherit;font-size:13.5px;font-weight:600;background:none;border:1px solid var(--accent);border-radius:8px;padding:6px 12px;color:var(--ink);cursor:pointer}
+  .prompt-status{margin-top:10px}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
 <script>
@@ -471,6 +499,6 @@
 
 </div>
 <script src="/assets/ask.js?v=20261116-1" defer></script>
-<script src="/assets/compose.js?v=20261116-4" defer></script>
+<script src="/assets/compose.js?v=20261116-5" defer></script>
 </body>
 </html>
