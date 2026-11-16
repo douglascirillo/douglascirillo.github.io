@@ -30,12 +30,12 @@ def req(method, url, body=None):
         return json.loads(resp.read().decode())
 
 def wait_task(index, task):
-    for _ in range(30):
+    for _ in range(60):
         s = req("GET", f"https://{APP}.algolia.net/1/indexes/{index}/task/{task}")
         if s.get("status") == "published":
             return
-        time.sleep(1)
-    raise SystemExit("task did not publish in time")
+        time.sleep(5)
+    raise SystemExit(f"task did not publish in time (index={index}, task={task})")
 
 def page_type(path):
     if path == "/": return "Home"
