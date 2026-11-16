@@ -292,14 +292,17 @@
 
   /* control-plane (surface batch) */
   html{overflow-anchor:none}
-  .cp-dock{position:fixed;left:0;right:0;bottom:0;z-index:900;background:var(--bg);border-top:1px solid var(--line)}
+  .cp-dock{position:fixed;left:0;right:0;bottom:0;z-index:900;background:var(--bg);border-top:1px solid var(--line);max-height:var(--cp-dock-cap,40dvh);overflow:hidden}
   .cp-dock-inner{max-width:760px;margin:0 auto;padding:8px 24px 10px;box-sizing:border-box;display:flex;flex-direction:column;max-height:var(--cp-dock-cap,40dvh)}
   @media (min-width:860px){.cp-dock-inner{max-width:780px;padding-left:32px;padding-right:32px}}
   .cp-dock .dc-ledger-gate--band{border-top:none}
   .cp-consent:empty{display:none}
   .cp-consent{flex:none}
+  .cp-dock .cp-consent{max-height:calc(var(--cp-dock-cap,40dvh)*0.4);overflow-y:auto}
   .cp-dock-bar{flex:none;padding-bottom:env(safe-area-inset-bottom)}
   .cp-dock .explore{margin:0;padding:6px 0 2px;border:none;border-radius:0}
+  .cp-dock .explore-panel{max-height:calc(var(--cp-dock-cap,40dvh)*0.35);overflow-y:auto}
+  .cp-dock .explore-answer{max-height:calc(var(--cp-dock-cap,40dvh)*0.35);overflow-y:auto}
   .cp-scope{font-size:13px;color:var(--muted);margin:0 0 4px}
   .cp-session:not([hidden]){display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow-y:auto}
   .cp-states{font-size:13.5px;color:var(--muted);margin:0 0 4px}
@@ -604,7 +607,7 @@
 </div>
 <script src="/assets/surface.js?v=20261116-3"></script>
 <script src="/assets/ledger.js?v=20261116-5"></script>
-<script src="/assets/ask.js?v=20261116-5"></script>
+<script src="/assets/ask.js?v=20261116-6"></script>
 <script src="/assets/compose.js?v=20261116-8" defer></script>
 </body>
 </html>
