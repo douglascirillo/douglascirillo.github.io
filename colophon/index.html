@@ -298,6 +298,15 @@
   .cp-slim-btn{font:inherit;font-size:14px;background:none;border:none;color:var(--ink-2);cursor:pointer;padding:6px 10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .cp-states-fold{display:none}
   @media (max-width:640px){.cp-states-fold{display:block}.cp-session>.cp-states{display:none}}
+  .cp-thread{margin-top:6px}
+  .cp-thread-toggle{font:inherit;font-size:13.5px;background:none;border:none;padding:0;color:var(--muted);cursor:pointer;text-decoration:underline}
+  .cp-thread-list{list-style:none;margin:6px 0 0;padding:0}
+  .cp-thread-list li{margin:0 0 4px}
+  .cp-thread-entry{font:inherit;font-size:14px;background:none;border:none;padding:0;color:var(--ink-2);cursor:pointer;text-align:left}
+  .cp-thread-entry[aria-disabled="true"]{opacity:.55;cursor:default}
+  .cp-thread-dropped{font-size:13px;color:var(--muted)}
+  .cp-thread-fold{display:none}
+  @media (max-width:640px){.cp-has-fold>.cp-thread{display:none}.cp-thread-fold{display:block;margin-top:6px}.cp-thread-fold-h{font-size:13.5px;color:var(--muted);margin:0 0 4px}}
   /* /control-plane */
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
@@ -464,6 +473,7 @@
     <div class="cp-session" id="cp-session" hidden>
       <p class="cp-states" id="cp-states" role="group" aria-label="Views of this page"></p>
       <div class="cp-receipt" id="cp-receipt"></div>
+      <div class="cp-thread" id="cp-thread" hidden></div>
       <div class="cp-turns" id="cp-turns"></div>
     </div>
     <div class="cp-consent" id="cp-consent"></div>
@@ -577,6 +587,11 @@
       <section aria-labelledby="address-h">
         <h2 id="address-h">One address, every page</h2>
         <p>The machinery used to sit on top of each page: a search bar in the article, a prompt field inside one case study, receipts narrating from inside the view. It has moved into the frame. One composer now sits under the topline on every page, and it does every job: find a page, ask the record a question, and, where a page can rebuild itself, rebuild it. What a page builds still appears in the page. What accounts for it, the receipt, the list of views you can return to, the control over what this site remembers, now lives in the frame too, the same on every page, because it was never part of the content. The Lindblad prompt field is retired as a separate element; the composer does its job, and its sessions before today are the pilot&rsquo;s final count. The pattern is the one chat interfaces made familiar: a fixed place to address the site, and a page that answers.</p>
+      </section>
+
+      <section aria-labelledby="answers-h">
+        <h2 id="answers-h">The page answers</h2>
+        <p>The composer used to sort every line typed into it. A question went one way, a search another, and a request to rebuild the page had to fail both before it was heard. That sorting is gone. Type what you need, in the words you would use in a chat, and the site gives one response: an answer from the published record when you asked something, the page rebuilt around it when there is more to show, a pointer when another page covers it, and a plain no when the record does not hold it. Your prompts stay listed in the frame as you go, so the visit reads as one conversation. The facts did not loosen. Every claim still comes from the record, word for word, and the same gates still decide what the site may say.</p>
       </section>
 
       <section aria-labelledby="arch-h">
@@ -696,6 +711,7 @@
           <li><strong>The site remembers, on your device:</strong> a returning visit can now be weighted by what you have already opened here, from a ledger kept only in your browser, readable and clearable from any view it shapes, and never stored anywhere else.</li>
           <li><strong>Reading history, weighted as described:</strong> what you have opened here can now reorder and promote the blocks a page rebuilds from, on a returning visit.</li>
           <li><strong>One address, every page:</strong> the search bar, the prompt field, and the receipts moved into a single control layer in the frame, identical on every page; the canvas keeps only the content.</li>
+          <li><strong>The page answers:</strong> the composer no longer sorts a line into search, question, or rebuild; it answers once, with an answer, a rebuilt page, or a pointer, as the need requires, and keeps the visit&rsquo;s prompts listed in the frame.</li>
         </ul></div></details>
       </section>
 
@@ -721,7 +737,8 @@
 
 </div>
 <script src="/assets/ledger.js?v=20261116-5" defer></script>
-<script src="/assets/ask.js?v=20261116-3" defer></script>
-<script src="/assets/surface.js?v=20261116-1" defer></script>
+<script src="/assets/ask.js?v=20261116-4" defer></script>
+<script src="/assets/surface.js?v=20261116-2" defer></script>
+<script src="/assets/compose.js?v=20261116-8" defer></script>
 </body>
 </html>
