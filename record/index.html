@@ -238,10 +238,17 @@
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
   /* control-plane (surface batch) */
-  .cp-composer.cp-live{min-height:132px;margin-top:12px}
-  .cp .explore{margin:0;padding:6px 0 2px;border:none;border-radius:0}
-  .cp-scope{font-size:13px;color:var(--muted);margin:8px 0 0}
-  .cp-session{margin-top:10px}
+  html{overflow-anchor:none}
+  .cp-dock{position:fixed;left:0;right:0;bottom:0;z-index:900;background:var(--bg);border-top:1px solid var(--line)}
+  .cp-dock-inner{max-width:760px;margin:0 auto;padding:8px 24px 10px;box-sizing:border-box;display:flex;flex-direction:column;max-height:var(--cp-dock-cap,40dvh)}
+  @media (min-width:860px){.cp-dock-inner{max-width:780px;padding-left:32px;padding-right:32px}}
+  .cp-dock .dc-ledger-gate--band{border-top:none}
+  .cp-consent:empty{display:none}
+  .cp-consent{flex:none}
+  .cp-dock-bar{flex:none;padding-bottom:env(safe-area-inset-bottom)}
+  .cp-dock .explore{margin:0;padding:6px 0 2px;border:none;border-radius:0}
+  .cp-scope{font-size:13px;color:var(--muted);margin:0 0 4px}
+  .cp-session:not([hidden]){display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow-y:auto}
   .cp-states{font-size:13.5px;color:var(--muted);margin:0 0 4px}
   .cp-state{font:inherit;font-size:inherit;background:none;border:none;padding:0;color:var(--accent);cursor:pointer;text-decoration:underline}
   .cp-state-current{color:var(--ink-2);font-weight:600}
@@ -253,19 +260,18 @@
   .cp-receipt-full .composition-note{font-size:13.5px;color:var(--muted);margin:0 0 4px}
   .cp-published{font:inherit;font-size:13.5px;background:none;border:none;padding:0;color:var(--accent);cursor:pointer;text-decoration:underline}
   .cp-turns .prompt-card{margin-top:10px}
-  .cp-slim{position:fixed;top:0;left:0;right:0;z-index:900;background:var(--bg);border-bottom:1px solid var(--line);padding:6px 12px;text-align:center}
-  .cp-slim-btn{font:inherit;font-size:14px;background:none;border:none;color:var(--ink-2);cursor:pointer;padding:6px 10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .cp-states-fold{display:none}
   @media (max-width:640px){.cp-states-fold{display:block}.cp-session>.cp-states{display:none}}
-  .cp-thread{margin-top:6px}
+  .cp-thread:not([hidden]){display:flex;flex-direction:column;flex:0 1 auto;min-height:0;margin-top:6px}
   .cp-thread-toggle{font:inherit;font-size:13.5px;background:none;border:none;padding:0;color:var(--muted);cursor:pointer;text-decoration:underline}
-  .cp-thread-list{list-style:none;margin:6px 0 0;padding:0}
+  .cp-thread-list{list-style:none;margin:6px 0 0;padding:0;overflow-y:auto;min-height:0}
   .cp-thread-list li{margin:0 0 4px}
-  .cp-thread-entry{font:inherit;font-size:14px;background:none;border:none;padding:0;color:var(--ink-2);cursor:pointer;text-align:left}
+  .cp-thread-entry{font:inherit;font-size:14px;background:none;border:none;padding:0;color:var(--ink-2);cursor:pointer;text-align:left;white-space:pre-line}
   .cp-thread-entry[aria-disabled="true"]{opacity:.55;cursor:default}
   .cp-thread-dropped{font-size:13px;color:var(--muted)}
   .cp-thread-fold{display:none}
   @media (max-width:640px){.cp-has-fold>.cp-thread{display:none}.cp-thread-fold{display:block;margin-top:6px}.cp-thread-fold-h{font-size:13.5px;color:var(--muted);margin:0 0 4px}}
+  @media print{.cp-dock{display:none}body{padding-bottom:0 !important}}
   /* /control-plane */
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
@@ -463,9 +469,9 @@
   </footer>
 
 </div>
-<script src="/assets/ledger.js?v=20261116-5" defer></script>
-<script src="/assets/ask.js?v=20261116-4" defer></script>
-<script src="/assets/surface.js?v=20261116-2" defer></script>
+<script src="/assets/surface.js?v=20261116-3"></script>
+<script src="/assets/ledger.js?v=20261116-5"></script>
+<script src="/assets/ask.js?v=20261116-5"></script>
 <script src="/assets/compose.js?v=20261116-8" defer></script>
 </body>
 </html>
