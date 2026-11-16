@@ -482,6 +482,14 @@
         <p>When no record answers a question directly, the same words are read as the problem they describe: a classifier matches them to the closest of the seven intents or, when no single intent fits, assembles a new combination from the same block library. A new combination passes the same validator before it serves, carries no share code, and lives only for that visit. The view is labeled as assembled for the problem stated. A description outside the site&rsquo;s perimeter receives the same plain no-match as any other, so the boundary cannot be mapped by asking, and a description with no assembly to offer leaves the standard page in place.</p>
       </section>
 
+      <section aria-labelledby="landing-h">
+        <h2 id="landing-h">Starting where you land</h2>
+        <p>The home page is no longer the only place a view gets assembled. Land on a case study and the page builds a starting view around itself: a short anchor that says what the page is and what its records cover, the study&rsquo;s own proof, the practice behind it, and the way to continue the conversation. The published page stands complete underneath, and &lsquo;View this page as published&rsquo; puts it back exactly as it was. Nothing is written for the occasion: the assembly is four published blocks, chosen in advance, in a fixed order.</p>
+        <p>Each page may draw only its own slice of the library: its anchor, its own proof, the practice blocks, and the contact block. A case study stays evidence-pure in an assembled view for the same reason it carries no essay links as a page. The rules travel too: the same validators that check a free-form view check these, including the anchor rule, now generalized so a page&rsquo;s own anchor block counts as the anchor when it leads.</p>
+        <p>An assembled view can be shared. Its address carries the block list itself, and the page re-checks that list against its slice before rendering anything, so a tampered or stale address yields a valid rearrangement of published blocks or the plain page. A default view writes no code to the address; only an assembly that differs from the starting view earns one. Fragments that are not codes, the section links a page already carries, are left alone.</p>
+        <p>Off switch: one flag per page type (COMPOSE_PAGES) returns every page of that type to exactly its published form.</p>
+      </section>
+
       <section aria-labelledby="arch-h">
         <h2 id="arch-h">How is the site put together?</h2>
         <p>Three layers, one rule: a model can select and arrange. It cannot invent.</p>
@@ -590,6 +598,8 @@
         </ul></div></details>
         <details class="acc"><summary>Nov 16, 2026</summary><div class="acc-body"><ul class="log">
           <li><strong>Event names, in plain words.</strong> Every measurement event on the site now follows one naming rule: the object and the action, in title case, the way a person would say it. Outbound Link Click was already there; the rest of the events traded their machine-style names for plain ones. The properties keep their machine names, which is what properties are for.</li>
+          <li><strong>One frame per view.</strong></li>
+          <li><strong>Composition leaves home:</strong> every case study now assembles a starting view around itself on arrival, with the published page standing underneath.</li>
         </ul></div></details>
       </section>
 
