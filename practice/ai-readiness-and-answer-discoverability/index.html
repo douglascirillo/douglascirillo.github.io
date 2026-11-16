@@ -273,6 +273,7 @@
       if (!ua) { isBot = true; type = 'unknown'; }
       return { is_bot: isBot, user_agent_type: type };
     })();
+    try { document.documentElement.setAttribute("data-botcls", BOT_CLS.user_agent_type); } catch (e) {}
 
     var pending = [];
     var ready = false;
@@ -464,6 +465,7 @@
   </footer>
 
 </div>
-<script src="/assets/ask.js?v=20261116-1" defer></script>
+<script src="/assets/ledger.js?v=20261116-1" defer></script>
+<script src="/assets/ask.js?v=20261116-2" defer></script>
 </body>
 </html>
