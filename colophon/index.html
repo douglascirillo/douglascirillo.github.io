@@ -280,14 +280,17 @@
 
   /* control-plane (surface batch) */
   html{overflow-anchor:none}
-  .cp-dock{position:fixed;left:0;right:0;bottom:0;z-index:900;background:var(--bg);border-top:1px solid var(--line)}
+  .cp-dock{position:fixed;left:0;right:0;bottom:0;z-index:900;background:var(--bg);border-top:1px solid var(--line);max-height:var(--cp-dock-cap,40dvh);overflow:hidden}
   .cp-dock-inner{max-width:760px;margin:0 auto;padding:8px 24px 10px;box-sizing:border-box;display:flex;flex-direction:column;max-height:var(--cp-dock-cap,40dvh)}
   @media (min-width:860px){.cp-dock-inner{max-width:780px;padding-left:32px;padding-right:32px}}
   .cp-dock .dc-ledger-gate--band{border-top:none}
   .cp-consent:empty{display:none}
   .cp-consent{flex:none}
+  .cp-dock .cp-consent{max-height:calc(var(--cp-dock-cap,40dvh)*0.4);overflow-y:auto}
   .cp-dock-bar{flex:none;padding-bottom:env(safe-area-inset-bottom)}
   .cp-dock .explore{margin:0;padding:6px 0 2px;border:none;border-radius:0}
+  .cp-dock .explore-panel{max-height:calc(var(--cp-dock-cap,40dvh)*0.35);overflow-y:auto}
+  .cp-dock .explore-answer{max-height:calc(var(--cp-dock-cap,40dvh)*0.35);overflow-y:auto}
   .cp-scope{font-size:13px;color:var(--muted);margin:0 0 4px}
   .cp-session:not([hidden]){display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow-y:auto}
   .cp-states{font-size:13.5px;color:var(--muted);margin:0 0 4px}
@@ -520,7 +523,7 @@
         <h2 id="ask-h2">How does Ask my record work?</h2>
         <p>Every page on this site has a question box. It answers from one source: a public evidence registry, record.json, that holds every claim on this site as data, word for word, with its source page. The registry is the site, in machine-readable form.</p>
         <p>A small AI model (Claude Haiku) reads the question and picks which records answer it. The model never writes the answer. Code assembles the reply from the registry verbatim and links the source. Numbers cannot drift, because the model never touches them. If no record answers, the box says so and points to the case studies. If a question is out of bounds (my employer beyond my published role, compensation, my family), it gets one fixed refusal, every time. Some exclusions are enforced in code, not just in instructions to the model.</p>
-        <p>There is one input, at the top of every page, and it is also the search box (next section). Ask a question and the answer renders right there, in place. The box knows which page you are on. It suggests questions that page can actually answer, prefers that page&rsquo;s records when several could answer, and ends with the next step that fits the page. The nav&rsquo;s Ask link just focuses the input.</p>
+        <p>There is one input, docked at the foot of the screen on every page, and it is also the search box (next section). Ask a question and the answer renders right there, in place. The box knows which page you are on. It suggests questions that page can actually answer, prefers that page&rsquo;s records when several could answer, and ends with the next step that fits the page. The nav&rsquo;s Ask link just focuses the input.</p>
         <p>Questions are kept for 90 days so I can read what people actually ask and improve the record. Email addresses and phone numbers are stripped automatically before anything is stored. The question log keeps no visitor identifiers. After 90 days the log deletes itself.</p>
         <p>Cost is capped twice: a monthly ceiling in the code, and a spend limit where the model bill actually lands. There is a kill switch on the site side and on the server side.</p>
         <p>Before any of this shipped, it had to pass a 20-case test set: ordinary questions, scope traps, and adversarial ones. The first run passed 17. The three failures were fixed in the open: a missing record, a selection preference, and an exclusion that needed code instead of instructions. The set, 22 cases today, has to pass in full before changes go live.</p>
@@ -724,6 +727,7 @@
           <li><strong>One address, every page:</strong> the search bar, the prompt field, and the receipts moved into a single control layer in the frame, identical on every page; the canvas keeps only the content.</li>
           <li><strong>The page answers:</strong> the composer no longer sorts a line into search, question, or rebuild; it answers once, with an answer, a rebuilt page, or a pointer, as the need requires, and keeps the visit&rsquo;s prompts listed in the frame.</li>
           <li><strong>The composer docks:</strong> it moved from under the topline to the foot of the screen and stays there as you scroll; the receipt, this visit&rsquo;s prompts, and the memory controls sit just above it, and the page reserves its height so nothing hides beneath it.</li>
+          <li><strong>A correction:</strong> the Ask section above described the input as sitting at the top of every page. It docks at the foot of the screen now, and the section says so.</li>
         </ul></div></details>
       </section>
 
@@ -750,7 +754,7 @@
 </div>
 <script src="/assets/surface.js?v=20261116-3"></script>
 <script src="/assets/ledger.js?v=20261116-5"></script>
-<script src="/assets/ask.js?v=20261116-5"></script>
+<script src="/assets/ask.js?v=20261116-6"></script>
 <script src="/assets/compose.js?v=20261116-8" defer></script>
 </body>
 </html>
