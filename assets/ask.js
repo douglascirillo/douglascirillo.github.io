@@ -217,6 +217,7 @@
     ".explore .explore-label{display:block;font-size:15px;color:var(--ink-2);margin:0 0 10px}",
     ".explore textarea{font:inherit;font-size:16px;width:100%;box-sizing:border-box;padding:11px 16px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);resize:none;display:block}",
     ".explore textarea:focus{outline:none;border-color:var(--accent)}",
+    ".explore textarea.explore-q-grown{border-radius:14px}",
     ".explore .explore-note{margin:10px 0 0;font-size:13px;color:var(--muted)}",
     ".explore .explore-panel{margin-top:12px}",
     ".explore .explore-hit{display:block;padding:10px 14px;border:1px solid var(--line);border-radius:10px;margin:0 0 8px;text-decoration:none;color:var(--ink)}",
@@ -417,33 +418,70 @@
     measureInput();
     if (!restHeight || !lineHeight) return;
     try {
-      ein.style.height = restHeight + "px";
-      var sh = ein.scrollHeight || 0;
-      if (!sh) { ein.style.height = ""; return; }
       var max = restHeight + lineHeight * 4;
       /* Priority rule (sheet section 4): when the dock's cap
          is small, the input's growth yields first. surface.js
-         publishes the cap as --cp-dock-cap on the dock; the
-         reserve below is the bar's fixed furniture (label,
-         note, scope line, paddings). Unset, no clamp applies. */
+         publishes the cap as --cp-dock-cap on the dock. The
+         yield is measured, not estimated (dock fix batch,
+         Nov 16, 2026): everything in the dock that is neither
+         the textarea nor the session region is fixed furniture
+         the growth must leave room for: the consent band, the
+         dock bar minus the textarea itself (the scope label,
+         the explore label, the find panel at its current
+         height, the note), and the inner's vertical padding.
+         An open panel therefore reduces the allowance by its
+         own height, which the flat reserve this replaces could
+         not see: with the panel open or the furniture
+         underestimated, the bar alone exceeded the cap, the
+         session region flexed to zero, and the bar's tail
+         painted below the viewport. Fallback 170 when a
+         measurement is unavailable. Unset cap, no clamp. */
       var dock = document.getElementById("cp-dock");
       if (dock) {
         var capPx = parseFloat(
           window.getComputedStyle(dock)
             .getPropertyValue("--cp-dock-cap")) || 0;
         if (capPx > 0) {
-          max = Math.min(max, Math.max(restHeight, capPx - 110));
+          var fixed = 170;
+          try {
+            var m = 18; /* the dock inner's vertical padding */
+            var consentEl = document.getElementById("cp-consent");
+            if (consentEl && consentEl.offsetHeight) {
+              m += consentEl.offsetHeight;
+            }
+            var barBox = dock.querySelector(".cp-dock-bar");
+            if (barBox && barBox.offsetHeight) {
+              m += Math.max(0,
+                barBox.offsetHeight - (ein.offsetHeight || 0));
+            }
+            if (m > 18) fixed = m;
+          } catch (e2) { /* the fallback stands */ }
+          max = Math.min(max, Math.max(restHeight, capPx - fixed));
         }
+      }
+      ein.style.height = restHeight + "px";
+      var sh = ein.scrollHeight || 0;
+      if (!sh) {
+        ein.style.height = "";
+        ein.classList.remove("explore-q-grown");
+        return;
       }
       var target = Math.min(Math.max(sh + borderH, restHeight), max);
       ein.style.height = target + "px";
       ein.style.overflowY = (sh + borderH) > max ? "auto" : "hidden";
+      /* The pill radius (999px) belongs to the one-line rest
+         state: on a grown box its curve eats half the box
+         height at each end and clips the first and last lines
+         at the left edge. A grown textarea takes a plain
+         radius instead (the explore-q-grown style rule). */
+      ein.classList.toggle("explore-q-grown", target > restHeight + 1);
     } catch (e) { /* the input still works ungrown */ }
   }
   function resetInputHeight() {
     try {
       ein.style.height = "";
       ein.style.overflowY = "";
+      ein.classList.remove("explore-q-grown");
     } catch (e) {}
   }
   var panel = document.getElementById("explore-panel");
@@ -676,6 +714,9 @@
     panel.appendChild(w);
     panel.hidden = false;
     setActive(-1);
+    /* The panel is bar furniture: the input's growth yields
+       to it in the same task it opens (growInput). */
+    growInput();
   }
   function showAskRow(q) {
     panel.innerHTML = "";
@@ -689,6 +730,7 @@
     panel.appendChild(row);
     panel.hidden = false;
     setActive(-1);
+    growInput();
   }
   var debounce = null, lastQuery = "";
   var lastSearch = null; // {q, hits} of the last completed search
@@ -732,6 +774,7 @@
         }
         panel.hidden = false;
         setActive(-1);
+        growInput();
       })
       .catch(function () { panel.hidden = true; });
   }
