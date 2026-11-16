@@ -300,8 +300,8 @@
   .cp-consent{flex:none}
   .cp-dock .cp-consent{max-height:calc(var(--cp-dock-cap,40dvh)*0.4);overflow-y:auto}
   .cp-dock-bar{flex:none;padding-bottom:env(safe-area-inset-bottom)}
-  .cp-dock .explore{margin:0;padding:6px 0 2px;border:none;border-radius:0}
-  .cp-dock .explore .explore-panel{top:auto;bottom:calc(100% + 6px);max-height:min(50dvh,420px)}
+  .cp-dock .explore{position:static;margin:0;padding:6px 0 2px;border:none;border-radius:0}
+  .cp-dock .explore .explore-panel{top:auto;bottom:calc(100% + 6px);left:max(24px,calc(50% - 356px));right:max(24px,calc(50% - 356px));max-height:min(50dvh,420px)}@media (min-width:860px){.cp-dock .explore .explore-panel{left:max(32px,calc(50% - 358px));right:max(32px,calc(50% - 358px))}}
   .cp-dock .explore-answer{max-height:calc(var(--cp-dock-cap,40dvh)*0.35);overflow-y:auto}
   .cp-scope{font-size:13px;color:var(--muted);margin:0 0 4px}
   .cp-session:not([hidden]){display:flex;flex-direction:column;flex:0 1 auto;min-height:0;max-height:var(--cp-dock-cap,40dvh);overflow-y:auto}
