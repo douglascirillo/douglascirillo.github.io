@@ -67,7 +67,7 @@
     try { history.replaceState(null, "", location.pathname); } catch (e) {}
   }
 
-  function render(intent, sig) {
+  function render(intent, sig, opts) {
     var el = slot();
     if (!el || !byIntent) return;
     var entry = byIntent[intent];
@@ -79,8 +79,14 @@
         return '<a href="' + l.href + '">' + l.label + "</a>";
       }).join("") + "</p>";
     }
+    // A classified render (Stage 1: the visitor described the problem in
+    // their own words and the classifier matched it) carries a distinct
+    // line under the heading. Button renders do not.
+    var fromIntent = (opts && opts.classified)
+      ? '<p class="composition-from-intent">Assembled from the intent you described.</p>'
+      : "";
     el.innerHTML =
-      '<h3 class="composition-h">The full picture</h3>' + entry.html + linksHtml +
+      '<h3 class="composition-h">The full picture</h3>' + fromIntent + entry.html + linksHtml +
       '<p class="composition-note">Assembled for this visit from the ' +
       "published record. The static pages underneath do not change.</p>" +
       '<p class="intent-reset"><button type="button" id="intent-reset">See the full record instead</button></p>';
@@ -104,9 +110,75 @@
     return raw.replace(/^intent_/, "");
   }
 
+  /* Stage 1 intent classification: the free-text field in the entry card
+     posts the visitor's stated problem to the Ask endpoint in classify
+     mode. A matched intent renders exactly like a button click, plus the
+     stated-intent label. The endpoint returns refusals in the same shape
+     as a genuine no-match, so both show the same quiet line and the
+     client cannot distinguish them. A disabled classifier or any error
+     changes nothing on the page. */
+  var ASK_ENDPOINT = "https://7i3yr1dzge.execute-api.us-east-1.amazonaws.com/ask";
+
+  function wireClassify() {
+    var form = document.getElementById("intent-freeform");
+    if (!form) return;
+    var input = document.getElementById("intent-text");
+    var go = document.getElementById("intent-go");
+    var noneLine = document.getElementById("intent-none");
+    function classifiedEvent(intent, outcome) {
+      track("composition_intent_classified",
+        { intent_id: intent, outcome: outcome });
+    }
+
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var text = (input.value || "").trim();
+      if (text.length < 3) return;
+      if (go) go.disabled = true;
+      fetch(ASK_ENDPOINT, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mode: "classify", text: text })
+      }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (go) go.disabled = false;
+          if (!data || data.disabled) {
+            classifiedEvent(null, "not_matched");
+            return;
+          }
+          if (data.type === "intent" && data.intent) {
+            var intent = data.intent;
+            if (noneLine) noneLine.hidden = true;
+            classifiedEvent(intent, "matched");
+            load().then(function () { render(intent, null, { classified: true }); });
+            return;
+          }
+          if (data.type === "intent") {
+            if (noneLine) noneLine.hidden = false;
+            classifiedEvent(null, "not_matched");
+            return;
+          }
+          classifiedEvent(null, "not_matched");
+        })
+        .catch(function () {
+          if (go) go.disabled = false;
+          classifiedEvent(null, "not_matched");
+        });
+    });
+    // A button click supersedes a pending no-match line.
+    Array.prototype.forEach.call(
+      document.querySelectorAll(".intent-btn"),
+      function (b) {
+        b.addEventListener("click", function () {
+          if (noneLine) noneLine.hidden = true;
+        });
+      });
+  }
+
   function init() {
     var el = slot();
     if (!el) return;
+    wireClassify();
     el.setAttribute("aria-live", "polite");
     var btns = document.querySelectorAll(".intent-btn");
     Array.prototype.forEach.call(btns, function (btn) {
