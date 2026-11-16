@@ -275,6 +275,7 @@
 
   .skip-link{position:absolute;left:16px;top:-80px;z-index:200;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:6px;font-weight:600;text-decoration:none}
   .skip-link:focus-visible{top:14px}
+  .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
@@ -585,14 +586,15 @@
           <li><strong>One input, and a fuller picture.</strong> The separate describe-the-problem field is retired the same day it shipped. The record bar is the home page&rsquo;s only input again: it answers a question from the record, and when the record has no direct answer, it reads the words as a problem and assembles a view for it, matching one of the seven intents or combining blocks into a new assembly that passes the same validator before it serves. New assemblies carry no share code and live only for the visit. A repeat submission never sits silent: the view on screen is acknowledged, updated, or replaced. A 24-case spec eval set joins the intent set: perimeter cases return the same shape as an honest no-match, and every proposed assembly is checked by three validators before it can serve.</li>
           <li><strong>Outbound links open in a new tab.</strong> Every link that leaves this site now opens in a new tab. Links inside the site stay in the same tab. The rule covers the links the page scripts build, in the record bar and the compositions, as well as the links written into the pages.</li>
           <li><strong>A third audit, and a leaner colophon.</strong> The third full audit of the site: three inert nav links on the 404 page now point home, two endorsement links joined the outbound-click measurement, and llms.txt now describes the bar as it works today, framing and free-form assemblies included. In the same pass this page was streamlined: the registry, the single input, and the measurement join are each explained once, in the section that owns them, and the measurement section covers AI visibility.</li>
+          <li><strong>Audit #3 follow-ups.</strong> The roadmap now points at what is actually next: the December question-log review, and graduating recurring assemblies into the manifest. External links carry a spoken &ldquo;(opens in new tab)&rdquo; hint for screen readers, composition links report their clicks like every other outbound link, the public record file no longer names the categories it withholds, and The Long Road Back is linked from two sibling essays.</li>
         </ul></div></details>
       </section>
 
       <section aria-labelledby="roadmap-h">
         <h2 id="roadmap-h">Where is this going?</h2>
         <p>The record does not change. What changes is how much of the experience around it can assemble itself, under the same gates. The set lives in <a href="/record/">the record</a>.</p>
-        <details class="acc"><summary>Next</summary><div class="acc-body"><p>Ask now writes connective framing around the records it cites, labeled where it appears, with the verbatim answer kept underneath and restored automatically whenever the framing fails its checks.</p></div></details>
-        <details class="acc"><summary>Then: composition</summary><div class="acc-body"><p>Pages that assemble around a visitor&rsquo;s intent from the approved block library, precomputed and checked the way the introductions are checked. The static pages stay underneath as the canonical record, and any composition can be switched off without touching them.</p></div></details>
+        <details class="acc"><summary>Next</summary><div class="acc-body"><p>The question log gets its first review: a month of real visitor questions, audited in December. What the bar refused, and what it could not answer, becomes new published evidence or new blocks for the library, so the record grows where visitors actually press on it.</p></div></details>
+        <details class="acc"><summary>Then: the manifest</summary><div class="acc-body"><p>When the same novel assembly keeps recurring in the log, it gets a spot check, and the ones that hold up join the manifest as permanent compositions, with share codes of their own. Until then, a new combination lives only for the visit that asked for it.</p></div></details>
         <details class="acc"><summary>In a private lab</summary><div class="acc-body"><p>Not linked from this site: vendor generative tooling, tested against the same gates before anything is adopted.</p></div></details>
         <details class="acc log-acc-last"><summary>Not on the roadmap</summary><div class="acc-body"><p>Personalization based on who a visitor works for, and generated text a visitor sees before it has been checked against the record.</p></div></details>
       </section>
@@ -609,6 +611,6 @@
   </footer>
 
 </div>
-<script src="/assets/ask.js?v=20261115-11" defer></script>
+<script src="/assets/ask.js?v=20261115-12" defer></script>
 </body>
 </html>
