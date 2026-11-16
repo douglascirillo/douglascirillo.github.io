@@ -1,20 +1,29 @@
-/* The control plane (surface build, control-plane batch, Nov 16, 2026).
+/* The control plane (surface build, control-plane batch, Nov 16, 2026;
+   docked-composer batch, Nov 16, 2026).
    Design: files/site-generative/surface-not-page-design.md (two-plane
-   amendment A1 to A7) and files/site-generative/surface-build-sheet.md.
+   amendment A1 to A7, unified-response amendment U1 to U8, docked-
+   composer amendment D1 to D8) and files/site-generative/
+   dock-build-sheet.md (P-1116-26).
 
    The site splits into a finite control plane (header, footer, the
    composer, the state line, the receipt, the inspect door, the
    consent band) and a canvas (everything between, pure content).
-   This module owns the plane's post-paint behavior: it relocates
-   the ask.js record bar into the header's composer mount, renders
-   the session band (restorable states + the collapsed receipt)
-   from models compose.js registers, hosts the sticky slim
-   composer (A7.1), and routes composer submits to a registered
-   session turn (build sheet section 3).
+   This module owns the plane: it builds the dock at the end of the
+   body and moves the control-plane stack into it (the consent mount,
+   the session band, the scope label, the composer mount, in that
+   order), reserves the dock's height on the canvas so no content
+   ever reads beneath it, and renders the session band (restorable
+   states + the collapsed receipt) from models compose.js registers.
+   The static mount block stays byte-identical in the header; the
+   relocation happens here, synchronously, because this file now
+   executes as a classic script ahead of ledger.js and ask.js, so
+   the dock stands before either writes into it and before the
+   first post-parse paint. The slim sticky composer is retired
+   (D8.5): a docked composer never scrolls away.
 
    Discipline: the module publishes window.DCSurface with
-   active:false first and flips it true only after relocation
-   succeeds, so compose.js (loaded after this file) selects its
+   active:false first and flips it true only after the dock is
+   built, so compose.js (deferred, still last) selects its
    presenter once, at boot: LayeredPresenter when this layer is
    off, absent, bot-gated, or failed; SurfacePresenter when
    active. Any throw during init leaves the site exactly as the
@@ -47,7 +56,7 @@
   var turnSubmitFn = null;
   var unifiedSubmitFn = null;
   var focusOrigin = null;
-  var relocated = false;
+  var dockEl = null;
 
   function $(id) { return document.getElementById(id); }
 
@@ -192,7 +201,9 @@
      newest last, and ends with the dropped-entry line when any
      dialogue entry has been dropped. On small screens it folds
      into the expanded receipt (threadFoldHtml, CSS-gated), with
-     the same label as the subheading. */
+     the same label as the subheading. In the dock the expanded
+     list grows upward within the stack's cap and scrolls
+     internally past its share (D8.3, D8.7). */
   var THREAD_LABEL = "Your prompts this visit";
   var THREAD_DROPPED_LINE = "Earlier prompts are not kept.";
 
@@ -422,79 +433,163 @@
   } catch (e) { isHuman = false; }
   if (!isHuman) return;
 
-  function relocateBar() {
-    var mount = $("cp-composer");
-    var bar = document.querySelector(".explore");
-    if (!mount || !bar) return false;
-    if (bar.parentNode === mount) { relocated = true; return true; }
-    // Focus guard (P-1116-19, E7): if the visitor is already in
-    // the input, carry focus and selection across the move.
-    // Reserve the composer's resting height in the same task as
-    // the move, so there is no intermediate paint and no shift;
-    // the class is only ever added by this layer, so with the
-    // layer off the mount stays at zero height (P-1116-19, E6/E7).
-    mount.classList.add("cp-live");
-    var input = bar.querySelector("#explore-q");
-    var hadFocus = !!(input && document.activeElement === input);
-    var selStart = null, selEnd = null;
-    if (hadFocus) {
-      try {
-        selStart = input.selectionStart;
-        selEnd = input.selectionEnd;
-      } catch (e) { /* selection unreadable: focus still restored */ }
-    }
-    mount.appendChild(bar);
-    relocated = true;
-    if (hadFocus && input) {
-      try {
-        input.focus({ preventScroll: true });
-        if (selStart !== null && input.setSelectionRange) {
-          input.setSelectionRange(selStart, selEnd);
-        }
-      } catch (e) { /* focus restoration is best-effort */ }
-    }
+  /* ---- The dock (docked-composer batch, sheet sections 3-7) ----
+     The static mounts stay in the header, byte-identical; this
+     builds one dock element at the end of the body and moves the
+     four mount children into it, in one synchronous task, so no
+     intermediate state is paintable: the consent mount and the
+     session band into the inner stack, the scope label and the
+     composer mount into the bar, the scope label above the
+     composer (D8.6). If any mount is missing the document is
+     left untouched and the layer stays off. */
+  function buildDock() {
+    var consent = $("cp-consent");
+    var session = $("cp-session");
+    var scope = $("cp-scope");
+    var composer = $("cp-composer");
+    if (!consent || !session || !scope || !composer) return false;
+    if (!document.body) return false;
+    var dock = document.createElement("div");
+    dock.className = "cp-dock";
+    dock.id = "cp-dock";
+    dock.setAttribute("role", "region");
+    dock.setAttribute("aria-label", "Ask this site");
+    var inner = document.createElement("div");
+    inner.className = "cp-dock-inner";
+    var bar = document.createElement("div");
+    bar.className = "cp-dock-bar";
+    inner.appendChild(consent);
+    inner.appendChild(session);
+    bar.appendChild(scope);
+    bar.appendChild(composer);
+    inner.appendChild(bar);
+    dock.appendChild(inner);
+    document.body.appendChild(dock);
+    dockEl = dock;
     return true;
   }
 
-  function setupSlim() {
-    var mount = $("cp-composer");
-    var input = document.getElementById("explore-q");
-    if (!mount || !input) return;
-    var slim = document.createElement("div");
-    slim.className = "cp-slim";
-    slim.hidden = true;
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "cp-slim-btn";
-    slim.appendChild(btn);
-    document.body.appendChild(slim);
-    function syncLabel() {
-      // The label tracks the input's current placeholder, and the
-      // accessible name with it (P-1116-19, E13).
-      var label = input.getAttribute("placeholder") ||
-        "Search the record, or ask it a question.";
-      btn.textContent = label;
-      btn.setAttribute("aria-label",
-        "Go to the composer: " + label);
+  /* ---- Canvas reservation (sheet section 6) ----
+     The dock reserves its own height: body padding-bottom and
+     the document's scroll-padding-bottom track the dock's
+     measured height, so the footer's last line scrolls fully
+     into view above the dock and anchors land clear of it. One
+     ResizeObserver on the dock, animation-frame-debounced,
+     writing only on a change of at least 1px; the CP CSS sets
+     overflow-anchor: none on the document element so exactly
+     one adjustment acts near maximum scroll: this one, which
+     holds a reader at the foot of the page in place through a
+     height change in both directions. */
+  var lastReserved = -1;
+  var reserveQueued = false;
+
+  function applyReservation() {
+    if (!dockEl || !document.body) return;
+    var h = dockEl.offsetHeight || 0;
+    if (lastReserved >= 0 && Math.abs(h - lastReserved) < 1) return;
+    var doc = document.documentElement;
+    var nearMax = false;
+    try {
+      var max = (doc.scrollHeight || 0) - (window.innerHeight || 0);
+      var y = window.scrollY != null ? window.scrollY :
+        (window.pageYOffset || 0);
+      nearMax = y >= max - 2;
+    } catch (e) { /* anchoring is best-effort */ }
+    var delta = lastReserved < 0 ? 0 : h - lastReserved;
+    document.body.style.paddingBottom = h + "px";
+    try { doc.style.scrollPaddingBottom = h + "px"; } catch (e) {}
+    lastReserved = h;
+    if (nearMax && delta !== 0) {
+      try { window.scrollBy(0, delta); } catch (e) {}
     }
-    syncLabel();
-    btn.addEventListener("click", function () {
-      focusOrigin = "slim";
-      mount.scrollIntoView({ block: "start" });
+  }
+
+  function scheduleReservation() {
+    if (reserveQueued) return;
+    reserveQueued = true;
+    var run = function () {
+      reserveQueued = false;
+      applyReservation();
+    };
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(run);
+    } else {
+      run();
+    }
+  }
+
+  /* The cap and the dock's position are held against the visual
+     viewport (sheet sections 4 and 6): the cap property is 40
+     percent of visualViewport.height, refreshed on its resize,
+     and when the visual viewport diverges from the layout
+     viewport (an open mobile keyboard, iOS Safari's toolbars)
+     the dock is offset by the divergence so it tracks what the
+     visitor actually sees. interactive-widget is not relied on.
+     Where visualViewport is unavailable, the CSS 40dvh fallback
+     stands alone. */
+  function positionDock() {
+    if (!dockEl) return;
+    var vv = window.visualViewport;
+    if (!vv) return;
+    var cap = Math.round(vv.height * 0.4);
+    if (cap > 0) {
+      dockEl.style.setProperty("--cp-dock-cap", cap + "px");
+    }
+    var layoutH = window.innerHeight || 0;
+    var off = Math.max(0, Math.round(
+      layoutH - vv.height - (vv.offsetTop || 0)));
+    dockEl.style.transform =
+      off > 0 ? "translateY(" + (-off) + "px)" : "";
+  }
+
+  function setupDockWatch() {
+    positionDock();
+    applyReservation();
+    if (typeof window.ResizeObserver === "function" && dockEl) {
+      try {
+        var ro = new window.ResizeObserver(function () {
+          scheduleReservation();
+        });
+        ro.observe(dockEl);
+      } catch (e) { /* the resize listener below still tracks */ }
+    }
+    window.addEventListener("resize", function () {
+      positionDock();
+      scheduleReservation();
+    });
+    var vv = window.visualViewport;
+    if (vv && typeof vv.addEventListener === "function") {
+      vv.addEventListener("resize", function () {
+        positionDock();
+        scheduleReservation();
+      });
+      vv.addEventListener("scroll", function () {
+        positionDock();
+      });
+    }
+  }
+
+  /* ---- Skip link (sheet section 7) ----
+     Injected on activation only, directly after the shipped
+     "Skip to content" link, styled by its rules. Its target is
+     resolved at click time: ask.js has not run when this file
+     executes, so the composer is looked up when it is needed. */
+  function setupSkipLink() {
+    var first = document.querySelector(".skip-link");
+    if (!first || !first.parentNode) return;
+    var a = document.createElement("a");
+    a.className = "skip-link";
+    a.href = "#explore-q";
+    a.textContent = "Skip to the composer";
+    a.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      var input = document.getElementById("explore-q");
+      if (!input) return;
+      focusOrigin = "composer";
       try { input.focus({ preventScroll: true }); }
       catch (e) { input.focus(); }
     });
-    if ("IntersectionObserver" in window) {
-      var io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (en) {
-          var past = !en.isIntersecting &&
-            en.boundingClientRect.top < 0;
-          if (past) syncLabel();
-          slim.hidden = !past;
-        });
-      }, { threshold: 0 });
-      io.observe(mount);
-    }
+    first.parentNode.insertBefore(a, first.nextSibling);
   }
 
   function setupShortcut() {
@@ -518,8 +613,9 @@
   }
 
   try {
-    if (!relocateBar()) return;
-    setupSlim();
+    if (!buildDock()) return;
+    setupDockWatch();
+    setupSkipLink();
     setupShortcut();
     api.active = true;
   } catch (e) {
