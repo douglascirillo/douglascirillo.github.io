@@ -252,5 +252,117 @@
         "full": "Douglas Cirillo and Richard McGovern presented the Sotheby's data transformation story live at Synapse 2019, Segment's user conference; the full talk and transcript are published on the speaking page."
       }
     }
-  ]
+  ],
+  "page_anchors": [
+    {
+      "id": "anchor-lindblad",
+      "kind": "page_anchor",
+      "description": "Page anchor, Lindblad Expeditions case study: what the page is and what its records cover. Anchors assemblies on that page only.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "This page is the Lindblad Expeditions case study: the booking-engine rebuild Douglas Cirillo led at Lindblad Expeditions, where he led digital product, and the reservation-platform work that continued in a later engagement through Gangverk. The records behind it cover the replatform, the team and portfolio he ran, and the results within eight months."
+      },
+      "page": "/case-studies/lindblad-expeditions/",
+      "page_name": "the Lindblad Expeditions case study"
+    },
+    {
+      "id": "anchor-sothebys",
+      "kind": "page_anchor",
+      "description": "Page anchor, Sotheby's case study: what the page is and what its records cover. Anchors assemblies on that page only.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "This page is the Sotheby's case study: the growth-stack rearchitecture Douglas Cirillo directed from 2017 to 2020. The records behind it cover the migration from Adobe Experience Manager onto a composable, data-first stack, and the organic growth the whole stack produced together."
+      },
+      "page": "/case-studies/sothebys/",
+      "page_name": "the Sotheby's case study"
+    },
+    {
+      "id": "anchor-msg",
+      "kind": "page_anchor",
+      "description": "Page anchor, Madison Square Garden case study: what the page is and what its records cover. Anchors assemblies on that page only.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "This page is the Madison Square Garden case study: the digital product function Douglas Cirillo built and ran from 2012 to 2016. The records behind it cover the single operating model across 29+ websites and 4+ apps, the replatform he proposed and led, and what that portfolio produced."
+      },
+      "page": "/case-studies/madison-square-garden/",
+      "page_name": "the Madison Square Garden case study"
+    },
+    {
+      "id": "anchor-ae",
+      "kind": "page_anchor",
+      "description": "Page anchor, A+E Networks case study: what the page is and what its records cover. Anchors assemblies on that page only.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "This page is the A+E Networks case study: the complete redesign and replatform of History.com that Douglas Cirillo directed through Gangverk, in four months. The records behind it cover the build itself and the architecture A+E Networks adopted as its migration standard across its brands."
+      },
+      "page": "/case-studies/ae-networks/",
+      "page_name": "the A+E Networks case study"
+    },
+    {
+      "id": "anchor-apfm",
+      "kind": "page_anchor",
+      "description": "Page anchor, A Place for Mom case study: what the page is and what its records cover. Anchors assemblies on that page only.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "This page is the A Place for Mom case study: the search decline Douglas Cirillo diagnosed as equal parts content problem and architecture problem. The records behind it cover the diagnosis, the content platform and governance rebuild, and the recovery in SEO market share from 26% to 68%."
+      },
+      "page": "/case-studies/a-place-for-mom/",
+      "page_name": "the A Place for Mom case study"
+    },
+    {
+      "id": "anchor-gangverk",
+      "kind": "page_anchor",
+      "description": "Page anchor, Gangverk case study: what the page is and what its records cover. Anchors assemblies on that page only.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "This page is the Gangverk case study: the transformation portfolio and go-to-market Douglas Cirillo built as Head of Marketing and Product Strategy from 2022 to 2025. The records behind it cover the firm's growth from 1 client brand to more than 60 and the work that anchored it, including the History.com replatform."
+      },
+      "page": "/case-studies/gangverk/",
+      "page_name": "the Gangverk case study"
+    }
+  ],
+  "pages": {
+    "/case-studies/a-place-for-mom/": {
+      "type": "case-study",
+      "anchor": "anchor-apfm",
+      "page_name": "the A Place for Mom case study"
+    },
+    "/case-studies/ae-networks/": {
+      "type": "case-study",
+      "anchor": "anchor-ae",
+      "page_name": "the A+E Networks case study"
+    },
+    "/case-studies/gangverk/": {
+      "type": "case-study",
+      "anchor": "anchor-gangverk",
+      "page_name": "the Gangverk case study"
+    },
+    "/case-studies/lindblad-expeditions/": {
+      "type": "case-study",
+      "anchor": "anchor-lindblad",
+      "page_name": "the Lindblad Expeditions case study"
+    },
+    "/case-studies/madison-square-garden/": {
+      "type": "case-study",
+      "anchor": "anchor-msg",
+      "page_name": "the Madison Square Garden case study"
+    },
+    "/case-studies/sothebys/": {
+      "type": "case-study",
+      "anchor": "anchor-sothebys",
+      "page_name": "the Sotheby's case study"
+    }
+  }
 }
