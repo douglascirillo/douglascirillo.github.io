@@ -302,6 +302,7 @@
       if (!ua) { isBot = true; type = 'unknown'; }
       return { is_bot: isBot, user_agent_type: type };
     })();
+    try { document.documentElement.setAttribute("data-botcls", BOT_CLS.user_agent_type); } catch (e) {}
 
     var pending = [];
     var ready = false;
@@ -530,6 +531,16 @@
         <p>The prompt field. A starting view is an invitation, not a destination: on the Lindblad Expeditions case study, a field under the assembly lets a visitor describe the view they need, and the page recomposes around it from the same published blocks, under the same validators. Every turn is validated whole before it renders. The history is a row of chips holding validated views, never the words that produced them, and the first chip is always the page as published. A prompt about another case study earns a pointer to that page. A prompt beyond any one page earns an offer, and the view widens only when the visitor confirms it. Ten prompts per session. The server keeps no session: the context travels with each request as validated specs, and the question log records outcomes, never a session.</p>
       </section>
 
+      <section aria-labelledby="mirror-h">
+        <h2 id="mirror-h">Starting where you land, with what you have already read</h2>
+        <p>When you come back to this site, its pages can rebuild themselves around what you have already opened here.</p>
+        <p>That memory is a small ledger kept in your own browser. It holds the names of pages and records you have opened, records Ask returned for you, the kinds of answers Ask gave, the intents you have picked, and the views you have built or looked at, each with a count and a date. It never holds the words you typed. Questions and prompts are answered or built from and then gone, exactly as they were before this feature existed.</p>
+        <p>There is no server-side activation copy. Amplitude, the measurement tool this site has used since launch, keeps its own record of activity on this site, for statistics, and nothing in that record is read back to shape a page. The ledger in your browser is the only memory a page here is ever rebuilt from.</p>
+        <p>Entries stop counting after 90 days at most and are deleted the next time you visit; depending on your browser, they may be kept for less time than that. You can read the ledger, remove a category from it, or clear it entirely, from any view it shaped and from this page. Clearing it does not change the anonymous device ID this browser uses for measurement, and it does not delete the measurement events already recorded for statistics.</p>
+        <p>If you are visiting from the European Union or the United Kingdom, this site asks before it keeps that ledger at all. Until you say yes, nothing goes into the ledger, and the pages build the way they do for a first visit. Whatever you choose, this browser keeps only your answer and when you gave it.</p>
+        <p><button type="button" data-ledger-open="colophon">What this site remembers on this device</button></p>
+      </section>
+
       <section aria-labelledby="arch-h">
         <h2 id="arch-h">How is the site put together?</h2>
         <p>Three layers, one rule: a model can select and arrange. It cannot invent.</p>
@@ -644,6 +655,7 @@
           <li><strong>The prompt field:</strong> the Lindblad Expeditions case study rebuilds around a visitor&rsquo;s prompt, turn by turn, from the published record.</li>
           <li><strong>Session replay, at full capture:</strong> Amplitude now records sessions, console output, and failed requests for debugging, with typed text masked and bot sessions excluded.</li>
           <li><strong>Failed pages report themselves:</strong> the 404 page now fires its own event, since a missed page load is the one failure a replay cannot show in its network panel.</li>
+          <li><strong>The site remembers, on your device:</strong> a returning visit can now be weighted by what you have already opened here, from a ledger kept only in your browser, readable and clearable from any view it shapes, and never stored anywhere else.</li>
         </ul></div></details>
       </section>
 
@@ -668,6 +680,7 @@
   </footer>
 
 </div>
-<script src="/assets/ask.js?v=20261116-1" defer></script>
+<script src="/assets/ledger.js?v=20261116-1" defer></script>
+<script src="/assets/ask.js?v=20261116-2" defer></script>
 </body>
 </html>
