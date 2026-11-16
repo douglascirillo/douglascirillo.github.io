@@ -32,8 +32,8 @@
 
 ## Ask, assemble, assess
 
-- Ask my record: the question bar on every page answers only from the published record, verbatim, with citations to the source page, and declines anything outside it.
-- Compositions: the home page routes by intent (fixing a search decline, standing up a CDP, replatforming, and four more), and each intent assembles a cited overview from approved blocks of the record, shareable by link.
+- Ask my record: the question bar on every page answers only from the published record. The claims it cites are verbatim, with citations to the source page; a short generated framing may introduce them, labeled as generated and checked in code before it serves. It declines anything outside the record.
+- Compositions: the home page routes by intent (fixing a search decline, standing up a CDP, replatforming, and four more), and each intent assembles a cited overview from approved blocks of the record, shareable by link. A problem typed into the same bar in the visitor's own words is matched to the closest intent or assembled into a new combination from the same blocks, checked by the same validator; new combinations carry no share code and last only for the visit.
 - [Scorecard](https://douglascirillo.com/scorecard/): the Digital Experience Leadership Scorecard, a self-diagnostic of twenty statements across five dimensions. It runs in the browser, stores nothing, and publishes no figures.
 
 ## Key points
