@@ -266,9 +266,9 @@
   .cp-turns .prompt-card{margin-top:10px}
   .cp-states-fold{display:none}
   @media (max-width:640px){.cp-states-fold{display:block}.cp-session>.cp-states{display:none}}
-  .cp-thread:not([hidden]){display:flex;flex-direction:column;flex:0 1 auto;min-height:0;margin-top:6px}
+  .cp-thread:not([hidden]){display:flex;flex-direction:column;flex:0 0 auto;margin-top:6px}
   .cp-thread-toggle{font:inherit;font-size:13.5px;background:none;border:none;padding:0;color:var(--muted);cursor:pointer;text-decoration:underline}
-  .cp-thread-list{list-style:none;margin:6px 0 0;padding:0;overflow-y:auto;min-height:0}
+  .cp-thread-list{list-style:none;margin:6px 0 0;padding:0;overflow-y:auto;min-height:0;max-height:calc(var(--cp-dock-cap,40dvh)*0.35)}
   .cp-thread-list li{margin:0 0 4px}
   .cp-thread-entry{font:inherit;font-size:14px;background:none;border:none;padding:0;color:var(--ink-2);cursor:pointer;text-align:left;white-space:pre-line}
   .cp-thread-entry[aria-disabled="true"]{opacity:.55;cursor:default}
