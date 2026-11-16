@@ -281,6 +281,21 @@
       }
     }
 
+    /* General event queue, same pattern as the outbound queue
+       above: an event fired before the SDK finishes loading waits
+       here and flushes after init, where the enrichment plugin
+       stamps it like every other event. */
+    var pendingEvents = [];
+
+    function sendTracked(name, properties) {
+      if (!isConfigured) return;
+      if (ready && window.amplitude && typeof window.amplitude.track === 'function') {
+        try { window.amplitude.track(name, properties); } catch (e) {}
+      } else {
+        pendingEvents.push({ name: name, properties: properties });
+      }
+    }
+
     /* Explicit conversion tracking: outbound profile and writing links.
        No form data is tracked anywhere on this page. */
     document.addEventListener('click', function (event) {
@@ -294,6 +309,12 @@
       try { host = new URL(href).hostname; } catch (e) {}
       sendOutbound({ destination: href, destination_host: host, link_label: label });
     }, false);
+
+    /* 404 only: a failed page load is a document navigation, so it
+       never shows up as a request in Session Replay's network panel
+       or in network tracking. The page reports itself instead,
+       once per load. */
+    sendTracked('Page Not Found Viewed', { requested_path: location.pathname });
 
     if (!isConfigured) return;
 
@@ -363,6 +384,10 @@
             while (pending.length) {
               var queued = pending.shift();
               try { window.amplitude.track('Outbound Link Click', queued); } catch (e) {}
+            }
+            while (pendingEvents.length) {
+              var queuedEvent = pendingEvents.shift();
+              try { window.amplitude.track(queuedEvent.name, queuedEvent.properties); } catch (e) {}
             }
           }
         } catch (e) { /* Analytics must never break the page. */ }
