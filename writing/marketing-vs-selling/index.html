@@ -310,6 +310,15 @@
   .cp-slim-btn{font:inherit;font-size:14px;background:none;border:none;color:var(--ink-2);cursor:pointer;padding:6px 10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .cp-states-fold{display:none}
   @media (max-width:640px){.cp-states-fold{display:block}.cp-session>.cp-states{display:none}}
+  .cp-thread{margin-top:6px}
+  .cp-thread-toggle{font:inherit;font-size:13.5px;background:none;border:none;padding:0;color:var(--muted);cursor:pointer;text-decoration:underline}
+  .cp-thread-list{list-style:none;margin:6px 0 0;padding:0}
+  .cp-thread-list li{margin:0 0 4px}
+  .cp-thread-entry{font:inherit;font-size:14px;background:none;border:none;padding:0;color:var(--ink-2);cursor:pointer;text-align:left}
+  .cp-thread-entry[aria-disabled="true"]{opacity:.55;cursor:default}
+  .cp-thread-dropped{font-size:13px;color:var(--muted)}
+  .cp-thread-fold{display:none}
+  @media (max-width:640px){.cp-has-fold>.cp-thread{display:none}.cp-thread-fold{display:block;margin-top:6px}.cp-thread-fold-h{font-size:13.5px;color:var(--muted);margin:0 0 4px}}
   /* /control-plane */
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
@@ -476,6 +485,7 @@
     <div class="cp-session" id="cp-session" hidden>
       <p class="cp-states" id="cp-states" role="group" aria-label="Views of this page"></p>
       <div class="cp-receipt" id="cp-receipt"></div>
+      <div class="cp-thread" id="cp-thread" hidden></div>
       <div class="cp-turns" id="cp-turns"></div>
     </div>
     <div class="cp-consent" id="cp-consent"></div>
@@ -580,7 +590,8 @@
 
 </div>
 <script src="/assets/ledger.js?v=20261116-5" defer></script>
-<script src="/assets/ask.js?v=20261116-3" defer></script>
-<script src="/assets/surface.js?v=20261116-1" defer></script>
+<script src="/assets/ask.js?v=20261116-4" defer></script>
+<script src="/assets/surface.js?v=20261116-2" defer></script>
+<script src="/assets/compose.js?v=20261116-8" defer></script>
 </body>
 </html>
