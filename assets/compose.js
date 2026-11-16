@@ -91,6 +91,386 @@
   var PROMPT_CAP_LINE = "You have reached this session\u2019s prompt limit. Your builds above and the published page remain.";
   var PROMPT_START_LINE = "Assembled as a starting point.";
 
+  /* ----- Surface build: the presenter seam (P-1116-19, E4/E5) -----
+     One presenter is chosen once, here at boot. surface.js loads
+     before this file and publishes window.DCSurface with
+     active:true only when the control plane is live, so the
+     choice is synchronous. LayeredPresenter runs the presentation
+     code below exactly as it shipped through the increments;
+     SurfacePresenter registers states, receipts, and turn
+     dialogue with the control plane instead, and the canvas
+     keeps only the composed blocks. If a surface call throws,
+     trySurface flips the presenter to Layered for the rest of
+     the visit and the caller re-renders through it: fail-open
+     means the layered presentation appears, never missing
+     furniture. The substrate (validation, weighting, share
+     codes, ledger writes, events) is identical under both. */
+  var PRESENTER = (window.DCSurface && window.DCSurface.active)
+    ? "surface" : "layered";
+  function surfaceOn() { return PRESENTER === "surface"; }
+  function trySurface(fn) {
+    try { return fn(window.DCSurface) === true; }
+    catch (e) {
+      PRESENTER = "layered";
+      try {
+        if (window.DCSurface && window.DCSurface.clearSession) {
+          window.DCSurface.clearSession();
+        }
+      } catch (e2) { /* the band is best-effort on failure */ }
+      return false;
+    }
+  }
+
+  var NOTE_BUILT = "Built for this visit from the published record.";
+  var lastHomeRender = null; // surface restore model for home views
+  var pageSurfaceDismissed = false;
+
+  function homeStatesModel(current, onRestoreView) {
+    return {
+      states: [{ name: "the published page" },
+               { name: "the assembled view" }],
+      current: current,
+      onActivate: function (idx) {
+        if (idx === 0) clearCompositionAny();
+        else if (idx === 1 && onRestoreView) onRestoreView();
+      }
+    };
+  }
+
+  function clearCompositionAny() {
+    clearComposition();
+    if (surfaceOn()) {
+      trySurface(function (S) {
+        if (lastHomeRender) {
+          S.registerStates(homeStatesModel(0, restoreHomeView));
+        } else {
+          S.clearStates();
+        }
+        S.setReceipt(null);
+        return true;
+      });
+    }
+  }
+
+  function restoreHomeView() {
+    var m = lastHomeRender;
+    if (!m) return;
+    if (m.kind === "spec") {
+      renderSpec(m.spec, m.payload, m.cats, m.fresh);
+    } else if (m.kind === "intent") {
+      render(m.intent, m.sig, m.opts);
+    }
+  }
+
+  function renderSpecSurface(S, spec, payload, historyCategories,
+                             freshStartActive) {
+    var el = slot();
+    if (!el) return;
+    lastHomeRender = {
+      kind: "spec", spec: spec, payload: payload,
+      cats: historyCategories, fresh: freshStartActive
+    };
+    var label = historyCategories
+      ? ledgerCategoriesLabel(historyCategories) : null;
+    var expanded = '<p class="composition-from-intent">' +
+      CONNECTION_LINE + "</p>";
+    if (freshStartActive) {
+      expanded += '<p class="composition-from-intent">' +
+        FRESH_START_CLAUSE + "</p>";
+    } else if (label) {
+      expanded += '<p class="composition-from-intent">' +
+        "Assembled from the published record, weighted by " +
+        esc(label) + " you opened here on earlier visits.</p>";
+    }
+    expanded += '<p class="composition-note">' + NOTE_BUILT + "</p>";
+    el.innerHTML = '<h3 class="composition-h">The full picture</h3>' +
+      renderFragmentHtml(spec, payload);
+    el.hidden = false;
+    el.setAttribute("data-render-key", specKey(spec));
+    el.setAttribute("data-render-source", "classified");
+    Array.prototype.forEach.call(
+      document.querySelectorAll(".intent-btn"),
+      function (b) { b.setAttribute("aria-pressed", "false"); });
+    S.registerStates(homeStatesModel(1, restoreHomeView));
+    S.setReceipt({
+      historyLabel: label || null, aiFraming: false,
+      expandedHtml: expanded,
+      onRestore: function () { clearCompositionAny(); }
+    });
+    scrollSlotIntoView(el);
+    track("Composition Rendered", { intent: null, via: "spec" });
+    ledgerRecordComposition("/");
+  }
+
+  function renderIntentSurface(S, intent, sig, opts, entry, linksHtml) {
+    var el = slot();
+    if (!el) return;
+    lastHomeRender = {
+      kind: "intent", intent: intent, sig: sig, opts: opts
+    };
+    var expanded = "";
+    if (opts && opts.connectionLine) {
+      expanded += '<p class="composition-from-intent">' +
+        opts.connectionLine + "</p>";
+    } else if (opts && opts.classified) {
+      expanded += '<p class="composition-from-intent">' +
+        "Assembled from the intent you described.</p>";
+    }
+    expanded += '<p class="composition-note">' + NOTE_BUILT + "</p>";
+    el.innerHTML = '<h3 class="composition-h">The full picture</h3>' +
+      entry.html + linksHtml;
+    el.hidden = false;
+    el.setAttribute("data-render-key", "intent:" + intent);
+    el.setAttribute("data-render-source",
+      (opts && (opts.classified || opts.connectionLine))
+        ? "classified" : "button");
+    Array.prototype.forEach.call(
+      document.querySelectorAll(".intent-btn"),
+      function (b) {
+        b.setAttribute("aria-pressed",
+          b.getAttribute("data-intent") === "intent_" + intent
+            ? "true" : "false");
+      });
+    try {
+      history.replaceState(null, "", "#c=" + (sig || entry.sig));
+    } catch (e) {}
+    S.registerStates(homeStatesModel(1, restoreHomeView));
+    S.setReceipt({
+      historyLabel: null, aiFraming: false, expandedHtml: expanded,
+      onRestore: function () { clearCompositionAny(); }
+    });
+    track("Composition Rendered", { intent: intent });
+    if (!(opts && (opts.classified || opts.connectionLine))) {
+      ledgerRecordIntent(intent);
+    }
+    ledgerRecordComposition("/");
+  }
+
+  function pageStatesModel(current) {
+    return {
+      states: [{ name: "the published page" },
+               { name: "as you arrived" }],
+      current: current,
+      onActivate: function (idx) {
+        if (idx === 0) dismissPageSurface();
+        else if (idx === 1) restorePageSurface();
+      }
+    };
+  }
+
+  function renderPageSurface(S, el, page, pageEntry, view, spec,
+                             source, historyCategories, eventSource) {
+    pageSurfaceDismissed = false;
+    var clause = historyCategories
+      ? historyClauseLine(pageEntry.page_name, historyCategories)
+      : "";
+    lastPageRender = {
+      el: el, page: page, entry: pageEntry, view: view, spec: spec,
+      source: source, categories: clause ? historyCategories : null
+    };
+    el.innerHTML = '<h3 class="composition-h">The full picture</h3>' +
+      renderFragmentHtml(spec, view, page);
+    el.hidden = false;
+    el.setAttribute("data-render-key", "page:" + page);
+    el.setAttribute("data-render-source", source);
+    if (!sameSpec(spec, pageEntry.starting_spec)) {
+      try {
+        history.replaceState(null, "",
+          "#a=" + encodePageCode(page, spec));
+      } catch (e) {}
+    }
+    var label = clause
+      ? ledgerCategoriesLabel(historyCategories) : null;
+    var expanded = '<p class="composition-from-intent">' +
+      (clause || ("Assembled from the published record, starting " +
+        "from " + esc(pageEntry.page_name) + ".")) + "</p>" +
+      '<p class="composition-note">' + NOTE_BUILT + "</p>";
+    S.registerStates(pageStatesModel(1));
+    S.setReceipt({
+      historyLabel: label || null, aiFraming: false,
+      expandedHtml: expanded,
+      onRestore: function () { dismissPageSurface(); }
+    });
+    track("Page Composition Rendered", {
+      page: page, page_type: pageEntry.type,
+      source: eventSource || source, block_count: spec.blocks.length
+    });
+    ledgerRecordComposition(page);
+  }
+
+  function dismissPageSurface() {
+    var r = lastPageRender;
+    if (!r || pageSurfaceDismissed) return;
+    pageSurfaceDismissed = true;
+    var el = r.el;
+    el.hidden = true;
+    el.innerHTML = "";
+    el.removeAttribute("data-render-key");
+    el.removeAttribute("data-render-source");
+    if ((location.hash || "").indexOf("#a=") === 0) {
+      try { history.replaceState(null, "", location.pathname); }
+      catch (e) {}
+    }
+    track("Page Composition Dismissed", {
+      page: r.page, page_type: r.entry.type, source: r.source
+    });
+    if (surfaceOn()) {
+      trySurface(function (S) {
+        S.setReceipt(null);
+        S.registerStates(pageStatesModel(0));
+        return true;
+      });
+    }
+  }
+
+  function restorePageSurface() {
+    var r = lastPageRender;
+    if (!r || !pageSurfaceDismissed) return;
+    renderPageComposition(r.el, r.page, r.entry, r.view, r.spec,
+      r.source, r.categories, "restore");
+  }
+
+  function sessionStateName(chip, idx) {
+    if (idx === 0) return "the published page";
+    if (chip.action === "start") return "as you arrived";
+    return "rewrite " + chip.turn;
+  }
+
+  function sessionAreaSurfaceHtml(S) {
+    if (S.dead) return "";
+    var status = S.status
+      ? '<p class="composition-from-intent prompt-status">' +
+        esc(S.status) + "</p>" : "";
+    if (S.ui === "pointer" && S.pending) {
+      return status + '<div class="prompt-card"><p>That&rsquo;s ' +
+        "covered in " + esc(S.pending.covering_name) +
+        '.</p><p class="prompt-actions">' +
+        '<a href="' + esc(S.pending.covering_page) + '">Open it</a>' +
+        '<button type="button" id="prompt-build-here">Build it ' +
+        "here instead</button></p></div>";
+    }
+    if (S.ui === "confirm") {
+      return status + '<div class="prompt-card"><p>You&rsquo;re ' +
+        "moving beyond " + esc(S.entry.page_name) +
+        ". Build from the broader record instead?</p>" +
+        '<p class="prompt-actions"><button type="button" ' +
+        'id="prompt-release-confirm">Build from the broader ' +
+        'record</button><button type="button" ' +
+        'id="prompt-release-decline">Stay on this page</button>' +
+        "</p></div>";
+    }
+    if (S.submits >= PROMPT_CAP) {
+      return status + '<p class="composition-from-intent">' +
+        PROMPT_CAP_LINE + "</p>";
+    }
+    return status + '<p class="composition-from-intent ' +
+      'prompt-invitation-line">' + PROMPT_INVITATION + "</p>";
+  }
+
+  function wireTurnsArea(S) {
+    var area = window.DCSurface.turnsArea();
+    if (!area) return;
+    var openHere = area.querySelector("#prompt-build-here");
+    if (openHere) {
+      openHere.addEventListener("click", function () {
+        S.ui = "confirm";
+        track("Prompt Release Offered", { page: S.page });
+        renderSession();
+      });
+    }
+    var confirmBtn = area.querySelector("#prompt-release-confirm");
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", function () {
+        track("Prompt Release Confirmed", { page: S.page });
+        confirmRelease(S);
+      });
+    }
+    var declineBtn = area.querySelector("#prompt-release-decline");
+    if (declineBtn) {
+      declineBtn.addEventListener("click", function () {
+        track("Prompt Release Declined", { page: S.page });
+        S.ui = "field"; S.pending = null; S.status = "";
+        renderSession();
+      });
+    }
+  }
+
+  function renderSessionSurface(SF, S) {
+    var el = S.el;
+    SF.registerTurnSubmit(function (text) {
+      if (!pageSession || pageSession.dead) return false;
+      submitPrompt(pageSession, text);
+      return true;
+    });
+    var states = S.chips.map(function (chip, i) {
+      return { name: sessionStateName(chip, i) };
+    });
+    SF.registerStates({
+      states: states, current: S.current,
+      onActivate: function (idx) { goChip(S, idx); }
+    });
+    var scopeChip = S.current === 0
+      ? S.chips[S.lastBuilt || 1] : S.chips[S.current];
+    SF.setScope(scopeChip && scopeChip.scope === "released"
+      ? "Building from across the published record"
+      : "Starting from " + S.entry.page_name);
+    var area = SF.turnsArea();
+    if (S.current === 0) {
+      el.innerHTML = "";
+      el.hidden = true;
+      el.removeAttribute("data-render-key");
+      el.removeAttribute("data-render-source");
+      SF.setReceipt(null);
+      if (area) {
+        area.innerHTML = S.dead ? "" :
+          '<p class="composition-from-intent ' +
+          'prompt-invitation-line">' + PROMPT_INVITATION + "</p>";
+      }
+      SF.refreshBand();
+      return;
+    }
+    var chip = S.chips[S.current];
+    var clauseText = "";
+    var cats = null;
+    if (chip.action === "start") {
+      var startCats = chip.categories || S.arrivalCategories;
+      if (startCats) {
+        clauseText = historyClauseLine(S.entry.page_name, startCats);
+        if (clauseText) cats = startCats;
+      }
+    } else if (chip.freshStart) {
+      clauseText = FRESH_START_CLAUSE;
+    } else if (chip.categories) {
+      clauseText = historyClauseLine(S.entry.page_name,
+        chip.categories);
+      if (clauseText) cats = chip.categories;
+    }
+    var expanded = '<p class="composition-from-intent">' +
+      chipScopeLine(S, chip) + "</p>";
+    if (clauseText) {
+      expanded += '<p class="composition-from-intent">' +
+        clauseText + "</p>";
+    }
+    expanded += '<p class="composition-from-intent ' +
+      'prompt-turnline">' + chipTurnLine(chip) + "</p>" +
+      '<p class="composition-note">' + NOTE_BUILT + "</p>";
+    el.innerHTML = '<h3 class="composition-h">The full picture</h3>' +
+      renderFragmentHtml(chip.spec, sessionViewFor(S, chip), S.page);
+    el.hidden = false;
+    el.setAttribute("data-render-key", "page:" + S.page);
+    el.setAttribute("data-render-source", S.source);
+    SF.setReceipt({
+      historyLabel: cats ? ledgerCategoriesLabel(cats) : null,
+      aiFraming: false, expandedHtml: expanded,
+      onRestore: function () { goChip(S, 0); }
+    });
+    if (area) {
+      area.innerHTML = sessionAreaSurfaceHtml(S);
+      wireTurnsArea(S);
+    }
+    SF.refreshBand();
+  }
+
   var byIntent = null; // intent -> {sig, html}
   var bySig = null;    // sig -> {intent, html}
   var loading = null;
@@ -246,6 +626,10 @@
         return '<a href="' + l.href + '"' + extAttr(l.href) + trackAttr(l.href, l.label) + '>' + l.label + extHint(l.href) + "</a>";
       }).join("") + "</p>";
     }
+    if (surfaceOn() && trySurface(function (S) {
+      renderIntentSurface(S, intent, sig, opts, entry, linksHtml);
+      return true;
+    })) return;
     // A classified render (the visitor described the problem in their
     // own words and the classifier matched it) carries a line under the
     // heading that a button render does not: the connection line when
@@ -322,6 +706,15 @@
   }
 
   function showPending() {
+    if (surfaceOn() && trySurface(function (S) {
+      var area = S.turnsArea();
+      if (area) {
+        area.innerHTML = '<p class="composition-from-intent ' +
+          'cp-pending-line">' + PENDING_LINE + "</p>";
+        S.refreshBand();
+      }
+      return true;
+    })) return;
     var el = slot();
     if (!el) return;
     // A composition already on screen (button or classified) stays
@@ -339,6 +732,19 @@
   function hideSlot() {
     var el = slot();
     if (!el) return;
+    if (surfaceOn()) {
+      trySurface(function (S) {
+        var area = S.turnsArea();
+        if (area && area.querySelector(".cp-pending-line")) {
+          area.innerHTML = "";
+        }
+        S.setReceipt(null);
+        S.clearStates();
+        lastHomeRender = null;
+        S.refreshBand();
+        return true;
+      });
+    }
     el.hidden = true; el.innerHTML = "";
     el.removeAttribute("data-render-key");
     el.removeAttribute("data-render-source");
@@ -534,6 +940,11 @@
   }
 
   function renderSpec(spec, payload, historyCategories, freshStartActive) {
+    if (surfaceOn() && trySurface(function (S) {
+      renderSpecSurface(S, spec, payload, historyCategories,
+        freshStartActive);
+      return true;
+    })) return;
     var el = slot();
     if (!el) return;
     var historyHtml = "";
@@ -630,7 +1041,12 @@
   var lastPageRender = null;
 
   function renderPageComposition(el, page, pageEntry, view, spec, source,
-                                 historyCategories) {
+                                 historyCategories, eventSource) {
+    if (surfaceOn() && trySurface(function (S) {
+      renderPageSurface(S, el, page, pageEntry, view, spec, source,
+        historyCategories, eventSource);
+      return true;
+    })) return;
     var clause = historyCategories
       ? historyClauseLine(pageEntry.page_name, historyCategories) : "";
     var fromIntent = clause ||
@@ -945,6 +1361,10 @@
   function renderSession() {
     var S = pageSession;
     if (!S) return;
+    if (surfaceOn() && trySurface(function (SF) {
+      renderSessionSurface(SF, S);
+      return true;
+    })) return;
     var el = S.el;
     var chipsHtml = '<div class="prompt-chips" role="list" ' +
       'aria-label="Build history">' + S.chips.map(function (chip, i) {
@@ -1449,11 +1869,27 @@
   function init() {
     var el = slot();
     if (!el) return;
-    if (el.hasAttribute("data-compose-page")) { pageInit(el); return; }
+    if (el.hasAttribute("data-compose-page")) {
+      // Surface build, session pages only: an Ask "none" routes
+      // its text to the active session as a turn (build sheet
+      // section 3, rule 3). Registered only under the surface
+      // presenter; the layered path keeps today's behavior, in
+      // which the event has no listener on page-mode pages.
+      if (surfaceOn()) {
+        document.addEventListener("dc:problem", function (ev) {
+          var text = ev && ev.detail && ev.detail.text;
+          if (text && pageSession) submitPrompt(pageSession, text);
+        });
+      }
+      pageInit(el); return;
+    }
     el.setAttribute("aria-live", "polite");
     document.addEventListener("dc:problem", function (ev) {
       var text = ev && ev.detail && ev.detail.text;
       if (text) classifyProblem(text);
+    });
+    document.addEventListener("dc:composition-cleared", function () {
+      clearCompositionAny();
     });
     var btns = document.querySelectorAll(".intent-btn");
     Array.prototype.forEach.call(btns, function (btn) {
@@ -1463,11 +1899,11 @@
     });
     window.addEventListener("hashchange", function () {
       var hm = /#c=([0-9a-f]{24})/.exec(location.hash || "");
-      if (!hm) { clearComposition(); return; }
+      if (!hm) { clearCompositionAny(); return; }
       load().then(function () {
         var e2 = bySig && bySig[hm[1]];
         if (e2) render(e2.intent, hm[1]);
-        else clearComposition();
+        else clearCompositionAny();
       });
     });
     var m = /#c=([0-9a-f]{24})/.exec(location.hash || "");
