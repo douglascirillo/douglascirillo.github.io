@@ -329,51 +329,85 @@
 
     if (!isConfigured) return;
 
+    /* Session Replay (plugin-session-replay-browser 1.36.7,
+       pinned). Full capture, sampleRate 1, for human sessions
+       only: BOT_CLS is computed above, before the SDK loads, and
+       the plugin is registered only when it says human. Bot and
+       scanner sessions get analytics exactly as before and are
+       never recorded. If the SDK bundle already exposes
+       window.sessionReplay, the plugin library is not loaded. */
+    var SR_PLUGIN_SRC = 'https://cdn.amplitude.com/libs/plugin-session-replay-browser-1.36.7-min.js.gz';
+
     var sdk = document.createElement('script');
     sdk.src = 'https://cdn.amplitude.com/script/' + encodeURIComponent(AMPLITUDE_API_KEY) + '.js';
     sdk.async = true;
     sdk.onload = function () {
-      try {
-        if (window.amplitude && typeof window.amplitude.init === 'function') {
-          window.amplitude.init(AMPLITUDE_API_KEY, {
-            fetchRemoteConfig: false,
-            autocapture: {
-              pageViews: true,
-              sessions: true,
-              formInteractions: false,
-              fileDownloads: false,
-              elementInteractions: false
+      var started = false;
+      var start = function () {
+        if (started) return;
+        started = true;
+        try {
+          if (window.amplitude && typeof window.amplitude.init === 'function') {
+            if (!BOT_CLS.is_bot && window.sessionReplay && typeof window.sessionReplay.plugin === 'function' && typeof window.amplitude.add === 'function') {
+              try { window.amplitude.add(window.sessionReplay.plugin({ sampleRate: 1 })); } catch (e) { /* Replay must never break analytics. */ }
             }
-          });
-          ready = true;
-          try {
-            if (typeof window.amplitude.Identify === 'function' && typeof window.amplitude.identify === 'function') {
-              var botId = new window.amplitude.Identify();
-              botId.set('is_bot', BOT_CLS.is_bot);
-              botId.set('user_agent_type', BOT_CLS.user_agent_type);
-              window.amplitude.identify(botId);
-            }
-            if (typeof window.amplitude.add === 'function') {
-              window.amplitude.add({
-                name: 'bot-classification',
-                type: 'enrichment',
-                execute: function (event) {
-                  var props = {};
-                  for (var k in event.event_properties) { props[k] = event.event_properties[k]; }
-                  props.is_bot = BOT_CLS.is_bot;
-                  props.user_agent_type = BOT_CLS.user_agent_type;
-                  event.event_properties = props;
-                  return Promise.resolve(event);
+            window.amplitude.init(AMPLITUDE_API_KEY, {
+              fetchRemoteConfig: false,
+              autocapture: {
+                pageViews: true,
+                sessions: true,
+                formInteractions: false,
+                fileDownloads: false,
+                elementInteractions: false,
+                networkTracking: {
+                  captureRules: [
+                    { statusCodeRange: '400-599' }
+                  ]
                 }
-              });
+              }
+            });
+            ready = true;
+            try {
+              if (typeof window.amplitude.Identify === 'function' && typeof window.amplitude.identify === 'function') {
+                var botId = new window.amplitude.Identify();
+                botId.set('is_bot', BOT_CLS.is_bot);
+                botId.set('user_agent_type', BOT_CLS.user_agent_type);
+                window.amplitude.identify(botId);
+              }
+              if (typeof window.amplitude.add === 'function') {
+                window.amplitude.add({
+                  name: 'bot-classification',
+                  type: 'enrichment',
+                  execute: function (event) {
+                    var props = {};
+                    for (var k in event.event_properties) { props[k] = event.event_properties[k]; }
+                    props.is_bot = BOT_CLS.is_bot;
+                    props.user_agent_type = BOT_CLS.user_agent_type;
+                    event.event_properties = props;
+                    return Promise.resolve(event);
+                  }
+                });
+              }
+            } catch (e) { /* Classification must never break analytics. */ }
+            while (pending.length) {
+              var queued = pending.shift();
+              try { window.amplitude.track('Outbound Link Click', queued); } catch (e) {}
             }
-          } catch (e) { /* Classification must never break analytics. */ }
-          while (pending.length) {
-            var queued = pending.shift();
-            try { window.amplitude.track('Outbound Link Click', queued); } catch (e) {}
           }
-        }
-      } catch (e) { /* Analytics must never break the page. */ }
+        } catch (e) { /* Analytics must never break the page. */ }
+      };
+      if (BOT_CLS.is_bot || window.sessionReplay || !window.amplitude) {
+        start();
+      } else {
+        var sr = document.createElement('script');
+        sr.src = SR_PLUGIN_SRC;
+        sr.async = true;
+        sr.onload = function () { start(); };
+        sr.onerror = function () { start(); };
+        document.head.appendChild(sr);
+        /* If the plugin CDN stalls, analytics still starts. */
+        setTimeout(start, 3000);
+      }
     };
     sdk.onerror = function () { /* Fail silently if the CDN is unreachable. */ };
     document.head.appendChild(sdk);
@@ -418,6 +452,7 @@
       <section aria-labelledby="measured-h">
         <h2 id="measured-h">How is it measured?</h2>
         <p>Amplitude has measured the site since day one: page views, sessions, and outbound clicks. Google Search Console and Bing Webmaster Tools watch indexing, and Bing matters more than it used to because its index feeds AI answers. Semrush tracks a short list of keywords, my name and the ideas I write about. Amplitude also tracks AI visibility: how the name and the ideas surface in ChatGPT and Google AI Overview answers, against a baseline recorded when the tracking started. A personal site gets the same measurement discipline as a business property. Every event also carries a bot classification, an is_bot flag and a user_agent_type category parsed from the user agent at load, so the reporting can filter to humans and break the automated traffic down by kind.</p>
+        <p>Amplitude also records sessions as replays, at full capture, so a visit that goes wrong can be watched instead of reconstructed from its events. Console output and failed requests are captured with the session, because the debugging record should show what the visitor&rsquo;s browser saw, errors included. Text typed into any field stays masked, sessions the page classifies as bots are not recorded, and nothing in a replay carries a name or an email.</p>
       </section>
 
       <section aria-labelledby="team-h">
@@ -607,6 +642,7 @@
           <li><strong>Composition leaves home:</strong> every case study now assembles a starting view around itself on arrival, with the published page standing underneath.</li>
           <li><strong>Starting views, made additive:</strong> a case study&rsquo;s assembly brings its place in the record, its sibling case, its principle, and its practice, and leaves its own proof to the page it stands on.</li>
           <li><strong>The prompt field:</strong> the Lindblad Expeditions case study rebuilds around a visitor&rsquo;s prompt, turn by turn, from the published record.</li>
+          <li><strong>Session replay, at full capture:</strong> Amplitude now records sessions, console output, and failed requests for debugging, with typed text masked and bot sessions excluded.</li>
         </ul></div></details>
       </section>
 
