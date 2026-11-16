@@ -9,7 +9,13 @@
    nothing, and nothing in it is added to any event or request.
    Design: site-generative/increment3-mirror-design.md; build sheet:
    site-generative/increment3-build-staging.md (P-1116-15 edits
-   applied). Entries stop counting after 90 days and are pruned on
+   applied). The emphasis model carries the Reading B amendment
+   (site-generative/increment3-emphasis-amendment.md, P-1116-17):
+   the assignment echo, the practice-page route, and same-kind
+   displacement, with Douglas's three rulings of Nov 16, 2026
+   (self-visits excluded from the echo; the echo differentiated
+   at 0.25 to concept/principle blocks and 0.5 to practice
+   blocks; same-kind displacement). Entries stop counting after 90 days and are pruned on
    read and on write. Inspect-and-clear lives in the panel this file
    renders (doors: the receipt and the colophon).
    Measurement never breaks the page: every storage, network and
@@ -88,6 +94,9 @@
   var MAP_MAX = 50;
   var SPECS_MAX = 5;
   var PROMOTION_FLOOR = 2.0;
+  var ECHO_CAP = 3.0;
+  var ECHO_CONCEPT_RATE = 0.25;
+  var ECHO_PRACTICE_RATE = 0.5;
 
   var INTENT_IDS = ["search_decline", "cdp", "replatform", "team",
     "speaking", "coherence", "measurement"];
@@ -403,7 +412,8 @@
     var m = {
       pages: {}, pageNames: {}, pageAnchors: {},
       records: {}, recordLabels: {}, recordPages: {},
-      blocks: {}, proofByPage: {}, slices: {}
+      blocks: {}, proofByPage: {}, practiceByPage: {},
+      pageThemes: {}, startingSpecs: {}, slices: {}
     };
     var locRe = /<loc>([^<]+)<\/loc>/g, lm;
     while ((lm = locRe.exec(String(sitemapText || ""))) !== null) {
@@ -441,6 +451,7 @@
         m.pages[pg] = true;
         if (e.page_name) m.pageNames[pg] = e.page_name;
         if (e.anchor) m.pageAnchors[pg] = e.anchor;
+        if (e.starting_spec) m.startingSpecs[pg] = e.starting_spec;
         var slice = { ids: [], set: {} };
         (e.blocks || []).forEach(function (b) {
           addBlock(m, b);
@@ -460,6 +471,28 @@
       if (b.kind === "proof" && b.link && !m.proofByPage[b.link]) {
         m.proofByPage[b.link] = id;
       }
+      if (b.kind === "practice" && b.link && !m.practiceByPage[b.link]) {
+        m.practiceByPage[b.link] = id;
+      }
+    });
+    // The theme map (amendment section 2.1): each case-study
+    // page's assigned concept/principle block and practice block,
+    // read from its published starting spec. A page with no
+    // starting spec echoes nothing; a block outside the manifest
+    // can be neither an echo source nor an echo target.
+    Object.keys(m.startingSpecs).forEach(function (pg) {
+      var ss = m.startingSpecs[pg];
+      var list = ss && Array.isArray(ss.blocks) ? ss.blocks : [];
+      var c = null, p = null;
+      list.forEach(function (item) {
+        var id = typeof item === "string" ? item :
+          (item && item.id ? item.id : null);
+        if (!id || !m.blocks[id]) return;
+        var kind = m.blocks[id].kind;
+        if ((kind === "concept" || kind === "principle") && !c) c = id;
+        if (kind === "practice" && !p) p = id;
+      });
+      if (c || p) m.pageThemes[pg] = { c: c, p: p };
     });
     return m;
   }
@@ -718,13 +751,71 @@
       }
     }
     function live(e) { return !cutoffSec || e.l < cutoffSec; }
-    var key, e, proofId;
+    // The affinity channel (amendment sections 2.2 and 2.3). A
+    // browsing contribution routed to a page's proof block also
+    // echoes to that page's assigned theme blocks: the
+    // concept/principle block at 0.25x and the practice block at
+    // 0.5x, accumulated per (block, category) and clipped
+    // proportionally at the 3.0 echo cap before joining the
+    // score map, so every traced category stays a genuine
+    // contributor. Entries sourced from the current page itself
+    // never echo into it (Douglas's ruling, Nov 16, 2026); the
+    // page's own direct scoring above is unchanged. A page with
+    // no proof block but a practice block of its own (a practice
+    // page) routes its entries to that practice block at the
+    // category's own base, in place of the proof route, and
+    // echoes nothing onward.
+    var echoAcc = {};
+    function accumulateEcho(cat, blockId, amount, entryL) {
+      if (!blockId || !(amount > 0)) return;
+      var per = echoAcc[blockId];
+      if (!per) { per = {}; echoAcc[blockId] = per; }
+      var cell = per[cat];
+      if (!cell) { cell = { amt: 0, minL: entryL }; per[cat] = cell; }
+      cell.amt += amount;
+      if (entryL < cell.minL) cell.minL = entryL;
+    }
+    function routeBrowsing(cat, sourcePage, contribution, entryL) {
+      if (!sourcePage) return;
+      var proofId = manifest.proofByPage[sourcePage];
+      if (proofId) {
+        add(cat, proofId, contribution, entryL);
+        if (sourcePage !== currentPageKey) {
+          var theme = manifest.pageThemes[sourcePage];
+          if (theme) {
+            accumulateEcho(cat, theme.c,
+              ECHO_CONCEPT_RATE * contribution, entryL);
+            accumulateEcho(cat, theme.p,
+              ECHO_PRACTICE_RATE * contribution, entryL);
+          }
+        }
+        return;
+      }
+      var practiceId = manifest.practiceByPage[sourcePage];
+      if (practiceId) add(cat, practiceId, contribution, entryL);
+    }
+    function flushEchoes() {
+      Object.keys(echoAcc).forEach(function (bid) {
+        var per = echoAcc[bid], total = 0, cat;
+        for (cat in per) {
+          if (Object.prototype.hasOwnProperty.call(per, cat)) {
+            total += per[cat].amt;
+          }
+        }
+        var f = total > ECHO_CAP ? ECHO_CAP / total : 1;
+        for (cat in per) {
+          if (Object.prototype.hasOwnProperty.call(per, cat)) {
+            add(cat, bid, per[cat].amt * f, per[cat].minL);
+          }
+        }
+      });
+    }
+    var key, e;
     for (key in led.pages) {
       if (!Object.prototype.hasOwnProperty.call(led.pages, key)) continue;
       e = led.pages[key]; if (!live(e)) continue;
       var pc = 1 * ageFactor(e.l, now) * countFactor(e.c);
-      proofId = manifest.proofByPage[key];
-      add("pages", proofId, pc, e.l);
+      routeBrowsing("pages", key, pc, e.l);
       if (key === currentPageKey) {
         add("pages", manifest.pageAnchors[key], pc, e.l);
       }
@@ -732,15 +823,13 @@
     for (key in led.records) {
       if (!Object.prototype.hasOwnProperty.call(led.records, key)) continue;
       e = led.records[key]; if (!live(e)) continue;
-      proofId = manifest.proofByPage[manifest.recordPages[key]];
-      add("records", proofId,
+      routeBrowsing("records", manifest.recordPages[key],
         2 * ageFactor(e.l, now) * countFactor(e.c), e.l);
     }
     for (key in led.ask_records) {
       if (!Object.prototype.hasOwnProperty.call(led.ask_records, key)) continue;
       e = led.ask_records[key]; if (!live(e)) continue;
-      proofId = manifest.proofByPage[manifest.recordPages[key]];
-      add("ask_records", proofId,
+      routeBrowsing("ask_records", manifest.recordPages[key],
         3 * ageFactor(e.l, now) * countFactor(e.c), e.l);
     }
     for (key in led.intents) {
@@ -752,10 +841,10 @@
     for (key in led.compositions) {
       if (!Object.prototype.hasOwnProperty.call(led.compositions, key)) continue;
       e = led.compositions[key]; if (!live(e)) continue;
-      proofId = manifest.proofByPage[key];
-      add("compositions", proofId,
+      routeBrowsing("compositions", key,
         3 * ageFactor(e.l, now) * countFactor(e.c), e.l);
     }
+    flushEchoes();
     // Specs: tier 1, count factor fixed at 1.0, deduped per block
     // across specs (the most recent spec naming a block sets its age).
     var specLatest = {};
@@ -797,6 +886,14 @@
 
   function blockKind(id) {
     return manifest && manifest.blocks[id] ? manifest.blocks[id].kind : "";
+  }
+
+  // Kind class for same-kind displacement: concept and principle
+  // are one class (the theme map's C slot); every other kind is
+  // its own class.
+  function kindClass(id) {
+    var k = blockKind(id);
+    return (k === "concept" || k === "principle") ? "concept" : k;
   }
 
   function sortByScore(items, scores) {
@@ -869,12 +966,31 @@
           var s = scores[cid] || 0;
           if (s > bestScore) { best = cid; bestScore = s; }
         });
-        var displaced = sorted[sorted.length - 1];
+        var dispIdx = sorted.length - 1;
+        var displaced = sorted[dispIdx];
         var displacedScore = scores[itemId(displaced)] || 0;
+        if (best) {
+          // Same-kind displacement (Douglas's ruling, Nov 16,
+          // 2026): a promoted block preferentially displaces a
+          // block of its own kind class, so a view keeps its
+          // one-concept/one-practice shape. The shipped
+          // lowest-score rule above is the fallback, used only
+          // when no same-kind block is displaceable.
+          var bestClass = kindClass(best);
+          for (var di = sorted.length - 1; di >= 0; di--) {
+            if (kindClass(itemId(sorted[di])) !== bestClass) continue;
+            var ds = scores[itemId(sorted[di])] || 0;
+            if (bestScore > ds) {
+              dispIdx = di;
+              displaced = sorted[di];
+              displacedScore = ds;
+            }
+            break; // the last same-kind block is its lowest-scored
+          }
+        }
         if (best && bestScore >= PROMOTION_FLOOR &&
             bestScore > displacedScore) {
-          sorted[sorted.length - 1] =
-            makeBlockItem(displaced, best);
+          sorted[dispIdx] = makeBlockItem(displaced, best);
           promoted = true;
         }
       }
