@@ -108,6 +108,15 @@
   var PRESENTER = (window.DCSurface && window.DCSurface.active)
     ? "surface" : "layered";
   function surfaceOn() { return PRESENTER === "surface"; }
+  /* Engaged-mode batch (Nov 16, 2026; build sheet section 12):
+     the StreamPresenter is selected when the surface layer is
+     active and surface.js's ENGAGED flag is on, read at boot
+     through DCSurface.engaged. With the flag off, every branch
+     below is inert and the shipped presenters run untouched. */
+  function streamOn() {
+    return !!(window.DCSurface && window.DCSurface.active &&
+      window.DCSurface.engaged);
+  }
   function trySurface(fn) {
     try { return fn(window.DCSurface) === true; }
     catch (e) {
@@ -1278,6 +1287,11 @@
 
   function renderArrival(el, page, entry, view, spec, source,
                          historyCategories) {
+    if (streamOn()) {
+      streamRenderArrival(el, page, entry, view, spec, source,
+        historyCategories);
+      return;
+    }
     if (PROMPT_PAGES[page]) {
       initSession(el, page, entry, view, spec, source, historyCategories);
     } else {
@@ -3290,7 +3304,10 @@
       // No composition mount: on the surface path a generic flat
       // session still serves composer submits (unified batch);
       // the composed region is created on the first state.
-      if (surfaceOn()) initGenericFlat();
+      if (surfaceOn()) {
+        if (streamOn()) initStreamGeneric();
+        else initGenericFlat();
+      }
       return;
     }
     if (el.hasAttribute("data-compose-page")) {
@@ -3313,22 +3330,29 @@
       pageInit(el); return;
     }
     el.setAttribute("aria-live", "polite");
-    var homeFlat = surfaceOn() ? initHomeFlat(el) : null;
+    var homeFlat = surfaceOn()
+      ? (streamOn() ? initStreamHome(el) : initHomeFlat(el)) : null;
     document.addEventListener("dc:problem", function (ev) {
       var text = ev && ev.detail && ev.detail.text;
       if (!text) return;
-      if (homeFlat) submitUnifiedFlat(homeFlat, text);
+      if (homeFlat) {
+        if (homeFlat.isStream) streamSubmitText(homeFlat, text);
+        else submitUnifiedFlat(homeFlat, text);
+      }
       else classifyProblem(text);
     });
     document.addEventListener("dc:composition-cleared", function () {
-      if (homeFlat) goFlat(homeFlat, 0);
+      if (homeFlat) {
+        if (!homeFlat.isStream) goFlat(homeFlat, 0);
+      }
       else clearCompositionAny();
     });
     var btns = document.querySelectorAll(".intent-btn");
     Array.prototype.forEach.call(btns, function (btn) {
       btn.addEventListener("click", function () {
         if (homeFlat) {
-          homeStripSelect(homeFlat, intentOfButton(btn));
+          if (homeFlat.isStream) streamIntentTap(homeFlat, btn);
+          else homeStripSelect(homeFlat, intentOfButton(btn));
           return;
         }
         load().then(function () { render(intentOfButton(btn)); });
@@ -3336,6 +3360,15 @@
     });
     window.addEventListener("hashchange", function () {
       var hm = /#c=([0-9a-f]{24})/.exec(location.hash || "");
+      if (homeFlat && homeFlat.isStream) {
+        // Share codes are an arrival mechanism: while the
+        // stream stands, a hash change does not re-shape the
+        // conversation. Before engagement it renders plainly.
+        if (homeFlat.streamEl) return;
+        if (!hm) { streamClearHomeShare(homeFlat); return; }
+        streamHomeShare(homeFlat, hm[1]);
+        return;
+      }
       if (homeFlat) {
         if (!hm) { goFlat(homeFlat, 0); return; }
         load().then(function () {
@@ -3354,6 +3387,13 @@
     });
     var m = /#c=([0-9a-f]{24})/.exec(location.hash || "");
     if (m) {
+      if (homeFlat && homeFlat.isStream) {
+        streamHomeShare(homeFlat, m[1]);
+        if (el.scrollIntoView) {
+          el.scrollIntoView({ block: "nearest" });
+        }
+        return;
+      }
       load().then(function () {
         var entry = bySig && bySig[m[1]];
         if (!entry) {
@@ -3377,6 +3417,1517 @@
     }
   }
 
+  /* ============================================================
+     Engaged mode: the StreamPresenter (Nov 16, 2026; engaged-mode
+     amendment E1 to E10, build sheet P-1116-29 as approved).
+     Selected when the surface layer is active and ENGAGED is on
+     (streamOn). On engagement the published page is adopted as
+     the opening turn of a conversation stream in the canvas;
+     submits append prompt and response turns; the stream follows
+     the visit across pages through one sessionStorage store
+     (dc_stream_v1); the receipt goes per-turn; restore, exit,
+     and clear are dock controls. The renderers, the validator,
+     the weighting, the accounting discipline, and the events
+     are the unified batch's, shared, not forked. Flag off, none
+     of this runs and dc_stream_v1 is never read.
+     ============================================================ */
+
+  var STREAM_KEY = "dc_stream_v1";
+  var STREAM_MAX_PLANS = 48;
+  var STREAM_MAX_BYTES = 512 * 1024;
+  var STREAM_PAGE_CAP = 10;
+  var STREAM_VISIT_CAP = 30;
+  var VISIT_CAP_LINE = "You have reached this visit\u2019s prompt " +
+    "limit. Your views and the published pages remain.";
+  var STREAM_DROPPED_LINE = "Earlier turns are not kept.";
+
+  var streamCtx = null;
+
+  function streamSF() { return window.DCSurface; }
+
+  function makeStreamCtx(cfg) {
+    return {
+      isStream: true, kind: cfg.kind, page: cfg.page,
+      pageName: cfg.pageName || null, el: cfg.el || null,
+      entry: cfg.entry || null, view: cfg.view || null,
+      arrivalSpec: null, arrivalSource: "arrival",
+      arrivalCategories: null, arrivalReceiptModel: null,
+      arrivalDismissed: false,
+      segSpec: null,
+      segScope: cfg.kind === "home" ? "released" : "page",
+      segIntent: null, segSig: null, segLastPrompt: null,
+      segContentTurns: 0,
+      inFlight: false, pendingRelease: null, triggerNext: null,
+      store: null, streamEl: null, openingArticle: null,
+      openingBody: null, adoptedRun: null, collapsed: false,
+      startersEl: null, pendingEls: null, failureEls: null
+    };
+  }
+
+  function streamVF(ctx) {
+    return { kind: ctx.kind, page: ctx.page,
+             pageName: ctx.pageName, view: ctx.view,
+             entry: ctx.entry };
+  }
+
+  function registerStreamSubmit(ctx) {
+    trySurface(function (SF) {
+      SF.registerUnifiedSubmit(function (text) {
+        if (streamCtx !== ctx) return false;
+        streamSubmitText(ctx, text);
+        return true;
+      });
+      return true;
+    });
+  }
+
+  /* ---- The visit store (sheet section 4) ---- */
+
+  function streamNormalizeStore(d) {
+    if (!d || d.v !== 1 || !Array.isArray(d.turns)) return null;
+    if (!d.caps || typeof d.caps !== "object") {
+      d.caps = { pages: {}, visit: 0 };
+    }
+    if (!d.caps.pages || typeof d.caps.pages !== "object") {
+      d.caps.pages = {};
+    }
+    if (typeof d.caps.visit !== "number") d.caps.visit = 0;
+    if (!d.caps.fired || typeof d.caps.fired !== "object") {
+      d.caps.fired = { pages: {}, visit: false };
+    }
+    if (!d.caps.fired.pages) d.caps.fired.pages = {};
+    if (typeof d.seq !== "number") d.seq = d.turns.length + 1;
+    if (typeof d.dropped !== "number") d.dropped = 0;
+    return d;
+  }
+
+  function streamReadStore() {
+    try {
+      var raw = sessionStorage.getItem(STREAM_KEY);
+      if (!raw) return null;
+      return streamNormalizeStore(JSON.parse(raw));
+    } catch (e) { return null; }
+  }
+
+  function streamNewStore() {
+    return {
+      v: 1, engaged: true, exited: false, seq: 1, dropped: 0,
+      caps: { pages: {}, visit: 0,
+              fired: { pages: {}, visit: false } },
+      engagedFired: false, turns: []
+    };
+  }
+
+  /* Eviction (sheet section 4): oldest prompt-plus-response
+     pairs first, whole, never mid-turn; then oldest opening
+     cards that are not the current page's; the newest pair is
+     never evicted. The caps and the dropped count live outside
+     turns and are never evicted. */
+  function streamEvict(store, currentPage) {
+    var guard = 0;
+    while (guard++ < 300) {
+      var size = 0;
+      try { size = JSON.stringify(store).length; } catch (e) {}
+      if (store.turns.length <= STREAM_MAX_PLANS &&
+          size <= STREAM_MAX_BYTES) return;
+      var turns = store.turns;
+      var pairAt = -1, pairs = 0;
+      for (var i = 0; i + 1 < turns.length; i++) {
+        if (turns[i].kind === "prompt" &&
+            (turns[i + 1].kind === "response" ||
+             turns[i + 1].kind === "dialogue")) {
+          if (pairAt < 0) pairAt = i;
+          pairs += 1;
+        }
+      }
+      if (pairs > 1 && pairAt >= 0) {
+        turns.splice(pairAt, 2);
+        store.dropped += 2;
+        continue;
+      }
+      var droppedOne = false;
+      for (var j = 0; j < turns.length; j++) {
+        var p = turns[j];
+        if (p.kind === "opening" && p.page !== currentPage &&
+            j !== turns.length - 1) {
+          turns.splice(j, 1);
+          store.dropped += 1;
+          droppedOne = true;
+          break;
+        }
+      }
+      if (droppedOne) continue;
+      for (var k = 0; k + 1 < turns.length; k++) {
+        if (turns[k].kind === "prompt") {
+          turns.splice(k, 1);
+          store.dropped += 1;
+          droppedOne = true;
+          break;
+        }
+      }
+      if (!droppedOne) return;
+    }
+  }
+
+  function streamSaveStore(store, currentPage) {
+    streamEvict(store, currentPage);
+    try {
+      sessionStorage.setItem(STREAM_KEY, JSON.stringify(store));
+      return true;
+    } catch (e) {
+      // Storage exception: evict and retry once; the stream
+      // continues in memory if the write still fails.
+      streamEvict(store, currentPage);
+      try {
+        sessionStorage.setItem(STREAM_KEY, JSON.stringify(store));
+        return true;
+      } catch (e2) { return false; }
+    }
+  }
+
+  function streamAppendPlan(ctx, store, plan) {
+    plan.seq = store.seq;
+    store.seq += 1;
+    store.turns.push(plan);
+    streamSaveStore(store, ctx.page);
+    return plan;
+  }
+
+  /* ---- Payload loaders for the stream (starters, slices) ---- */
+
+  var startersPayload = null, startersLoading = null;
+  function loadStarters() {
+    if (startersPayload) return Promise.resolve(startersPayload);
+    if (startersLoading) return startersLoading;
+    startersLoading = fetch("/starters.json")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        startersPayload = (d && typeof d === "object") ? d : null;
+        return startersPayload;
+      })
+      .catch(function () { startersPayload = null; return null; });
+    return startersLoading;
+  }
+
+  var slicePayload = null, sliceLoading = null;
+  function loadSlice() {
+    if (slicePayload) return Promise.resolve(slicePayload);
+    if (sliceLoading) return sliceLoading;
+    sliceLoading = fetch("/blocks-case-studies.json")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        slicePayload = (d && d.pages) ? d : null;
+        return slicePayload;
+      })
+      .catch(function () { slicePayload = null; return null; });
+    return sliceLoading;
+  }
+
+  /* ---- Segment runtime: the page's chain within the visit ---- */
+
+  function seedStreamSeg(ctx, store) {
+    ctx.segSpec = ctx.kind === "page" ? ctx.arrivalSpec : null;
+    ctx.segScope = ctx.kind === "home" ? "released" : "page";
+    ctx.segIntent = null;
+    ctx.segSig = null;
+    ctx.segLastPrompt = null;
+    ctx.segContentTurns = 0;
+    store.turns.forEach(function (p) {
+      if (p.page !== ctx.page || p.kind !== "response") return;
+      if (p.mixture === "pointer") return;
+      if (p.mixture === "intent") {
+        ctx.segIntent = p.intent;
+        ctx.segSig = p.sig;
+        ctx.segSpec = null;
+        return;
+      }
+      ctx.segSpec = p.spec || null;
+      ctx.segScope = p.scope || ctx.segScope;
+      ctx.segIntent = p.intent || null;
+      ctx.segSig = p.sig || null;
+      ctx.segLastPrompt = p.prompt || null;
+      ctx.segContentTurns += 1;
+    });
+  }
+
+  /* The unified request's spec chain for this page's segment:
+     the arrival spec heads a case study's chain; each content
+     turn contributes its effective spec; an intent turn marks
+     its position with a null (its view carries no spec). The
+     last position is the current spec; the rest are priors. */
+  function streamChain(ctx, store) {
+    var all = [];
+    if (ctx.kind === "page" && ctx.arrivalSpec) {
+      all.push(ctx.arrivalSpec);
+    }
+    if (store) {
+      store.turns.forEach(function (p) {
+        if (p.page !== ctx.page || p.kind !== "response" ||
+            p.mixture === "pointer") return;
+        all.push(p.mixture === "intent" ? null : (p.spec || null));
+      });
+    }
+    var priors = [];
+    for (var i = 0; i + 1 < all.length; i++) {
+      if (all[i]) priors.push({ spec: all[i] });
+    }
+    return {
+      current: all.length ? all[all.length - 1] : null,
+      priors: priors
+    };
+  }
+
+  function streamTailIsContentFor(ctx) {
+    var turns = ctx.store ? ctx.store.turns : [];
+    for (var i = turns.length - 1; i >= 0; i--) {
+      var p = turns[i];
+      if (p.page !== ctx.page) continue;
+      if (p.kind === "response") {
+        return p.mixture !== "pointer" &&
+          p.prompt === ctx.segLastPrompt;
+      }
+      return false;
+    }
+    return false;
+  }
+
+  /* ---- Adoption (sheet section 2.2) ----
+     The canvas run: the contiguous element siblings between
+     the header and the footer in their shared parent. On most
+     pages that is <main> alone; on home it is the definition,
+     the intent region, and <main>, so the entry region joins
+     the opening turn as section 3.6 rules. The nodes move;
+     nothing is copied, re-rendered, or re-fetched, and the
+     recorded run restores exactly on exit. */
+
+  function streamCanvasRun() {
+    var main = document.querySelector("main");
+    if (!main || !main.parentNode) return null;
+    var parent = main.parentNode;
+    var kids = Array.prototype.slice.call(parent.children);
+    var start = 0, end = kids.length;
+    kids.forEach(function (k, i) {
+      if (k.tagName === "HEADER") start = i + 1;
+      if (k.tagName === "FOOTER" && end === kids.length) end = i;
+    });
+    var nodes = kids.slice(start, end).filter(function (n) {
+      return n.id !== "cp-stream";
+    });
+    if (!nodes.length) return null;
+    return { parent: parent,
+             anchor: end < kids.length ? kids[end] : null,
+             nodes: nodes };
+  }
+
+  function capFirst(s) {
+    return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  }
+
+  function streamPageDisplayName(ctx) {
+    var h1 = document.querySelector("h1");
+    var t = h1 && h1.textContent ? h1.textContent.trim() : "";
+    if (t) return t;
+    return (document.title || "").split("|")[0].trim() || ctx.page;
+  }
+
+  function streamOpeningPlan(ctx) {
+    if (ctx.kind === "page" && ctx.entry) {
+      var orient = null;
+      if (ctx.view && ctx.view.blocks) {
+        ctx.view.blocks.forEach(function (b) {
+          if (b.id === ctx.entry.anchor && b.lengths) {
+            orient = b.lengths.short || null;
+          }
+        });
+      }
+      return { kind: "opening", page: ctx.page,
+               name: ctx.entry.page_name,
+               title: capFirst(ctx.entry.page_name),
+               orientation: orient };
+    }
+    var name = streamPageDisplayName(ctx);
+    return { kind: "opening", page: ctx.page, name: name,
+             title: name, orientation: null };
+  }
+
+  function streamMarkerEl(plan) {
+    var p = document.createElement("p");
+    p.className = "stream-marker";
+    p.textContent = "Continuing on " + plan.name;
+    return p;
+  }
+
+  function streamCardHeadEl(plan, expandable, ctx) {
+    var head = document.createElement("div");
+    head.className = "stream-card-head";
+    var h = document.createElement("h2");
+    h.className = "stream-card-title";
+    h.textContent = plan.title;
+    head.appendChild(h);
+    if (plan.orientation) {
+      var o = document.createElement("p");
+      o.className = "stream-card-orient";
+      o.textContent = plan.orientation;
+      head.appendChild(o);
+    }
+    if (expandable) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "stream-expand";
+      b.setAttribute("aria-expanded", "true");
+      b.textContent = "Read the whole page";
+      b.addEventListener("click", function () {
+        setStreamOpeningCollapsed(ctx, !ctx.collapsed, false);
+      });
+      head.appendChild(b);
+    }
+    return head;
+  }
+
+  function streamOpeningCardEl(plan, marker) {
+    var art = document.createElement("article");
+    art.className = "stream-opening stream-opening-card";
+    art.setAttribute("data-page", plan.page);
+    if (marker) art.appendChild(streamMarkerEl(plan));
+    art.appendChild(streamCardHeadEl(plan, false, null));
+    return art;
+  }
+
+  function buildAdoptedOpening(ctx, plan, run, marker) {
+    var art = document.createElement("article");
+    art.className = "stream-opening";
+    art.setAttribute("data-page", plan.page);
+    if (marker) art.appendChild(streamMarkerEl(plan));
+    art.appendChild(streamCardHeadEl(plan, true, ctx));
+    var rc = document.createElement("div");
+    rc.className = "stream-arrival-receipt";
+    rc.hidden = true;
+    art.appendChild(rc);
+    var body = document.createElement("div");
+    body.className = "stream-opening-body";
+    run.nodes.forEach(function (n) { body.appendChild(n); });
+    art.appendChild(body);
+    ctx.openingBody = body;
+    return art;
+  }
+
+  function streamDroppedEl() {
+    var p = document.createElement("p");
+    p.className = "stream-dropped";
+    p.textContent = STREAM_DROPPED_LINE;
+    return p;
+  }
+
+  function firstStreamResponseTop(ctx) {
+    if (!ctx.streamEl) return null;
+    var el = ctx.streamEl.querySelector(".stream-response");
+    return el ? el.offsetTop : null;
+  }
+
+  /* The collapse (sheet section 2.3): same task as the first
+     content-bearing turn's render, scroll-anchored on the
+     first response turn; the stream root carries
+     overflow-anchor: none so exactly this one adjustment
+     acts. Expanding reverses it in place. */
+  function setStreamOpeningCollapsed(ctx, collapsed, instant) {
+    if (!ctx.openingBody || !ctx.openingArticle) return;
+    var before = (!instant && collapsed)
+      ? firstStreamResponseTop(ctx) : null;
+    ctx.openingBody.hidden = collapsed;
+    ctx.collapsed = collapsed;
+    ctx.openingArticle.classList.toggle(
+      "stream-opening-collapsed", collapsed);
+    var btn = ctx.openingArticle.querySelector(".stream-expand");
+    if (btn) {
+      btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    }
+    if (before != null) {
+      var after = firstStreamResponseTop(ctx);
+      if (after != null && after !== before) {
+        try { window.scrollBy(0, after - before); } catch (e) {}
+      }
+    }
+  }
+
+  function collapseStreamOpeningAfterTurn(ctx) {
+    if (!ctx.collapsed) {
+      setStreamOpeningCollapsed(ctx, true, false);
+    }
+  }
+
+  function attachStreamArrivalReceipt(ctx) {
+    if (!ctx.arrivalReceiptModel || ctx.arrivalDismissed ||
+        !ctx.openingArticle) return;
+    var rc = ctx.openingArticle.querySelector(
+      ".stream-arrival-receipt");
+    if (rc) {
+      streamSF().setReceiptIn(rc, ctx.arrivalReceiptModel);
+      streamSF().setReceipt(null);
+    }
+  }
+
+  function updateStreamScope(ctx) {
+    if (ctx.kind === "home") return;
+    streamSF().setScope(ctx.segScope === "released"
+      ? "Building from across the published record"
+      : "Starting from " + ctx.pageName);
+  }
+
+  function streamControlsModel(ctx) {
+    return {
+      exited: false,
+      onRestore: function () { streamRestore(ctx); },
+      onExit: function () { streamExit(ctx); },
+      onClear: function () { streamClear(ctx); }
+    };
+  }
+
+  function streamExitedControlsModel(ctx) {
+    return {
+      exited: true,
+      onClear: function () { streamClear(ctx); }
+    };
+  }
+
+  /* Builds the stream in this document from the store,
+     adopting the canvas into the current page's opening turn.
+     Resolves false when the canvas cannot be adopted. */
+  function buildStreamDomNow(ctx, store) {
+    var run = streamCanvasRun();
+    if (!run) return false;
+    var adoptedIdx = -1;
+    for (var i = store.turns.length - 1; i >= 0; i--) {
+      if (store.turns[i].kind === "opening") {
+        if (store.turns[i].page === ctx.page) adoptedIdx = i;
+        break;
+      }
+    }
+    if (adoptedIdx < 0) {
+      var plan = streamOpeningPlan(ctx);
+      plan.seq = store.seq;
+      store.seq += 1;
+      store.turns.push(plan);
+      adoptedIdx = store.turns.length - 1;
+    }
+    var section = document.createElement("section");
+    section.id = "cp-stream";
+    section.className = "cp-stream";
+    run.parent.insertBefore(section, run.nodes[0]);
+    if (store.dropped > 0) section.appendChild(streamDroppedEl());
+    var seenOpening = false;
+    store.turns.forEach(function (p, idx) {
+      var marker = false;
+      if (p.kind === "opening") {
+        marker = seenOpening;
+        seenOpening = true;
+      }
+      if (idx === adoptedIdx) {
+        ctx.openingArticle = buildAdoptedOpening(ctx, p, run,
+          marker);
+        section.appendChild(ctx.openingArticle);
+      } else if (p.kind === "opening") {
+        section.appendChild(streamOpeningCardEl(p, marker));
+      } else if (p.kind === "prompt") {
+        section.appendChild(streamPromptEl(p));
+      } else if (p.kind === "response") {
+        section.appendChild(streamResponseEl(ctx, p));
+      } else if (p.kind === "dialogue") {
+        section.appendChild(streamDialogueEl(p));
+      }
+    });
+    ctx.streamEl = section;
+    ctx.adoptedRun = run;
+    var hasContent = store.turns.slice(adoptedIdx + 1).some(
+      function (p) { return p.kind === "response"; });
+    if (hasContent) setStreamOpeningCollapsed(ctx, true, true);
+    attachStreamArrivalReceipt(ctx);
+    streamSF().registerControls(streamControlsModel(ctx));
+    streamSF().registerStarters(null);
+    updateStreamScope(ctx);
+    return true;
+  }
+
+  /* Engagement construction (sheet sections 2.2, 5): store
+     created or re-entered, stream built, Conversation Engaged
+     fired once per visit. Payloads land first so stored turns
+     re-render locally with no model call. */
+  function ensureStreamDom(ctx, trigger) {
+    if (ctx.streamEl) return Promise.resolve(true);
+    var store = ctx.store || streamReadStore() || streamNewStore();
+    ctx.store = store;
+    store.engaged = true;
+    store.exited = false;
+    if (!store.engagedFired) {
+      track("Conversation Engaged", {
+        page: ctx.page, trigger: trigger || "typed"
+      });
+      store.engagedFired = true;
+    }
+    var jobs = [loadBlocks(), loadSlice()];
+    if (store.turns.some(function (p) {
+      return p.mixture === "intent";
+    })) {
+      jobs.push(load());
+    }
+    return Promise.all(jobs).then(function () {
+      var ok = buildStreamDomNow(ctx, store);
+      streamSaveStore(store, ctx.page);
+      return ok;
+    }).catch(function () {
+      return buildStreamDomNow(ctx, store);
+    });
+  }
+
+  function restoreStreamDom(ctx) {
+    if (!ctx.streamEl || !ctx.adoptedRun) return;
+    var run = ctx.adoptedRun;
+    run.nodes.forEach(function (n) {
+      run.parent.insertBefore(n, run.anchor);
+    });
+    if (ctx.streamEl.parentNode) {
+      ctx.streamEl.parentNode.removeChild(ctx.streamEl);
+    }
+    ctx.streamEl = null;
+    ctx.openingArticle = null;
+    ctx.openingBody = null;
+    ctx.adoptedRun = null;
+    ctx.collapsed = false;
+    ctx.startersEl = null;
+  }
+
+  /* ---- Restore, exit, clear (sheet section 6) ---- */
+
+  function streamRestore(ctx) {
+    if (!ctx.openingArticle) return;
+    setStreamOpeningCollapsed(ctx, false, false);
+    try {
+      if (ctx.openingArticle.scrollIntoView) {
+        ctx.openingArticle.scrollIntoView({ block: "start" });
+      }
+    } catch (e) { /* scroll is best-effort */ }
+  }
+
+  function streamExit(ctx) {
+    var store = ctx.store;
+    if (store) {
+      store.exited = true;
+      streamSaveStore(store, ctx.page);
+    }
+    restoreStreamDom(ctx);
+    track("Conversation Exited", { page: ctx.page });
+    streamSF().registerControls(streamExitedControlsModel(ctx));
+    streamSF().setScope(null);
+    if (ctx.arrivalReceiptModel && !ctx.arrivalDismissed) {
+      streamSF().setReceipt(ctx.arrivalReceiptModel);
+    }
+  }
+
+  function streamClear(ctx) {
+    var store = ctx.store || streamReadStore();
+    if (ctx.streamEl) restoreStreamDom(ctx);
+    var remainder = {
+      v: 1, engaged: false, exited: false,
+      seq: store ? store.seq : 1, dropped: 0,
+      caps: store ? store.caps
+        : { pages: {}, visit: 0,
+            fired: { pages: {}, visit: false } },
+      engagedFired: store ? !!store.engagedFired : false,
+      turns: []
+    };
+    ctx.store = remainder;
+    try {
+      sessionStorage.setItem(STREAM_KEY, JSON.stringify(remainder));
+    } catch (e) { /* the caps remainder is best-effort */ }
+    ctx.pendingRelease = null;
+    ctx.segSpec = ctx.kind === "page" ? ctx.arrivalSpec : null;
+    ctx.segScope = ctx.kind === "home" ? "released" : "page";
+    ctx.segIntent = null;
+    ctx.segSig = null;
+    ctx.segLastPrompt = null;
+    ctx.segContentTurns = 0;
+    streamSF().registerControls(null);
+    streamSF().setScope(null);
+    streamSF().registerStarters(null);
+    if (ctx.arrivalReceiptModel && !ctx.arrivalDismissed) {
+      streamSF().setReceipt(ctx.arrivalReceiptModel);
+    }
+    track("Conversation Cleared", { page: ctx.page });
+    maybeStreamDockStarters(ctx);
+  }
+
+  /* ---- Boot (sheet section 5) ---- */
+
+  function streamBoot(ctx) {
+    var store = streamReadStore();
+    ctx.store = store;
+    if (store && store.engaged && !store.exited) {
+      seedStreamSeg(ctx, store);
+      ensureStreamDom(ctx, "typed").then(function (ok) {
+        if (!ok) return;
+        try {
+          if (ctx.openingArticle &&
+              ctx.openingArticle.scrollIntoView) {
+            ctx.openingArticle.scrollIntoView({ block: "start" });
+          }
+        } catch (e) { /* landing is best-effort */ }
+        maybeStreamStarters(ctx);
+      });
+      return;
+    }
+    if (store && store.engaged && store.exited) {
+      seedStreamSeg(ctx, store);
+      streamSF().registerControls(streamExitedControlsModel(ctx));
+      return;
+    }
+    maybeStreamDockStarters(ctx);
+  }
+
+  /* Bfcache (sheet section 5): the document arrives as it was
+     left, stream included; the boot does not re-run and does
+     not re-append. The controls re-sync from the store. */
+  window.addEventListener("pageshow", function (ev) {
+    if (!ev.persisted || !streamOn() || !streamCtx) return;
+    var store = streamReadStore();
+    if (!store) return;
+    streamCtx.store = store;
+    if (store.engaged && !store.exited && streamCtx.streamEl) {
+      streamSF().registerControls(streamControlsModel(streamCtx));
+    } else if (store.engaged && store.exited) {
+      streamSF().registerControls(
+        streamExitedControlsModel(streamCtx));
+    }
+  });
+
+  /* ---- Starters (sheet section 7) ---- */
+
+  function streamStarterTap(ctx, starter) {
+    track("Starter Prompt Tapped", {
+      page: ctx.page, starter_id: starter.id
+    });
+    ctx.triggerNext = "starter";
+    var accepted = false;
+    try {
+      accepted = streamSF().tryUnified(starter.text) === true;
+    } catch (e) { accepted = false; }
+    if (!accepted && !ctx.inFlight) {
+      streamSubmitText(ctx, starter.text);
+    }
+  }
+
+  function maybeStreamDockStarters(ctx) {
+    loadStarters().then(function (m) {
+      if (!m || ctx.streamEl) return;
+      var st = streamReadStore();
+      if (st && st.engaged) return;
+      var set = m[ctx.page];
+      if (set && set.length) {
+        streamSF().registerStarters({
+          starters: set,
+          onTap: function (s) { streamStarterTap(ctx, s); }
+        });
+      }
+    });
+  }
+
+  /* A page reached mid-visit carries its starters at the foot
+     of its opening turn until the first submit from that page
+     (E9.3). Rendered only for an opening appended at engaged
+     boot, never for the arrival page's own engagement. */
+  function maybeStreamStarters(ctx) {
+    if (!ctx.openingArticle || !ctx.store) return;
+    var hasTurns = ctx.store.turns.some(function (p) {
+      return p.page === ctx.page && p.kind !== "opening";
+    });
+    if (hasTurns) return;
+    loadStarters().then(function (m) {
+      if (!m || !ctx.openingArticle) return;
+      var set = m[ctx.page];
+      if (!set || !set.length) return;
+      var div = document.createElement("div");
+      div.className = "stream-starters";
+      set.forEach(function (s) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "cp-starter stream-starter";
+        b.textContent = s.text;
+        b.addEventListener("click", function () {
+          streamStarterTap(ctx, s);
+        });
+        div.appendChild(b);
+      });
+      ctx.openingArticle.appendChild(div);
+      ctx.startersEl = div;
+    });
+  }
+
+  function retireStreamStarters(ctx) {
+    if (ctx.startersEl && ctx.startersEl.parentNode) {
+      ctx.startersEl.parentNode.removeChild(ctx.startersEl);
+    }
+    ctx.startersEl = null;
+  }
+
+  /* ---- Turn rendering (sheet sections 3, 9, 10) ---- */
+
+  function streamPromptEl(plan) {
+    var d = document.createElement("div");
+    d.className = "stream-prompt";
+    d.textContent = plan.text;
+    return d;
+  }
+
+  function streamDialogueEl(plan) {
+    var d = document.createElement("div");
+    d.className = "stream-response stream-dialogue";
+    d.setAttribute("tabindex", "-1");
+    d.innerHTML = "<p>" + esc(plan.text) + "</p>" +
+      (plan.link
+        ? '<p class="prompt-actions"><a href="' + esc(plan.link) +
+          '">Browse the case studies</a></p>'
+        : "");
+    return d;
+  }
+
+  function streamSpecPayload(ctx, plan) {
+    if (plan.scope === "released" || ctx.kind !== "page") {
+      return blocksPayload;
+    }
+    if (!plan.page || plan.page === ctx.page) return ctx.view;
+    // A prior page's composition turn re-renders from that
+    // page's own slice, the payload its spec validated against.
+    var pg = slicePayload && slicePayload.pages &&
+      slicePayload.pages[plan.page];
+    return pg || blocksPayload;
+  }
+
+  function streamResponseHtml(ctx, plan) {
+    var heading = ctx.kind === "generic"
+      ? '<h3 class="cp-composed-h">The full picture</h3>'
+      : '<h3 class="composition-h">The full picture</h3>';
+    if (plan.intent && !plan.specNew) {
+      var entry = byIntent && byIntent[plan.intent];
+      return heading + answerElementHtml(plan.answer) +
+        (entry ? entry.html : "") + intentLinksHtml(plan.intent) +
+        (plan.pointer
+          ? streamPointerCardHtml(plan.pointer, false) : "");
+    }
+    var html = answerElementHtml(plan.answer);
+    if (plan.specNew && plan.spec) {
+      html += heading + renderFragmentHtml(plan.spec,
+        streamSpecPayload(ctx, plan),
+        ctx.kind === "page" ? (plan.page || ctx.page) : undefined);
+    }
+    if (plan.pointer) {
+      html += streamPointerCardHtml(plan.pointer,
+        plan.mixture === "pointer");
+    }
+    return html;
+  }
+
+  /* The pointer page card (sheet section 3.4): the covering
+     page's title, its orientation line from the published
+     payloads, and the open action. No generated summary is
+     requested, rendered, or stored. */
+  function streamPointerCardHtml(pointer, withBuildHere) {
+    return '<div class="cp-pointer stream-pointer-card">' +
+      '<p class="stream-pointer-title">' +
+      esc(capFirst(pointer.covering_name)) + "</p>" +
+      '<p class="stream-pointer-sub" hidden></p>' +
+      '<p class="prompt-actions"><a href="' +
+      esc(pointer.covering_page) + '">Open it</a>' +
+      (withBuildHere
+        ? '<button type="button" class="stream-build-here">' +
+          "Build it here instead</button>"
+        : "") +
+      "</p></div>";
+  }
+
+  function streamPointerSubstance(pointer) {
+    return loadSlice().then(function (slice) {
+      var pg = slice && slice.pages &&
+        slice.pages[pointer.covering_page];
+      if (pg && pg.blocks) {
+        var found = null;
+        pg.blocks.forEach(function (b) {
+          if (b.id === pg.anchor && b.lengths) {
+            found = b.lengths.short || null;
+          }
+        });
+        if (found) return found;
+      }
+      return loadBlocks().then(function (bp) {
+        if (bp && bp.page_anchors) {
+          var out = null;
+          bp.page_anchors.forEach(function (a) {
+            if (a.page === pointer.covering_page && a.lengths) {
+              out = a.lengths.short || null;
+            }
+          });
+          return out;
+        }
+        return null;
+      });
+    }).catch(function () { return null; });
+  }
+
+  function fillStreamPointerSubstance(rootEl, plan) {
+    if (!plan.pointer) return;
+    var sub = rootEl.querySelector(".stream-pointer-sub");
+    if (!sub) return;
+    streamPointerSubstance(plan.pointer).then(function (text) {
+      if (text) {
+        sub.textContent = text;
+        sub.hidden = false;
+      } else if (sub.parentNode) {
+        sub.parentNode.removeChild(sub);
+      }
+    });
+  }
+
+  function streamTurnReceiptModel(ctx, plan) {
+    var expanded;
+    if (plan.mixture === "intent") {
+      expanded = '<p class="composition-note">' + NOTE_BUILT + "</p>";
+    } else {
+      var parts = [];
+      if (ctx.kind === "page" && ctx.pageName) {
+        parts.push('<p class="composition-from-intent">' +
+          (plan.scope === "released"
+            ? "Assembled from the published record, beyond " +
+              esc(ctx.pageName) + "."
+            : "Assembled from the published record, starting " +
+              "from " + esc(ctx.pageName) + ".") + "</p>");
+      }
+      if (plan.freshStart) {
+        parts.push('<p class="composition-from-intent">' +
+          FRESH_START_CLAUSE + "</p>");
+      } else if (plan.categories) {
+        var cl = historyClauseLine(ctx.pageName, plan.categories);
+        if (cl) {
+          parts.push('<p class="composition-from-intent">' +
+            cl + "</p>");
+        }
+      }
+      parts.push('<p class="composition-from-intent ' +
+        'prompt-turnline">' + flatReceiptLine(plan) + "</p>");
+      parts.push('<p class="composition-note">' + NOTE_BUILT +
+        "</p>");
+      expanded = parts.join("");
+    }
+    return {
+      historyLabel: plan.categories
+        ? ledgerCategoriesLabel(plan.categories) : null,
+      aiFraming: !!(plan.answer && plan.answer.framing),
+      expandedHtml: expanded,
+      onRestore: null
+    };
+  }
+
+  function streamResponseEl(ctx, plan) {
+    var d = document.createElement("div");
+    d.className = "stream-response";
+    d.setAttribute("tabindex", "-1");
+    d.innerHTML = streamResponseHtml(ctx, plan);
+    fillStreamPointerSubstance(d, plan);
+    var bh = d.querySelector(".stream-build-here");
+    if (bh) {
+      bh.addEventListener("click", function () {
+        streamSubmitText(ctx, plan.prompt, { buildHere: true });
+      });
+    }
+    if (plan.mixture !== "pointer") {
+      var rc = document.createElement("div");
+      rc.className = "stream-receipt";
+      d.appendChild(rc);
+      streamSF().setReceiptIn(rc, streamTurnReceiptModel(ctx, plan));
+    }
+    return d;
+  }
+
+  function firstSentenceOf(text) {
+    var t = String(text || "").trim();
+    var m = /^[^.!?]+[.!?]/.exec(t);
+    return m ? m[0] : t;
+  }
+
+  /* Announce arrival plus lead, never the whole turn (sheet
+     section 10.1): the framing's first sentence, the
+     assembly's heading, the card's title, or the fixed text's
+     first sentence, once per response turn. */
+  function streamAnnounce(plan) {
+    var lead = null;
+    if (plan.kind === "dialogue") {
+      lead = firstSentenceOf(plan.text);
+    } else if (plan.answer) {
+      lead = plan.answer.framing
+        ? firstSentenceOf(plan.answer.framing)
+        : firstSentenceOf(plan.answer.items[0].claim);
+    } else if (plan.specNew || plan.mixture === "intent") {
+      lead = "The full picture";
+    } else if (plan.pointer) {
+      lead = capFirst(plan.pointer.covering_name);
+    }
+    if (lead) streamSF().announce(lead);
+  }
+
+  function streamFocusTurn(el) {
+    if (!el) return;
+    try {
+      if (el.scrollIntoView) {
+        el.scrollIntoView({ block: "nearest" });
+      }
+    } catch (e) { /* scroll is best-effort */ }
+    try { el.focus({ preventScroll: true }); }
+    catch (e) {
+      try { el.focus(); } catch (e2) { /* focus is best-effort */ }
+    }
+  }
+
+  function clearStreamFailure(ctx) {
+    if (ctx.failureEls) {
+      ctx.failureEls.forEach(function (n) {
+        if (n && n.parentNode) n.parentNode.removeChild(n);
+      });
+      ctx.failureEls = null;
+    }
+  }
+
+  /* ---- The submit (sheet section 2.4) ---- */
+
+  function streamSubmitText(ctx, text, opts) {
+    opts = opts || {};
+    if (ctx.inFlight) return;
+    var SF = streamSF();
+    clearStreamFailure(ctx);
+    retireStreamStarters(ctx);
+    if (!ctx.store) ctx.store = streamReadStore();
+    if (!opts.releaseConfirm && !opts.buildHere) {
+      if (ctx.segLastPrompt === text &&
+          streamTailIsContentFor(ctx)) {
+        SF.showDialogue("status", { text: REPEAT_LINE });
+        return;
+      }
+      var caps = ctx.store ? ctx.store.caps
+        : { pages: {}, visit: 0 };
+      if ((caps.pages[ctx.page] || 0) >= STREAM_PAGE_CAP) {
+        SF.showDialogue("status", { text: UNIFIED_CAP_LINE });
+        return;
+      }
+      if ((caps.visit || 0) >= STREAM_VISIT_CAP) {
+        SF.showDialogue("status", { text: VISIT_CAP_LINE });
+        return;
+      }
+    }
+    var trigger = ctx.triggerNext || "typed";
+    ctx.triggerNext = null;
+    var freshStartActive = freshStartFor(text, ctx.page);
+    var turnNo = ctx.segContentTurns + 1;
+    if (opts.releaseConfirm && opts.turnNo) turnNo = opts.turnNo;
+    var requestId = newRequestId();
+    var scope = opts.releaseConfirm ? "released"
+      : (ctx.segScope || (ctx.kind === "home" ? "released" : "page"));
+    if (!opts.releaseConfirm) {
+      track("Prompt Submitted", {
+        page: ctx.page, turn_number: turnNo, scope: scope,
+        path: "surface", request_id: requestId
+      });
+    }
+    SF.showDialogue("clear");
+    ctx.inFlight = true;
+    var chain = streamChain(ctx, ctx.store);
+    var dataPromise = postUnified({
+      mode: "unified", text: text, page: ctx.page,
+      current_spec: chain.current, prior_specs: chain.priors,
+      turn: turnNo, scope: scope,
+      release_confirm: !!opts.releaseConfirm,
+      build_here: !!opts.buildHere,
+      request_id: requestId
+    });
+    var domPromise = ensureStreamDom(ctx, trigger).then(
+      function (ok) {
+        if (!ok || !ctx.streamEl) return false;
+        var promptPlan = null, promptEl = null;
+        if (!opts.buildHere) {
+          promptPlan = streamAppendPlan(ctx, ctx.store, {
+            kind: "prompt", page: ctx.page, text: text
+          });
+          promptEl = streamPromptEl(promptPlan);
+          ctx.streamEl.appendChild(promptEl);
+        }
+        var skeletonEl = document.createElement("div");
+        skeletonEl.className = "stream-response stream-pending";
+        skeletonEl.innerHTML =
+          '<p class="composition-from-intent prompt-status">' +
+          UNIFIED_PENDING_LINE + "</p>";
+        ctx.streamEl.appendChild(skeletonEl);
+        ctx.pendingEls = { promptPlan: promptPlan,
+                           promptEl: promptEl,
+                           skeletonEl: skeletonEl };
+        try {
+          if (skeletonEl.scrollIntoView) {
+            skeletonEl.scrollIntoView({ block: "nearest" });
+          }
+        } catch (e) { /* scroll is best-effort */ }
+        return true;
+      });
+    Promise.all([domPromise, dataPromise]).then(function (res) {
+      ctx.inFlight = false;
+      if (!res[0]) {
+        SF.showDialogue("status", { text: UNIFIED_FAILURE_LINE });
+        return;
+      }
+      handleStreamResponse(ctx, res[1], {
+        prompt: text, turn: turnNo, requestId: requestId,
+        freshStart: freshStartActive,
+        releaseConfirm: !!opts.releaseConfirm,
+        buildHere: !!opts.buildHere, scope: scope
+      });
+    }).catch(function () {
+      ctx.inFlight = false;
+      SF.showDialogue("status", { text: UNIFIED_FAILURE_LINE });
+    });
+  }
+
+  function handleStreamResponse(ctx, data, rctx) {
+    var SF = streamSF();
+    var els = ctx.pendingEls || {};
+    ctx.pendingEls = null;
+    function dropSkeleton() {
+      if (els.skeletonEl && els.skeletonEl.parentNode) {
+        els.skeletonEl.parentNode.removeChild(els.skeletonEl);
+      }
+    }
+    /* Flag B (Douglas's ruling, Nov 16, 2026): on an outright
+       failure the failure line anchors in-stream under the
+       prompt, nothing is stored (not even the prompt turn),
+       and the prompt text returns to the composer. The two
+       transient nodes clear on the next submit. */
+    function failFlagB() {
+      dropSkeleton();
+      if (els.promptPlan && ctx.store) {
+        var ix = ctx.store.turns.indexOf(els.promptPlan);
+        if (ix >= 0) {
+          ctx.store.turns.splice(ix, 1);
+          streamSaveStore(ctx.store, ctx.page);
+        }
+      }
+      if (els.promptEl && els.promptEl.parentNode) {
+        var f = document.createElement("p");
+        f.className = "composition-from-intent prompt-status " +
+          "stream-failure";
+        f.textContent = UNIFIED_FAILURE_LINE;
+        els.promptEl.parentNode.insertBefore(f,
+          els.promptEl.nextSibling);
+        ctx.failureEls = [els.promptEl, f];
+      } else {
+        SF.showDialogue("status", { text: UNIFIED_FAILURE_LINE });
+      }
+      var ein = document.getElementById("explore-q");
+      if (ein) ein.value = rctx.prompt;
+    }
+    rctx.fail = failFlagB;
+    if (!data) { failFlagB(); return; }
+    if (data.outcome === "disabled") {
+      dropSkeleton();
+      SF.showDialogue("status", { text: UNIFIED_DISABLED_LINE });
+      return;
+    }
+    if (data.outcome === "refused" || data.outcome === "none") {
+      dropSkeleton();
+      var dplan = streamAppendPlan(ctx, ctx.store, {
+        kind: "dialogue", page: ctx.page,
+        outcome: data.outcome,
+        text: data.text || UNIFIED_FAILURE_LINE,
+        link: data.link || null
+      });
+      var del = streamDialogueEl(dplan);
+      ctx.streamEl.appendChild(del);
+      streamAnnounce(dplan);
+      streamFocusTurn(del);
+      return;
+    }
+    if (data.outcome === "pointer_only") {
+      var p = cleanPointer(data.pointer);
+      if (!p) { failFlagB(); return; }
+      dropSkeleton();
+      var pplan = streamAppendPlan(ctx, ctx.store, {
+        kind: "response", page: ctx.page, mixture: "pointer",
+        scope: rctx.scope, answer: null, spec: null,
+        specNew: false, pointer: p, prompt: rctx.prompt,
+        categories: null, freshStart: false
+      });
+      var pel = streamResponseEl(ctx, pplan);
+      ctx.streamEl.appendChild(pel);
+      collapseStreamOpeningAfterTurn(ctx);
+      track("Prompt Pointer Shown", {
+        page: ctx.page, covering_page: p.covering_page,
+        placement: "stream", request_id: rctx.requestId
+      });
+      streamAnnounce(pplan);
+      streamFocusTurn(pel);
+      return;
+    }
+    if (data.outcome === "release_offer") {
+      dropSkeleton();
+      ctx.pendingRelease = { prompt: rctx.prompt, turn: rctx.turn };
+      SF.showDialogue("release", { page_name: ctx.pageName });
+      wireStreamRelease(ctx);
+      track("Prompt Release Offered", { page: ctx.page });
+      return;
+    }
+    if (data.outcome === "state") {
+      applyStreamState(ctx, data, rctx, els);
+      return;
+    }
+    failFlagB();
+  }
+
+  /* The release confirmation stays in the control plane (sheet
+     section 3.5): the shipped card, wired here. */
+  function wireStreamRelease(ctx) {
+    var area = streamSF().turnsArea();
+    if (!area) return;
+    var cf = area.querySelector("#prompt-release-confirm");
+    if (cf) {
+      cf.addEventListener("click", function () {
+        track("Prompt Release Confirmed", { page: ctx.page });
+        var pr = ctx.pendingRelease;
+        ctx.pendingRelease = null;
+        streamSF().showDialogue("clear");
+        if (pr) {
+          streamSubmitText(ctx, pr.prompt, {
+            releaseConfirm: true, turnNo: pr.turn
+          });
+        }
+      });
+    }
+    var dc = area.querySelector("#prompt-release-decline");
+    if (dc) {
+      dc.addEventListener("click", function () {
+        track("Prompt Release Declined", { page: ctx.page });
+        ctx.pendingRelease = null;
+        streamSF().showDialogue("clear");
+      });
+    }
+  }
+
+  function applyStreamState(ctx, data, rctx, els) {
+    var answer = cleanAnswer(data.answer);
+    var scope = data.scope === "released" ? "released"
+      : (ctx.kind === "home" ? "released"
+        : (ctx.segScope || "page"));
+    var apply = function () {
+      var spec = null, specNew = false, turnCategories = null;
+      if (data.spec) {
+        var candidate = data.spec;
+        if (validateFlatSpec(streamVF(ctx), candidate, scope)) {
+          spec = candidate;
+          specNew = true;
+          try {
+            if (window.DCLedger && window.DCLedger.enabled &&
+                !rctx.freshStart &&
+                typeof window.DCLedger.weightTurn === "function") {
+              var weighted = window.DCLedger.weightTurn(spec.blocks);
+              if (weighted && weighted.blocks) {
+                var wSpec = { blocks: weighted.blocks };
+                if (validateFlatSpec(streamVF(ctx), wSpec, scope)) {
+                  spec = wSpec;
+                  turnCategories = weighted.categories || null;
+                }
+              }
+            }
+          } catch (e) { /* the ledger never breaks the page */ }
+        }
+      }
+      var pointer = cleanPointer(data.pointer);
+      if (!specNew && !answer && !pointer) {
+        rctx.fail();
+        return;
+      }
+      var mixture = answer && specNew ? "mixed"
+        : answer ? "answer" : "composition";
+      var plan = streamAppendPlan(ctx, ctx.store, {
+        kind: "response", page: ctx.page, mixture: mixture,
+        scope: specNew ? scope : (ctx.segScope || scope),
+        answer: answer,
+        spec: specNew ? spec
+          : (ctx.segIntent ? null : ctx.segSpec),
+        specNew: specNew,
+        intent: specNew ? null : (ctx.segIntent || null),
+        sig: specNew ? null : (ctx.segSig || null),
+        pointer: pointer, prompt: rctx.prompt,
+        categories: turnCategories, freshStart: !!rctx.freshStart
+      });
+      /* Cap accounting (sheet section 8): exactly once per
+         content-bearing response, in the task that appends
+         its turn plan. */
+      var caps = ctx.store.caps;
+      caps.pages[ctx.page] = (caps.pages[ctx.page] || 0) + 1;
+      caps.visit = (caps.visit || 0) + 1;
+      if (caps.pages[ctx.page] >= STREAM_PAGE_CAP &&
+          !caps.fired.pages[ctx.page]) {
+        caps.fired.pages[ctx.page] = true;
+        track("Prompt Cap Reached", { page: ctx.page,
+          scope: "page" });
+      }
+      if (caps.visit >= STREAM_VISIT_CAP && !caps.fired.visit) {
+        caps.fired.visit = true;
+        track("Prompt Cap Reached", { page: ctx.page,
+          scope: "visit" });
+      }
+      streamSaveStore(ctx.store, ctx.page);
+      ctx.segSpec = plan.spec;
+      ctx.segScope = plan.scope;
+      ctx.segIntent = plan.intent;
+      ctx.segSig = plan.sig;
+      ctx.segLastPrompt = rctx.prompt;
+      ctx.segContentTurns += 1;
+      if (els.skeletonEl && els.skeletonEl.parentNode) {
+        els.skeletonEl.parentNode.removeChild(els.skeletonEl);
+      }
+      var el = streamResponseEl(ctx, plan);
+      ctx.streamEl.appendChild(el);
+      collapseStreamOpeningAfterTurn(ctx);
+      updateStreamScope(ctx);
+      track("Prompt Turn Rendered", {
+        page: ctx.page, turn_number: rctx.turn,
+        action: specNew ? "recompose" : "answer",
+        block_count: specNew ? spec.blocks.length : 0,
+        scope: plan.scope, mixture: mixture,
+        request_id: rctx.requestId
+      });
+      if (pointer) {
+        track("Prompt Pointer Shown", {
+          page: ctx.page, covering_page: pointer.covering_page,
+          placement: "stream", request_id: rctx.requestId
+        });
+      }
+      if (specNew && !rctx.freshStart) {
+        ledgerRecordSpec(spec, ctx.page, plan.scope);
+      }
+      if (answer) ledgerRecordAnswer(answer);
+      streamAnnounce(plan);
+      streamFocusTurn(el);
+    };
+    if ((scope === "released" || ctx.kind === "home") &&
+        !blocksPayload) {
+      loadBlocks().then(apply);
+    } else {
+      apply();
+    }
+  }
+
+  /* ---- Home intent turns (sheet section 3.6) ---- */
+
+  function streamIntentTap(ctx, btn) {
+    var intent = intentOfButton(btn);
+    var label = (btn.textContent || "").trim();
+    clearStreamFailure(ctx);
+    retireStreamStarters(ctx);
+    load().then(function () {
+      var entry = byIntent && byIntent[intent];
+      if (!entry) return;
+      ensureStreamDom(ctx, "intent").then(function (ok) {
+        if (!ok || !ctx.streamEl) return;
+        streamAppendPlan(ctx, ctx.store, {
+          kind: "prompt", page: ctx.page, text: label
+        });
+        ctx.streamEl.appendChild(streamPromptEl({ text: label }));
+        var plan = streamAppendPlan(ctx, ctx.store, {
+          kind: "response", page: ctx.page, mixture: "intent",
+          scope: "released", answer: null, spec: null,
+          specNew: false, intent: intent, sig: entry.sig,
+          pointer: null, prompt: label, categories: null,
+          freshStart: false
+        });
+        var el = streamResponseEl(ctx, plan);
+        ctx.streamEl.appendChild(el);
+        ctx.segIntent = intent;
+        ctx.segSig = entry.sig;
+        ctx.segSpec = null;
+        Array.prototype.forEach.call(
+          document.querySelectorAll(".intent-btn"),
+          function (b) {
+            b.setAttribute("aria-pressed",
+              b.getAttribute("data-intent") === "intent_" + intent
+                ? "true" : "false");
+          });
+        try {
+          history.replaceState(null, "", "#c=" + entry.sig);
+        } catch (e) { /* share state is best-effort */ }
+        track("Composition Rendered", { intent: intent });
+        ledgerRecordIntent(intent);
+        ledgerRecordComposition("/");
+        collapseStreamOpeningAfterTurn(ctx);
+        streamAnnounce(plan);
+        streamFocusTurn(el);
+      });
+    });
+  }
+
+  /* ---- Arrival rendering on the engaged path ---- */
+
+  function streamRenderArrival(el, page, entry, view, spec, source,
+                               historyCategories) {
+    var ctx = makeStreamCtx({
+      kind: "page", page: page, pageName: entry.page_name,
+      el: el, entry: entry, view: view
+    });
+    ctx.arrivalSpec = spec;
+    ctx.arrivalSource = source;
+    ctx.segSpec = spec;
+    streamCtx = ctx;
+    registerStreamSubmit(ctx);
+    renderStreamArrivalInto(ctx, spec, source, historyCategories);
+    streamBoot(ctx);
+  }
+
+  /* The arrival composition in default mode (sheet section
+     12.2): the starting view renders as today, accounted by
+     its receipt alone — no state line, no thread. While the
+     stream stands, the receipt attaches to the opening turn. */
+  function renderStreamArrivalInto(ctx, spec, source,
+                                   historyCategories) {
+    var el = ctx.el, entry = ctx.entry, view = ctx.view,
+        page = ctx.page;
+    pageSurfaceDismissed = false;
+    var clause = historyCategories
+      ? historyClauseLine(entry.page_name, historyCategories) : "";
+    ctx.arrivalCategories = clause ? historyCategories : null;
+    lastPageRender = {
+      el: el, page: page, entry: entry, view: view, spec: spec,
+      source: source, categories: ctx.arrivalCategories
+    };
+    el.innerHTML = '<h3 class="composition-h">The full picture</h3>' +
+      renderFragmentHtml(spec, view, page);
+    el.hidden = false;
+    el.setAttribute("data-render-key", "page:" + page);
+    el.setAttribute("data-render-source", source);
+    if (!sameSpec(spec, entry.starting_spec)) {
+      try {
+        history.replaceState(null, "",
+          "#a=" + encodePageCode(page, spec));
+      } catch (e) { /* share state is best-effort */ }
+    }
+    var label = clause
+      ? ledgerCategoriesLabel(historyCategories) : null;
+    var expanded = '<p class="composition-from-intent">' +
+      (clause || ("Assembled from the published record, " +
+        "starting from " + esc(entry.page_name) + ".")) + "</p>" +
+      '<p class="composition-note">' + NOTE_BUILT + "</p>";
+    ctx.arrivalReceiptModel = {
+      historyLabel: label || null, aiFraming: false,
+      expandedHtml: expanded,
+      onRestore: function () { streamDismissArrival(ctx); }
+    };
+    ctx.arrivalDismissed = false;
+    if (ctx.streamEl && ctx.openingArticle) {
+      var rc = ctx.openingArticle.querySelector(
+        ".stream-arrival-receipt");
+      if (rc) streamSF().setReceiptIn(rc, ctx.arrivalReceiptModel);
+    } else {
+      streamSF().setReceipt(ctx.arrivalReceiptModel);
+    }
+    track("Page Composition Rendered", {
+      page: page, page_type: entry.type, source: source,
+      block_count: spec.blocks.length
+    });
+    ledgerRecordComposition(page);
+  }
+
+  function streamDismissArrival(ctx) {
+    var el = ctx.el;
+    if (!el || ctx.arrivalDismissed) return;
+    ctx.arrivalDismissed = true;
+    el.hidden = true;
+    el.innerHTML = "";
+    el.removeAttribute("data-render-key");
+    el.removeAttribute("data-render-source");
+    if ((location.hash || "").indexOf("#a=") === 0) {
+      try {
+        history.replaceState(null, "", location.pathname);
+      } catch (e) { /* share state is best-effort */ }
+    }
+    track("Page Composition Dismissed", {
+      page: ctx.page, page_type: ctx.entry.type,
+      source: ctx.arrivalSource
+    });
+    if (ctx.streamEl && ctx.openingArticle) {
+      var rc = ctx.openingArticle.querySelector(
+        ".stream-arrival-receipt");
+      if (rc) streamSF().setReceiptIn(rc, null);
+    } else {
+      streamSF().setReceipt(null);
+    }
+  }
+
+  /* Home's shared-composition arrival in default mode: the
+     composition renders plainly in the slot (it is part of the
+     canvas the opening turn will adopt), accounted by its
+     receipt in the dock. */
+  function streamHomeShare(ctx, sig) {
+    load().then(function () {
+      var entry = bySig && bySig[sig];
+      var el = ctx.el || slot();
+      if (!entry) {
+        track("Composition Fallback", {});
+        return;
+      }
+      if (!el) return;
+      el.innerHTML = '<h3 class="composition-h">The full ' +
+        "picture</h3>" + entry.html + intentLinksHtml(entry.intent);
+      el.hidden = false;
+      el.setAttribute("data-render-key", "intent:" + entry.intent);
+      el.setAttribute("data-render-source", "share");
+      ctx.arrivalReceiptModel = {
+        historyLabel: null, aiFraming: false,
+        expandedHtml: '<p class="composition-note">' + NOTE_BUILT +
+          "</p>",
+        onRestore: function () { streamClearHomeShare(ctx); }
+      };
+      streamSF().setReceipt(ctx.arrivalReceiptModel);
+      track("Composition Rendered", { intent: entry.intent });
+      ledgerRecordIntent(entry.intent);
+      ledgerRecordComposition("/");
+    });
+  }
+
+  function streamClearHomeShare(ctx) {
+    var el = ctx.el || slot();
+    if (el) {
+      el.hidden = true;
+      el.innerHTML = "";
+      el.removeAttribute("data-render-key");
+      el.removeAttribute("data-render-source");
+    }
+    ctx.arrivalReceiptModel = null;
+    streamSF().setReceipt(null);
+    try {
+      history.replaceState(null, "", location.pathname);
+    } catch (e) { /* share state is best-effort */ }
+  }
+
+  function initStreamHome(el) {
+    var ctx = makeStreamCtx({ kind: "home", page: "/", el: el });
+    streamCtx = ctx;
+    registerStreamSubmit(ctx);
+    streamBoot(ctx);
+    return ctx;
+  }
+
+  function initStreamGeneric() {
+    var page = window.location.pathname;
+    if (page.charAt(page.length - 1) !== "/") page += "/";
+    var ctx = makeStreamCtx({
+      kind: "generic", page: page, pageName: "this page"
+    });
+    streamCtx = ctx;
+    registerStreamSubmit(ctx);
+    streamBoot(ctx);
+    return ctx;
+  }
+
+
   /* ----- Increment 3: clear rebuild -----
      When the ledger is cleared, a view that history shaped is
      rebuilt plain: weights are now empty. Page mode re-renders
@@ -3385,6 +4936,17 @@
      Anything else is a no-op. */
   document.addEventListener("dc:ledger-cleared", function () {
     try {
+      if (streamOn() && streamCtx && streamCtx.kind === "page" &&
+          streamCtx.arrivalCategories) {
+        // Engaged path: the arrival view re-renders plain, in
+        // whichever locus holds it (the dock in default mode,
+        // the opening turn while the stream stands).
+        var sc = streamCtx;
+        renderStreamArrivalInto(sc,
+          sc.entry.starting_spec || sc.arrivalSpec,
+          sc.arrivalSource, null);
+        return;
+      }
       if (pageSession) {
         var S = pageSession;
         if (S.current > 0 && S.chips[S.current]) {
