@@ -1,0 +1,256 @@
+{
+  "version": 1,
+  "max_blocks": 6,
+  "anchor_kinds": [
+    "intro",
+    "intent_frame",
+    "contact"
+  ],
+  "blocks": [
+    {
+      "id": "intro-organic-search-decline",
+      "kind": "intro",
+      "description": "Opening frame: search declines are usually misdiagnosed; at A Place for Mom the decline was equal parts content problem and architecture problem.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Search declines get misdiagnosed for a living. The rankings slip, someone blames the content, someone else blames the algorithm, and the real problem sits underneath both.\n\nAt A Place for Mom it was both: equal parts content problem and architecture problem. Treating it as one or the other would have fixed half of it. What follows is the diagnosis and what it produced."
+      }
+    },
+    {
+      "id": "intent-frame-search-decline",
+      "kind": "intent_frame",
+      "description": "Frame for search decline: start with the diagnosis before the fix, from the A Place for Mom turnaround.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Start with the diagnosis. At A Place for Mom the decline was equal parts content problem and architecture problem, and fixing the foundation took SEO market share from 26% to 68%."
+      }
+    },
+    {
+      "id": "proof-apfm",
+      "kind": "proof",
+      "description": "Proof, A Place for Mom: the SEO decline diagnosis and what fixing the foundation produced, team built and search share recovered.",
+      "link": "/case-studies/a-place-for-mom/",
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "compact": "At A Place for Mom, the SEO decline was equal parts content problem and architecture problem. Fixing the foundation took SEO market share from 26% to 68%, with a team he grew from 3 to more than 20.",
+        "full": "At A Place for Mom, Douglas Cirillo's diagnosis was that the SEO decline was equal parts a content problem and an architecture problem. He led the rebuild of the content platform and its governance, growing the team from 3 to more than 20 people, internal and external, running a $6M annual portfolio. SEO market share rose from 26% to 68%."
+      }
+    },
+    {
+      "id": "proof-sothebys",
+      "kind": "proof",
+      "description": "Proof, Sotheby's (2017 to 2020): organic traffic up 167% with the CDP as an integral contributor, plus search CTR and consignment results.",
+      "link": "/case-studies/sothebys/",
+      "scope_required": [
+        "2017 to 2020"
+      ],
+      "forbidden_intents": [],
+      "lengths": {
+        "compact": "At Sotheby's (2017 to 2020), organic traffic rose 167%. The CDP was an integral contributor to that growth, alongside Conductor on organic search intelligence and the Brightspot replatform. The whole stack had to work together.",
+        "full": "Douglas Cirillo was Assistant Vice President, Director of Digital Product and Growth Stack at Sotheby’s from 2017 to 2020. He directed the rearchitecture of Sotheby’s digital and growth stack, including the migration from Adobe Experience Manager onto a composable, data-first stack, running the function with one direct report and a vendor team of about 20, directing $5 to $6M in spend. Organic traffic rose 167%, search click-through rose 48.7%, consignment search placement doubled, and consignment ad spend fell 50%."
+      }
+    },
+    {
+      "id": "practice-answer-discoverability",
+      "kind": "practice",
+      "description": "Practice, AI readiness and answer discoverability: whether AI engines can find a brand, understand what it offers, and represent it accurately.",
+      "link": "/practice/ai-readiness-and-answer-discoverability/",
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "compact": "Answer discoverability is whether an AI engine can find your brand, understand what you offer, and represent you accurately when a customer asks it a question, both when someone asks about you by name and when the question is about your category.",
+        "full": "Answer discoverability is whether an AI engine can find your brand, understand what you offer, and represent you accurately when a customer asks it a question. It has two layers: the engine has to get you right when someone asks about you by name, and it has to name you when the question is about your category and nobody gave it your name.\n\nThose are different tests, and a brand can pass some and fail others: whether the engine can retrieve the information at all, whether it identifies the right entity, whether it understands the information accurately, whether it cites or recommends the source, and whether what it has is current.\n\nHis published formulation is that GEO and AEO are not new disciplines. They are new front doors into the same business of being found and understood. The fundamentals did not change. The surfacing did. The tradeoff is real: an engine can make a brand visible without sending it a visit, and deciding what that visibility is worth, then measuring it on its own terms, is part of the work."
+      }
+    },
+    {
+      "id": "work-with-this-record",
+      "kind": "contact",
+      "description": "Contact anchor: an invitation to continue the conversation on LinkedIn. When used, it is the final block.",
+      "link": "https://www.linkedin.com/in/douglascirillo/",
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Want to talk about any of this? I'm on LinkedIn."
+      }
+    },
+    {
+      "id": "intent-frame-cdp",
+      "kind": "intent_frame",
+      "description": "Frame for customer data: customer data first, with the Sotheby's CDP stack as the worked example.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Customer data first. At Sotheby’s the CDP sat at the center of a stack that took organic traffic up 167%, and it worked because the whole stack worked together."
+      }
+    },
+    {
+      "id": "intent-frame-replatform",
+      "kind": "intent_frame",
+      "description": "Frame for replatforming: History.com relaunched in four months and its architecture became the A+E migration standard.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "History.com relaunched in four months, and A+E Networks adopted the architecture as its migration standard for every brand that followed."
+      }
+    },
+    {
+      "id": "intent-frame-team",
+      "kind": "intent_frame",
+      "description": "Frame for building a team or function: many brands under one product function and one operating model, from Madison Square Garden.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "At Madison Square Garden the brands each ran their own platforms. One product function and one operating model later: 29+ websites and 4+ apps, run as a single portfolio."
+      }
+    },
+    {
+      "id": "intent-frame-speaking",
+      "kind": "intent_frame",
+      "description": "Frame for speaking: the Synapse 2019 talk as the fastest way to see how the work actually runs.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "The Synapse 2019 talk, told live with Richard McGovern, is the fastest way to see how the Sotheby’s build actually worked."
+      }
+    },
+    {
+      "id": "intent-frame-coherence",
+      "kind": "intent_frame",
+      "description": "Frame for coherence: one brand remembered the same way in every channel, because the foundation underneath is shared.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "One brand, remembered the same way in every channel, because the foundation underneath it is shared. That is the digital experience practice."
+      }
+    },
+    {
+      "id": "intent-frame-measurement",
+      "kind": "intent_frame",
+      "description": "Frame for measurement: every test names its objective and one primary metric before it runs, reported in business terms.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Every test names its objective and one primary metric before it runs, and results are reported in business currency. The scorecard is the diagnostic I use."
+      }
+    },
+    {
+      "id": "proof-lindblad",
+      "kind": "proof",
+      "description": "Proof, Lindblad Expeditions: composable replatform; bookings up 30%, booking funnel completion up 82%, qualified leads up 40%, Webby Honoree.",
+      "link": "/case-studies/lindblad-expeditions/",
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Douglas Cirillo led digital product at Lindblad Expeditions, the small-ship expedition travel company that sails in partnership with National Geographic. He was recruited there by former MSG and Sotheby’s leaders then in Lindblad’s leadership. He led a team of 10 and a $5M portfolio across product, analytics, design, and partners. Within eight months of the replatform: bookings up 30%, booking funnel completion up 82%, qualified leads up 40%."
+      }
+    },
+    {
+      "id": "proof-msg",
+      "kind": "proof",
+      "description": "Proof, Madison Square Garden (2012 to 2016): many brands on one operating model; the ticket-sales figure is scoped to the Rockettes and Radio City Music Hall.",
+      "link": "/case-studies/madison-square-garden/",
+      "scope_required": [
+        "Rockettes and Radio City Music Hall"
+      ],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Douglas Cirillo was Director of Product Operations at Madison Square Garden from 2012 to 2016, promoted from Senior Project Manager. He built the digital product function there and ran it as one operating model across 29+ websites and 4+ native apps. He proposed and led a $4M replatform and managed the operating and capital budgets behind it. Digital ticket sales for the Rockettes and Radio City Music Hall grew 400%, and MSG GO, the streaming service he led, was a New York Emmy nominee for Technical Achievement."
+      }
+    },
+    {
+      "id": "proof-ae",
+      "kind": "proof",
+      "description": "Proof, A+E Networks via Gangverk: the complete redesign and replatform of History.com, adopted as the network's standard.",
+      "link": "/case-studies/ae-networks/",
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Douglas Cirillo, then leading marketing and product strategy at Gangverk, directed the complete redesign and replatform of History.com in four months, and then the A&E site. The architecture, with unified event tracking, customer data, and activation, was adopted by A+E Networks as the migration standard for its web ecosystem across brands."
+      }
+    },
+    {
+      "id": "proof-gangverk",
+      "kind": "proof",
+      "description": "Proof, Gangverk (2022 to 2025): marketing and product strategy leadership, client brand growth and commercial results.",
+      "link": "/case-studies/gangverk/",
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Douglas Cirillo was Head of Marketing and Product Strategy at Gangverk from 2022 to 2025, promoted from Head of Digital Transformation and Martech. Former Sotheby’s and MSG leaders who had become invested partners in the firm recruited him to build its transformation portfolio and go-to-market. He carried revenue targets and hiring authority as he grew the firm’s client brands from 1 to more than 60. He led the History.com replatform in four months, and A+E Networks adopted the architecture as its migration standard."
+      }
+    },
+    {
+      "id": "practice-composable",
+      "kind": "practice",
+      "description": "Practice, composable martech and customer data: best-of-breed tools connected through defined contracts, and what a CDP is in his framing.",
+      "link": "/practice/composable-martech-and-customer-data/",
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Composable martech is a stack built from best-of-breed tools, each chosen for one job and connected through defined interfaces, instead of a single vendor suite. The content platform, the data platform, the decisioning tools, and the analytics layer are separate components with clean contracts between them: documented schemas, stable interfaces, clear ownership. When one component stops earning its place, you can replace that component without rebuilding the whole stack, and you do not wait for a suite vendor’s roadmap to catch up with your business."
+      }
+    },
+    {
+      "id": "practice-dx-strategy",
+      "kind": "practice",
+      "description": "Practice, digital experience strategy: deciding what a brand's websites and apps should do, then building toward it across channels.",
+      "link": "/practice/digital-experience-strategy/",
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Digital experience strategy is the work of deciding what a brand’s website and apps should do, then building the team and the data to do it. The deliverable is not a deck. It is one set of metrics that matter, one shared understanding of the customer, and a sequence the organization can actually execute: what gets built, in what order, and how everyone will know it worked.\n\nTechnology decisions are only part of the strategy. The harder work is deciding what matters first, who owns it, what the organization can deliver, and how progress will be measured."
+      }
+    },
+    {
+      "id": "practice-experimentation",
+      "kind": "practice",
+      "description": "Practice, experimentation and measurement: tests that state a hypothesis and one primary metric, and reporting that ties results to business outcomes.",
+      "link": "/practice/experimentation-and-measurement/",
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Experimentation is how an organization finds out whether a change worked. A test states a hypothesis, names one primary metric before it runs, and reads the result against that metric, which means the tests aim at a specific outcome and the decisioning is built to test against the objective, not the screen.\n\nNone of that holds without the layer underneath: events defined the same way by every team, metrics that mean the same thing in every dashboard, and readouts people trust enough to act on. Measurement is the precondition. Shared KPIs, shared language, governance and reporting, agreed before the tooling arguments start."
+      }
+    },
+    {
+      "id": "principles",
+      "kind": "principle",
+      "description": "Principles: gates, not prompts; the harness checks and the approval rule behind the work.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Gates, not prompts. A prompt is a request; a gate is a control.\n\nThe harness checks are Brand Out-of-Bounds, Contextual Switch, and Guardrails. A prompt is a request; a gate is a control.\n\nNothing on douglascirillo.com publishes without Douglas Cirillo's approval. Every draft comes back to him; he edits, decides, and approves."
+      }
+    },
+    {
+      "id": "speaking-synapse",
+      "kind": "speaking",
+      "description": "Speaking proof: the Synapse 2019 talk, presented with Richard McGovern, on the Sotheby's data transformation.",
+      "link": "/speaking/",
+      "scope_required": [],
+      "forbidden_intents": [
+        "search_decline",
+        "cdp",
+        "replatform",
+        "team",
+        "coherence",
+        "measurement"
+      ],
+      "lengths": {
+        "full": "Douglas Cirillo and Richard McGovern presented the Sotheby's data transformation story live at Synapse 2019, Segment's user conference; the full talk and transcript are published on the speaking page."
+      }
+    }
+  ]
+}
