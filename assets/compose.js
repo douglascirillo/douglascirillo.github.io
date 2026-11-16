@@ -341,6 +341,37 @@
     var status = S.status
       ? '<p class="composition-from-intent prompt-status">' +
         esc(S.status) + "</p>" : "";
+    if (S.ui === "pending") {
+      // Unified flight: the pending line alone; the canvas holds
+      // until the whole validated plan returns.
+      return status;
+    }
+    if (S.ui === "dialogue" && S.dialogue) {
+      // Unified terminal dialogue (sheet section 6): refusals and
+      // the failure, disabled, cap, and repeat lines render word
+      // for word here; no state, no cap spent.
+      if (S.dialogue.kind === "none") {
+        return status +
+          '<p class="composition-from-intent prompt-status">' +
+          esc(S.dialogue.text || "") + "</p>" +
+          (S.dialogue.link
+            ? '<p class="prompt-actions"><a href="' +
+              esc(S.dialogue.link) +
+              '">Browse the case studies</a></p>'
+            : "");
+      }
+      return status +
+        '<p class="composition-from-intent prompt-status">' +
+        esc(S.dialogue.text || "") + "</p>";
+    }
+    if (S.ui === "upointer" && S.pending) {
+      return status + '<div class="prompt-card"><p>That&rsquo;s ' +
+        "covered in " + esc(S.pending.covering_name) +
+        '.</p><p class="prompt-actions">' +
+        '<a href="' + esc(S.pending.covering_page) + '">Open it</a>' +
+        '<button type="button" id="prompt-build-here">Build it ' +
+        "here instead</button></p></div>";
+    }
     if (S.ui === "pointer" && S.pending) {
       return status + '<div class="prompt-card"><p>That&rsquo;s ' +
         "covered in " + esc(S.pending.covering_name) +
@@ -373,6 +404,16 @@
     var openHere = area.querySelector("#prompt-build-here");
     if (openHere) {
       openHere.addEventListener("click", function () {
+        if (S.pending && S.pending.unified) {
+          // Unified pointer dialogue: building here is a new
+          // unified submit against the local view, not a release
+          // (build sheet section 3.2). It spends cap only if the
+          // response produces a state.
+          var prompt = S.pending.prompt;
+          S.pending = null; S.ui = "field"; S.status = "";
+          submitUnifiedSession(S, prompt, { buildHere: true });
+          return;
+        }
         S.ui = "confirm";
         track("Prompt Release Offered", { page: S.page });
         renderSession();
@@ -382,7 +423,11 @@
     if (confirmBtn) {
       confirmBtn.addEventListener("click", function () {
         track("Prompt Release Confirmed", { page: S.page });
-        confirmRelease(S);
+        if (S.pending && S.pending.unified) {
+          confirmUnifiedSession(S);
+        } else {
+          confirmRelease(S);
+        }
       });
     }
     var declineBtn = area.querySelector("#prompt-release-decline");
@@ -402,6 +447,12 @@
       submitPrompt(pageSession, text);
       return true;
     });
+    SF.registerUnifiedSubmit(function (text) {
+      if (!pageSession || pageSession.dead) return false;
+      submitUnifiedSession(pageSession, text);
+      return true;
+    });
+    registerSessionThread(SF, S);
     var states = S.chips.map(function (chip, i) {
       return { name: sessionStateName(chip, i) };
     });
@@ -422,9 +473,19 @@
       el.removeAttribute("data-render-source");
       SF.setReceipt(null);
       if (area) {
-        area.innerHTML = S.dead ? "" :
-          '<p class="composition-from-intent ' +
-          'prompt-invitation-line">' + PROMPT_INVITATION + "</p>";
+        if (S.dead) {
+          area.innerHTML = "";
+        } else if (S.ui === "dialogue" || S.ui === "upointer" ||
+                   S.ui === "confirm" || S.ui === "pending") {
+          // A unified dialogue outcome lands the same way from
+          // the published view as from any other state.
+          area.innerHTML = sessionAreaSurfaceHtml(S);
+          wireTurnsArea(S);
+        } else {
+          area.innerHTML =
+            '<p class="composition-from-intent ' +
+            'prompt-invitation-line">' + PROMPT_INVITATION + "</p>";
+        }
       }
       SF.refreshBand();
       return;
@@ -455,13 +516,22 @@
       'prompt-turnline">' + chipTurnLine(chip) + "</p>" +
       '<p class="composition-note">' + NOTE_BUILT + "</p>";
     el.innerHTML = '<h3 class="composition-h">The full picture</h3>' +
-      renderFragmentHtml(chip.spec, sessionViewFor(S, chip), S.page);
+      answerElementHtml(chip.answer) +
+      (chip.spec
+        ? renderFragmentHtml(chip.spec, sessionViewFor(S, chip),
+            S.page)
+        : "") +
+      pointerElementHtml(chip.pointer);
     el.hidden = false;
     el.setAttribute("data-render-key", "page:" + S.page);
     el.setAttribute("data-render-source", S.source);
     SF.setReceipt({
       historyLabel: cats ? ledgerCategoriesLabel(cats) : null,
-      aiFraming: false, expandedHtml: expanded,
+      // S4, re-pointed by the unified batch: the collapsed
+      // receipt's framing segment is live exactly when the
+      // current state's answer includes framing.
+      aiFraming: !!(chip.answer && chip.answer.framing),
+      expandedHtml: expanded,
       onRestore: function () { goChip(S, 0); }
     });
     if (area) {
@@ -1213,6 +1283,13 @@
     } else {
       renderPageComposition(el, page, entry, view, spec, source,
         historyCategories);
+      // Unified batch: a non-converting case study still takes
+      // unified submits; the flat session adopts the arrival view
+      // the render above just produced (surface path only).
+      if (surfaceOn()) {
+        initPageFlat(el, page, entry, view, spec, source,
+          historyCategories);
+      }
     }
   }
 
@@ -1252,12 +1329,19 @@
       }
       // Stored state is re-validated before any of it renders: a
       // chip whose spec no longer validates is dropped, and a
-      // session with nothing valid left is a fresh session.
+      // session with nothing valid left is a fresh session. A
+      // unified answer-only chip carries no spec of its own (its
+      // blocks were the standing state's, carried forward); it is
+      // kept on its answer's shape instead.
       var chips = [data.chips[0]];
       for (var i = 1; i < data.chips.length; i++) {
         var chip = data.chips[i];
-        if (chip && chip.spec &&
+        if (!chip) continue;
+        if (chip.spec &&
             validateSessionSpec(S, chip.spec, chip.scope)) {
+          chips.push(chip);
+        } else if (chip.action === "unified" && !chip.spec &&
+                   cleanAnswer(chip.answer)) {
           chips.push(chip);
         }
       }
@@ -1265,6 +1349,13 @@
       S.chips = chips;
       S.current = Math.min(data.current || 1, chips.length - 1);
       S.submits = data.submits || 0;
+      // Thread order: chips written before the unified batch
+      // carry no sequence; assign in order.
+      S.chips.forEach(function (chip) {
+        if (chip.prompt && !chip.seq) {
+          chip.seq = threadNextSeq(S.page);
+        }
+      });
       return true;
     } catch (e) { return false; }
   }
@@ -1296,6 +1387,22 @@
   }
 
   function chipTurnLine(chip) {
+    if (chip.action === "unified") {
+      // The receipt lines for unified states, by mixture (build
+      // sheet section 5): a pointer inside a mixed state names
+      // itself in the canvas, so the answer+composition line
+      // stands for that mixture.
+      var q = "\u201C" + esc(chip.prompt || "") + "\u201D";
+      if (chip.answer && chip.specNew) {
+        return "Answered and rebuilt for: " + q;
+      }
+      if (chip.answer && chip.pointer) {
+        return "Answered and pointed for: " + q;
+      }
+      if (chip.answer) return "Answered for: " + q;
+      if (chip.pointer) return "Rebuilt and pointed for: " + q;
+      return "Rebuilt for: " + q;
+    }
     if (chip.action === "start") return PROMPT_START_LINE;
     if (chip.action === "extend") {
       return "Added for: \u201C" + esc(chip.prompt || "") + "\u201D";
@@ -1417,7 +1524,12 @@
       "</p>" + startClauseHtml +
       '<p class="composition-from-intent prompt-turnline">' +
       chipTurnLine(chip) + "</p>" + turnClauseHtml +
-      renderFragmentHtml(chip.spec, sessionViewFor(S, chip), S.page) +
+      answerElementHtml(chip.answer) +
+      (chip.spec
+        ? renderFragmentHtml(chip.spec, sessionViewFor(S, chip),
+            S.page)
+        : "") +
+      pointerElementHtml(chip.pointer) +
       '<p class="composition-note">Assembled for this visit. The page ' +
       "as published stands underneath, unchanged.</p>" +
       '<p class="intent-reset"><button type="button" ' +
@@ -1552,15 +1664,19 @@
     }
   }
 
-  function goChip(S, idx) {
+  function goChip(S, idx, viaThread) {
     if (idx < 0 || idx >= S.chips.length) return;
     if (idx !== 0) S.lastBuilt = idx;
     S.current = idx;
     S.ui = "field"; S.pending = null; S.status = "";
+    S.dialogue = null;
     saveSession(S);
     renderSession();
-    track("Prompt History Restored",
-      { page: S.page, restored_turn: S.chips[idx].turn });
+    track("Prompt History Restored", {
+      page: S.page, restored_turn: S.chips[idx].turn,
+      via: viaThread ? "thread" : "state_line"
+    });
+    if (viaThread) focusCanvasHeading(S.el);
   }
 
   function priorSpecsFor(S) {
@@ -1601,7 +1717,7 @@
     }
     track("Prompt Submitted", {
       page: S.page, turn_number: turnNo, scope: chip.scope,
-      turn_kind: kind
+      turn_kind: kind, path: "layered"
     });
     S.status = PROMPT_PENDING_LINE;
     S.inFlight = true;
@@ -1866,39 +1982,1369 @@
       });
   }
 
+  /* ----- Unified response (surface path; Nov 16, 2026) -----
+     Design: surface-not-page-design.md amendment U1 to U8; build
+     sheet P-1116-21. On the surface path the composer submit is
+     replaced: no isQuestion predicate, no find-hit gate, no
+     fall-through. One submit produces one response from the
+     Lambda's unified mode: an answer element, a composition, a
+     pointer, or a release offer, in any mixture, rendered as ONE
+     new state; or a terminal dialogue outcome (refusal,
+     no-evidence, pointer-only, disabled, failure) in the turns
+     area, creating no state and spending no cap. The cap
+     decrements exactly once per state-producing response. The
+     layered path above is untouched and remains the kill state.
+     Every substantive submit also lands in the thread (sheet
+     section 4): the visitor's own prompts, verbatim, state and
+     dialogue alike; refused prompts included, verbatim, by
+     Douglas's ruling. */
+
+  var UNIFIED_PENDING_LINE = "Building your response\u2026";
+  var UNIFIED_CAP_LINE = "You have reached this session\u2019s prompt limit. Your views and the published page remain.";
+  var UNIFIED_FAILURE_LINE = "That did not go through. Nothing was built. Try again.";
+  var UNIFIED_DISABLED_LINE = "The rebuilding is off right now. The published record stands as it is.";
+  var FRAMING_LABEL = "Framing written by AI. The claims below are quoted word for word from the record.";
+  var THREAD_DIALOGUE_KEY = "dc_thread_dialogue_v1";
+  var UNIFIED_TIMEOUT_MS = 25000;
+
+  (function injectUnifiedCss() {
+    try {
+      if (document.getElementById("cp-unified-css")) return;
+      var st = document.createElement("style");
+      st.id = "cp-unified-css";
+      st.textContent =
+        ".cp-answer{margin:0 0 6px}" +
+        ".cp-answer-label{font-size:12px;color:var(--muted);margin:0 0 6px}" +
+        ".cp-answer-framing{font-size:15.5px;line-height:1.55;margin:0 0 10px}" +
+        ".cp-answer-item{padding:12px 16px;border:1px solid var(--line);border-radius:10px;margin:0 0 8px}" +
+        ".cp-answer-item p{margin:0 0 6px;font-size:16px;line-height:1.55}" +
+        ".cp-answer-item a{font-size:14px}" +
+        ".cp-pointer{padding:12px 16px;border:1px solid var(--line);border-radius:10px;margin:0 0 8px}" +
+        ".cp-pointer p{margin:0 0 6px}" +
+        ".cp-composed{margin:22px 0 4px}" +
+        ".cp-composed-h{font-family:Newsreader,Georgia,serif;font-size:21px;margin:0 0 10px}";
+      document.head.appendChild(st);
+    } catch (e) { /* styles are best-effort */ }
+  })();
+
+  function newRequestId() {
+    return "req-" + Date.now().toString(36) + "-" +
+      Math.floor(Math.random() * 4294967296).toString(36);
+  }
+
+  function postUnified(body) {
+    var opts = {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body)
+    };
+    try {
+      if (typeof AbortController !== "undefined") {
+        var ctrl = new AbortController();
+        opts.signal = ctrl.signal;
+        setTimeout(function () {
+          try { ctrl.abort(); } catch (e) {}
+        }, UNIFIED_TIMEOUT_MS);
+      }
+    } catch (e) { /* no timeout control: the fetch stands */ }
+    return fetch(ASK_ENDPOINT, opts)
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || data.type !== "unified") return null;
+        return data;
+      })
+      .catch(function () { return null; });
+  }
+
+  function cleanAnswer(raw) {
+    if (!raw || !Array.isArray(raw.items)) return null;
+    var items = [];
+    raw.items.forEach(function (it) {
+      if (it && typeof it.claim === "string" &&
+          typeof it.source === "string") {
+        items.push({
+          id: typeof it.id === "string" ? it.id : null,
+          claim: it.claim, source: it.source
+        });
+      }
+    });
+    if (!items.length) return null;
+    return {
+      items: items,
+      framing: (typeof raw.framing === "string" && raw.framing)
+        ? raw.framing : null
+    };
+  }
+
+  function cleanPointer(raw) {
+    if (!raw || typeof raw.covering_page !== "string" ||
+        typeof raw.covering_name !== "string") return null;
+    return { covering_page: raw.covering_page,
+             covering_name: raw.covering_name };
+  }
+
+  function answerElementHtml(answer) {
+    if (!answer) return "";
+    var html = '<div class="cp-answer">';
+    if (answer.framing) {
+      html += '<p class="cp-answer-label">' + FRAMING_LABEL + "</p>" +
+        '<p class="cp-answer-framing">' + esc(answer.framing) + "</p>";
+    }
+    answer.items.forEach(function (it) {
+      html += '<div class="cp-answer-item"><p>' + esc(it.claim) +
+        '</p><a href="' + esc(it.source) +
+        '">Read it in context</a></div>';
+    });
+    return html + "</div>";
+  }
+
+  function pointerElementHtml(pointer) {
+    if (!pointer) return "";
+    return '<div class="cp-pointer"><p>That&rsquo;s covered in ' +
+      esc(pointer.covering_name) + '.</p><p><a href="' +
+      esc(pointer.covering_page) + '">Open it</a></p></div>';
+  }
+
+  function ledgerRecordAnswer(answer) {
+    try {
+      if (!(window.DCLedger && window.DCLedger.enabled)) return;
+      var ids = [];
+      answer.items.forEach(function (it) {
+        if (it.id) ids.push(it.id);
+      });
+      if (ids.length &&
+          typeof window.DCLedger.recordAskRecords === "function") {
+        window.DCLedger.recordAskRecords(ids);
+      }
+      if (typeof window.DCLedger.recordAskOutcome === "function") {
+        window.DCLedger.recordAskOutcome(
+          answer.framing ? "answer_prose" : "answer");
+      }
+    } catch (e) { /* the ledger never breaks the page */ }
+  }
+
+  function focusCanvasHeading(el) {
+    if (!el) return;
+    var h = el.querySelector("h1, h2, h3");
+    if (!h) return;
+    try {
+      if (!h.hasAttribute("tabindex")) {
+        h.setAttribute("tabindex", "-1");
+      }
+      h.focus({ preventScroll: true });
+    } catch (e) { /* focus is best-effort */ }
+  }
+
+  function freshStartFor(text, page) {
+    var active = false;
+    try {
+      active = !!(window.DCLedger && window.DCLedger.enabled &&
+        typeof window.DCLedger.freshStart === "function" &&
+        window.DCLedger.freshStart(text));
+    } catch (e) { active = false; }
+    if (active) {
+      track("History Fresh Start Invoked", { page: page });
+    }
+    return active;
+  }
+
+  /* ---- The thread's dialogue store (sheet section 4) ----
+     Dialogue outcomes live in one sessionStorage object under
+     dc_thread_dialogue_v1, keyed by page, holding the visitor's
+     own prompt text and the outcome class, on-device only, never
+     transmitted. It also carries the page's sequence counter, so
+     state entries (from the session store) and dialogue entries
+     interleave in submit order. Capped at the session cap;
+     oldest dropped first; state entries are never dropped. */
+  function threadStore() {
+    try {
+      var raw = sessionStorage.getItem(THREAD_DIALOGUE_KEY);
+      if (raw) {
+        var d = JSON.parse(raw);
+        if (d && d.pages) return d;
+      }
+    } catch (e) { /* storage unavailable: thread is in-memory */ }
+    return { v: 1, pages: {} };
+  }
+
+  function threadSave(store) {
+    try {
+      sessionStorage.setItem(THREAD_DIALOGUE_KEY,
+        JSON.stringify(store));
+    } catch (e) { /* the thread is best-effort */ }
+  }
+
+  function threadRecord(store, page) {
+    if (!store.pages[page]) {
+      store.pages[page] = { entries: [], dropped: 0, nextSeq: 1 };
+    }
+    return store.pages[page];
+  }
+
+  function threadNextSeq(page) {
+    var store = threadStore();
+    var rec = threadRecord(store, page);
+    var seq = rec.nextSeq || 1;
+    rec.nextSeq = seq + 1;
+    threadSave(store);
+    return seq;
+  }
+
+  function threadAddDialogue(page, entry) {
+    var store = threadStore();
+    var rec = threadRecord(store, page);
+    entry.seq = rec.nextSeq || 1;
+    rec.nextSeq = entry.seq + 1;
+    rec.entries.push(entry);
+    while (rec.entries.length > PROMPT_CAP) {
+      rec.entries.shift();
+      rec.dropped = (rec.dropped || 0) + 1;
+    }
+    threadSave(store);
+    return entry;
+  }
+
+  function threadDialogue(page) {
+    var rec = threadStore().pages[page];
+    if (!rec) return { entries: [], dropped: 0 };
+    return { entries: rec.entries || [], dropped: rec.dropped || 0 };
+  }
+
+  // Merge a session's state entries ({seq, label, kind:"state",
+  // ...}) with the stored dialogue entries into the surface's
+  // thread model, in submit order.
+  function buildThreadModel(page, stateEntries, opts) {
+    var dlg = threadDialogue(page);
+    var all = stateEntries.slice();
+    dlg.entries.forEach(function (e) {
+      all.push({ seq: e.seq || 0, label: e.prompt,
+                 kind: "dialogue", entry: e });
+    });
+    all.sort(function (a, b) { return (a.seq || 0) - (b.seq || 0); });
+    var model = {
+      entries: all.map(function (e) { return { label: e.label }; }),
+      dropped: dlg.dropped > 0,
+      inert: !!opts.inert,
+      onActivate: function (idx) { opts.activate(all[idx]); }
+    };
+    return model.entries.length ? model : null;
+  }
+
+  // Shared activation for dialogue entries: fixed-text outcomes
+  // re-show; transient outcomes (timeout, failure, disabled)
+  // restore the prompt to the composer without submitting.
+  function threadActivateDialogue(merged, showDialogue) {
+    if (!merged || merged.kind !== "dialogue") return false;
+    var e = merged.entry;
+    if (e.outcome === "refused" || e.outcome === "none") {
+      showDialogue({ kind: e.outcome, text: e.text,
+                     link: e.link || null });
+    } else if (e.outcome === "pointer") {
+      showDialogue({ kind: "pointer",
+                     covering_page: e.covering_page,
+                     covering_name: e.covering_name,
+                     prompt: e.prompt });
+    } else {
+      var input = document.getElementById("explore-q");
+      if (input) {
+        input.value = e.prompt;
+        try { input.focus(); } catch (err) {}
+      }
+    }
+    return true;
+  }
+
+  /* ---- Unified submits on the Lindblad session ---- */
+
+  function registerSessionThread(SF, S) {
+    var stateEntries = [];
+    S.chips.forEach(function (chip, i) {
+      if (i === 0 || !chip.prompt) return;
+      stateEntries.push({ seq: chip.seq || 0, label: chip.prompt,
+                          kind: "state", chipIdx: i });
+    });
+    var model = buildThreadModel(S.page, stateEntries, {
+      inert: S.inFlight,
+      activate: function (merged) {
+        if (!merged) return;
+        if (merged.kind === "state") {
+          goChip(S, merged.chipIdx, true);
+          return;
+        }
+        threadActivateDialogue(merged, function (d) {
+          if (d.kind === "pointer") {
+            S.pending = {
+              prompt: d.prompt, turn: S.submits + 1,
+              covering_page: d.covering_page,
+              covering_name: d.covering_name, unified: true
+            };
+            S.ui = "upointer"; S.dialogue = null;
+          } else {
+            S.ui = "dialogue";
+            S.dialogue = { kind: d.kind, text: d.text,
+                           link: d.link };
+          }
+          S.status = "";
+          renderSession();
+        });
+      }
+    });
+    SF.registerThread(model);
+  }
+
+  function submitUnifiedSession(S, text, opts) {
+    opts = opts || {};
+    if (S.inFlight || S.dead) return;
+    var chip = S.chips[S.current];
+    if (!opts.buildHere && !opts.releaseConfirm) {
+      // Repeat discipline, as turns: the repeat line, no call,
+      // no thread entry, the original entry stands.
+      if (chip.prompt === text &&
+          S.current === S.chips.length - 1) {
+        S.ui = "dialogue"; S.pending = null;
+        S.dialogue = { kind: "status", text: REPEAT_LINE };
+        renderSession();
+        return;
+      }
+      if (S.submits >= PROMPT_CAP) {
+        S.ui = "dialogue"; S.pending = null;
+        S.dialogue = { kind: "status", text: UNIFIED_CAP_LINE };
+        renderSession();
+        return;
+      }
+    }
+    // A new submit replaces whatever dialogue is showing (S11).
+    S.pending = null;
+    S.dialogue = null;
+    var freshStartActive = freshStartFor(text, S.page);
+    var turnNo = opts.releaseConfirm ? (opts.turnNo || S.submits + 1)
+      : S.submits + 1;
+    var requestId = newRequestId();
+    if (!opts.releaseConfirm) {
+      track("Prompt Submitted", {
+        page: S.page, turn_number: turnNo, scope: chip.scope,
+        path: "surface", request_id: requestId
+      });
+    }
+    S.inFlight = true;
+    S.ui = "pending";
+    S.status = UNIFIED_PENDING_LINE;
+    renderSession();
+    postUnified({
+      mode: "unified", text: text, page: S.page,
+      current_spec: chip.spec, prior_specs: priorSpecsFor(S),
+      turn: turnNo,
+      scope: opts.releaseConfirm ? "released" : chip.scope,
+      release_confirm: !!opts.releaseConfirm,
+      build_here: !!opts.buildHere,
+      request_id: requestId
+    }).then(function (data) {
+      S.inFlight = false;
+      handleUnifiedSessionResponse(S, data, {
+        prompt: text, turn: turnNo, requestId: requestId,
+        freshStart: freshStartActive,
+        releaseConfirm: !!opts.releaseConfirm
+      });
+    });
+  }
+
+  function unifiedSessionDialogue(S, dialogue, threadEntry) {
+    S.ui = "dialogue"; S.pending = null; S.status = "";
+    S.dialogue = dialogue;
+    if (threadEntry) threadAddDialogue(S.page, threadEntry);
+    renderSession();
+  }
+
+  function handleUnifiedSessionResponse(S, data, ctx) {
+    if (!data) {
+      // Timeout or network failure: a dialogue line, no state,
+      // no cap; the session itself is unharmed.
+      if (!ctx.releaseConfirm) {
+        unifiedSessionDialogue(S,
+          { kind: "status", text: UNIFIED_FAILURE_LINE },
+          { prompt: ctx.prompt, outcome: "failure" });
+      } else {
+        S.ui = "dialogue"; S.pending = null; S.status = "";
+        S.dialogue = { kind: "status", text: UNIFIED_FAILURE_LINE };
+        renderSession();
+      }
+      return;
+    }
+    if (data.outcome === "disabled") {
+      unifiedSessionDialogue(S,
+        { kind: "status", text: UNIFIED_DISABLED_LINE },
+        ctx.releaseConfirm ? null
+          : { prompt: ctx.prompt, outcome: "disabled" });
+      return;
+    }
+    if (data.outcome === "refused") {
+      unifiedSessionDialogue(S,
+        { kind: "status", text: data.text || UNIFIED_FAILURE_LINE },
+        ctx.releaseConfirm ? null
+          : { prompt: ctx.prompt, outcome: "refused",
+              text: data.text });
+      return;
+    }
+    if (data.outcome === "none") {
+      unifiedSessionDialogue(S,
+        { kind: "none", text: data.text, link: data.link || null },
+        ctx.releaseConfirm ? null
+          : { prompt: ctx.prompt, outcome: "none",
+              text: data.text, link: data.link || null });
+      return;
+    }
+    if (data.outcome === "pointer_only") {
+      var p = cleanPointer(data.pointer);
+      if (!p) {
+        unifiedSessionDialogue(S,
+          { kind: "status", text: UNIFIED_FAILURE_LINE },
+          { prompt: ctx.prompt, outcome: "failure" });
+        return;
+      }
+      S.pending = {
+        prompt: ctx.prompt, turn: ctx.turn,
+        covering_page: p.covering_page,
+        covering_name: p.covering_name,
+        unified: true, freshStart: !!ctx.freshStart
+      };
+      S.ui = "upointer"; S.status = ""; S.dialogue = null;
+      if (!ctx.releaseConfirm) {
+        threadAddDialogue(S.page, {
+          prompt: ctx.prompt, outcome: "pointer",
+          covering_page: p.covering_page,
+          covering_name: p.covering_name
+        });
+        track("Prompt Pointer Shown", {
+          page: S.page, covering_page: p.covering_page,
+          placement: "dialogue", request_id: ctx.requestId
+        });
+      }
+      renderSession();
+      return;
+    }
+    if (data.outcome === "release_offer") {
+      S.pending = {
+        prompt: ctx.prompt, turn: ctx.turn, unified: true,
+        freshStart: !!ctx.freshStart
+      };
+      S.ui = "confirm"; S.status = ""; S.dialogue = null;
+      track("Prompt Release Offered", { page: S.page });
+      renderSession();
+      return;
+    }
+    if (data.outcome === "state") {
+      applyUnifiedSessionState(S, data, ctx);
+      return;
+    }
+    unifiedSessionDialogue(S,
+      { kind: "status", text: UNIFIED_FAILURE_LINE },
+      ctx.releaseConfirm ? null
+        : { prompt: ctx.prompt, outcome: "failure" });
+  }
+
+  function applyUnifiedSessionState(S, data, ctx) {
+    var chip = S.chips[S.current];
+    var answer = cleanAnswer(data.answer);
+    var scope = data.scope === "released" ? "released" : chip.scope;
+    var apply = function () {
+      var spec = null;
+      var specNew = false;
+      var turnCategories = null;
+      if (data.spec) {
+        var candidate = data.spec;
+        if (validateSessionSpec(S, candidate, scope)) {
+          spec = candidate;
+          specNew = true;
+          // Ledger weighting, exactly as turns: weight the
+          // validated spec, re-validate, keep the unweighted
+          // spec on any failure. A fresh start skips both.
+          try {
+            if (window.DCLedger && window.DCLedger.enabled &&
+                !ctx.freshStart &&
+                typeof window.DCLedger.weightTurn === "function") {
+              var weighted = window.DCLedger.weightTurn(spec.blocks);
+              if (weighted && weighted.blocks) {
+                var wSpec = { blocks: weighted.blocks };
+                if (validateSessionSpec(S, wSpec, scope)) {
+                  spec = wSpec;
+                  turnCategories = weighted.categories || null;
+                }
+              }
+            }
+          } catch (e) { /* the ledger never breaks the page */ }
+        }
+        // A spec that fails the client gate is dropped, never
+        // re-asked; the answer, if any, still serves.
+      }
+      if (!specNew && !answer && !cleanPointer(data.pointer)) {
+        unifiedSessionDialogue(S,
+          { kind: "status", text: UNIFIED_FAILURE_LINE },
+          ctx.releaseConfirm ? null
+            : { prompt: ctx.prompt, outcome: "failure" });
+        return;
+      }
+      var pointer = cleanPointer(data.pointer);
+      var mixture = answer && specNew ? "mixed"
+        : answer ? "answer" : "composition";
+      var newChip = {
+        turn: ctx.turn, action: "unified", mixture: mixture,
+        // Answer-only: the current state's blocks carry forward
+        // unchanged, never re-weighted at carry time.
+        spec: specNew ? spec : chip.spec,
+        specNew: specNew,
+        scope: specNew ? scope : chip.scope,
+        prompt: ctx.prompt, answer: answer, pointer: pointer,
+        categories: turnCategories,
+        freshStart: !!ctx.freshStart,
+        seq: threadNextSeq(S.page)
+      };
+      S.chips = S.chips.slice(0, S.current + 1);
+      S.chips.push(newChip);
+      S.current = S.chips.length - 1;
+      S.lastBuilt = S.current;
+      S.docked = true;
+      S.ui = "field"; S.pending = null; S.status = "";
+      S.dialogue = null;
+      // Exactly one decrement per state-producing response; the
+      // release-confirm state counts here, once, for the pair.
+      S.submits += 1;
+      saveSession(S);
+      renderSession();
+      track("Prompt Turn Rendered", {
+        page: S.page, turn_number: ctx.turn,
+        action: specNew ? "recompose" : "answer",
+        block_count: newChip.spec ? newChip.spec.blocks.length : 0,
+        scope: newChip.scope, mixture: mixture,
+        request_id: ctx.requestId
+      });
+      if (pointer) {
+        track("Prompt Pointer Shown", {
+          page: S.page, covering_page: pointer.covering_page,
+          placement: "state", request_id: ctx.requestId
+        });
+      }
+      if (specNew && !ctx.freshStart) {
+        ledgerRecordSpec(spec, S.page, newChip.scope);
+      }
+      if (answer) ledgerRecordAnswer(answer);
+      if (S.submits >= PROMPT_CAP && !S.capFired) {
+        S.capFired = true;
+        track("Prompt Cap Reached", { page: S.page });
+        renderSession();
+      }
+    };
+    if (scope === "released" && !blocksPayload) {
+      loadBlocks().then(apply);
+    } else {
+      apply();
+    }
+  }
+
+  function confirmUnifiedSession(S) {
+    var pending = S.pending;
+    if (!pending) { S.ui = "field"; renderSession(); return; }
+    S.pending = null;
+    submitUnifiedSession(S, pending.prompt, {
+      releaseConfirm: true, turnNo: pending.turn
+    });
+  }
+
+  /* ---- Flat unified sessions: home, the non-converting case
+     studies (Decision 16 pages whose bodies have not converted),
+     and every other page. One state list per page: the published
+     page, the arrival view where the page composes one, then one
+     state per state-producing response. The first composed state
+     is "the assembled view"; later ones are rewrites. Responses
+     render in the page's composed region, around the fixed body,
+     never interleaved with it. ---- */
+
+  var flatSession = null;
+
+  function flatStoreKey(page) { return "dc.prompt." + page; }
+
+  function makeFlatSession(cfg) {
+    return {
+      kind: cfg.kind, page: cfg.page,
+      pageName: cfg.pageName || null,
+      el: cfg.el || null, entry: cfg.entry || null,
+      view: cfg.view || null,
+      arrivalSource: cfg.arrivalSource || "arrival",
+      states: [{ action: "published", prompt: null, turn: 0,
+                  spec: null, answer: null, pointer: null }],
+      current: 0, submits: 0, inFlight: false,
+      pending: null, dialogue: null, capFired: false,
+      arrivalOnScreen: false
+    };
+  }
+
+  function flatStateName(F, st, idx) {
+    if (idx === 0) return "the published page";
+    if (st.action === "arrival") return "as you arrived";
+    var pos = 0;
+    for (var i = 1; i <= idx; i++) {
+      if (F.states[i].action !== "arrival") pos += 1;
+    }
+    return pos <= 1 ? "the assembled view" : "rewrite " + pos;
+  }
+
+  function flatReceiptLine(st) {
+    var q = "\u201C" + esc(st.prompt || "") + "\u201D";
+    if (st.answer && st.specNew) return "Answered and rebuilt for: " + q;
+    if (st.answer && st.pointer) return "Answered and pointed for: " + q;
+    if (st.answer) return "Answered for: " + q;
+    if (st.pointer) return "Rebuilt and pointed for: " + q;
+    return "Rebuilt for: " + q;
+  }
+
+  function saveFlat(F) {
+    try {
+      sessionStorage.setItem(flatStoreKey(F.page), JSON.stringify({
+        states: F.states, current: F.current, submits: F.submits
+      }));
+    } catch (e) { /* storage unavailable: in-memory session */ }
+  }
+
+  function restoreFlatStore(F) {
+    var data = null;
+    try {
+      var raw = sessionStorage.getItem(flatStoreKey(F.page));
+      if (raw) data = JSON.parse(raw);
+    } catch (e) { data = null; }
+    if (!data || !Array.isArray(data.states)) return false;
+    var kept = [F.states[0]];
+    var adopted = false;
+    data.states.forEach(function (st, i) {
+      if (i === 0 || !st) return;
+      if (st.action === "arrival") {
+        // The arrival belongs to this visit's render, not the
+        // store; the fresh arrival state already stands.
+        if (F.kind === "page" && kept.length === 1) {
+          kept.push(F.states[1]);
+        }
+        return;
+      }
+      if (st.action === "intent") { kept.push(st); adopted = true; return; }
+      if (st.action !== "unified") return;
+      if (st.spec && !validateFlatSpec(F, st.spec, st.scope)) {
+        if (!cleanAnswer(st.answer)) return;
+        st = Object.assign({}, st, { spec: null, specNew: false,
+                                     mixture: "answer" });
+      }
+      if (!st.spec && !cleanAnswer(st.answer)) return;
+      kept.push(st);
+      adopted = true;
+    });
+    if (F.kind === "page" && kept.length === 1 && F.states[1]) {
+      kept.push(F.states[1]);
+    }
+    if (!adopted) return false;
+    F.states = kept;
+    F.current = Math.min(
+      typeof data.current === "number" ? data.current : 1,
+      kept.length - 1);
+    F.submits = data.submits || 0;
+    F.states.forEach(function (st) {
+      if (st.prompt && !st.seq) st.seq = threadNextSeq(F.page);
+    });
+    return true;
+  }
+
+  function validateFlatSpec(F, spec, scope) {
+    if (!spec || !Array.isArray(spec.blocks) || !spec.blocks.length) {
+      return null;
+    }
+    if (scope === "released" || F.kind === "home") {
+      if (!blocksPayload) return null;
+      return validateSpec(spec, blocksPayload) ? spec : null;
+    }
+    if (F.kind === "page") {
+      if (!validateSpec(spec, F.view, F.page)) return null;
+      if (spec.blocks[0].id !== F.entry.anchor) return null;
+      var inSlice = {};
+      F.view.blocks.forEach(function (b) { inSlice[b.id] = true; });
+      return spec.blocks.every(function (b) { return inSlice[b.id]; })
+        ? spec : null;
+    }
+    return null; // a generic page has no library of its own
+  }
+
+  function flatRegion(F) {
+    var el = F.el || slot();
+    if (el) { F.el = el; return el; }
+    el = document.createElement("section");
+    el.className = "composition cp-composed";
+    el.id = "composition";
+    el.setAttribute("aria-label", "Assembled from the record");
+    el.hidden = true;
+    var main = document.querySelector("main");
+    if (main) main.insertBefore(el, main.firstChild);
+    else document.body.appendChild(el);
+    F.el = el;
+    return el;
+  }
+
+  function intentLinksHtml(intent) {
+    var links = LINKS[intent] || [];
+    if (!links.length) return "";
+    return '<p class="intent-links">' + links.map(function (l) {
+      return '<a href="' + l.href + '"' + extAttr(l.href) +
+        trackAttr(l.href, l.label) + ">" + l.label +
+        extHint(l.href) + "</a>";
+    }).join("") + "</p>";
+  }
+
+  function renderFlat(F) {
+    if (!surfaceOn()) return;
+    trySurface(function (SF) {
+      renderFlatSurface(SF, F);
+      return true;
+    });
+  }
+
+  function renderFlatSurface(SF, F) {
+    SF.registerUnifiedSubmit(function (text) {
+      if (flatSession !== F) return false;
+      submitUnifiedFlat(F, text);
+      return true;
+    });
+    var st = F.states[F.current];
+    var el = null;
+    if (st.action !== "intent" &&
+        !(st.action === "unified" && st.intent)) {
+      F.renderedState = st;
+    }
+    if (st.action === "arrival") {
+      if (!F.arrivalOnScreen) {
+        renderPageComposition(F.el, F.page, F.entry, F.view,
+          st.spec, F.arrivalSource, st.categories || null,
+          "restore");
+        F.arrivalOnScreen = true;
+      }
+      el = F.el;
+    } else {
+      F.arrivalOnScreen = false;
+      if (st.action === "published") {
+        F.renderedState = null;
+        if (F.kind === "page") {
+          dismissPageSurface();
+        } else {
+          el = F.el || slot();
+          if (el) {
+            el.hidden = true; el.innerHTML = "";
+            el.removeAttribute("data-render-key");
+            el.removeAttribute("data-render-source");
+          }
+          SF.setReceipt(null);
+        }
+        if (F.kind !== "home") SF.setScope(null);
+      } else if (st.action === "intent") {
+        if (F.renderedState !== st) {
+          renderFlatIntent(SF, F, st);
+          F.renderedState = st;
+        }
+        el = F.el;
+      } else if (st.action === "unified" && st.intent) {
+        // An answer carried over an intent view: the answer
+        // element leads the same intent composition, unchanged.
+        if (F.renderedState !== st) {
+          renderFlatUnifiedIntent(SF, F, st);
+          F.renderedState = st;
+        }
+        el = F.el;
+      } else {
+        el = flatRegion(F);
+        var heading = F.kind === "generic"
+          ? '<h3 class="cp-composed-h">The full picture</h3>'
+          : '<h3 class="composition-h">The full picture</h3>';
+        el.innerHTML = heading + answerElementHtml(st.answer) +
+          (st.spec
+            ? renderFragmentHtml(st.spec,
+                st.scope === "released" || F.kind !== "page"
+                  ? blocksPayload : F.view,
+                F.kind === "page" ? F.page : undefined)
+            : "") +
+          pointerElementHtml(st.pointer);
+        el.hidden = false;
+        el.setAttribute("data-render-key", "unified:" + F.page);
+        el.setAttribute("data-render-source", "unified");
+        SF.setReceipt({
+          historyLabel: null,
+          aiFraming: !!(st.answer && st.answer.framing),
+          expandedHtml:
+            '<p class="composition-from-intent">' +
+            flatReceiptLine(st) + "</p>" +
+            '<p class="composition-note">' + NOTE_BUILT + "</p>",
+          onRestore: function () { goFlat(F, 0); }
+        });
+        if (F.kind !== "home") {
+          SF.setScope(st.scope === "released"
+            ? "Building from across the published record"
+            : "Starting from " + F.pageName);
+        }
+      }
+    }
+    if (F.states.length > 1) {
+      SF.registerStates({
+        states: F.states.map(function (s, i) {
+          return { name: flatStateName(F, s, i) };
+        }),
+        current: F.current,
+        onActivate: function (idx) { goFlat(F, idx); }
+      });
+    } else {
+      SF.clearStates();
+    }
+    registerFlatThread(SF, F);
+    // Turns area: pending replaces dialogue in flight; a dialogue
+    // outcome replaces the pending line; a state clears both.
+    if (F.inFlight) {
+      SF.showDialogue("status", { text: UNIFIED_PENDING_LINE });
+    } else if (F.dialogue) {
+      SF.showDialogue(F.dialogue.kind, F.dialogue);
+      wireFlatDialogue(F);
+    } else if (F.submits >= PROMPT_CAP && F.states.length > 1) {
+      SF.showDialogue("status", { text: UNIFIED_CAP_LINE });
+    } else {
+      SF.showDialogue("clear");
+    }
+    SF.refreshBand();
+  }
+
+  function renderFlatIntent(SF, F, st) {
+    var el = F.el || slot();
+    if (!el) return;
+    F.el = el;
+    var finish = function () {
+      var entry = byIntent && byIntent[st.intent];
+      if (!entry) return;
+      el.innerHTML = '<h3 class="composition-h">The full picture</h3>' +
+        entry.html + intentLinksHtml(st.intent);
+      el.hidden = false;
+      el.setAttribute("data-render-key", "intent:" + st.intent);
+      el.setAttribute("data-render-source", "button");
+      Array.prototype.forEach.call(
+        document.querySelectorAll(".intent-btn"),
+        function (b) {
+          b.setAttribute("aria-pressed",
+            b.getAttribute("data-intent") === "intent_" + st.intent
+              ? "true" : "false");
+        });
+      try {
+        history.replaceState(null, "", "#c=" + (st.sig || entry.sig));
+      } catch (e) {}
+      SF.setReceipt({
+        historyLabel: null, aiFraming: false,
+        expandedHtml: '<p class="composition-note">' + NOTE_BUILT +
+          "</p>",
+        onRestore: function () { goFlat(F, 0); }
+      });
+      track("Composition Rendered", { intent: st.intent });
+    };
+    if (byIntent) finish();
+    else load().then(finish);
+  }
+
+  function renderFlatUnifiedIntent(SF, F, st) {
+    var el = F.el || slot();
+    if (!el) return;
+    F.el = el;
+    var finish = function () {
+      var entry = byIntent && byIntent[st.intent];
+      if (!entry) return;
+      el.innerHTML = '<h3 class="composition-h">The full picture</h3>' +
+        answerElementHtml(st.answer) + entry.html +
+        intentLinksHtml(st.intent) + pointerElementHtml(st.pointer);
+      el.hidden = false;
+      el.setAttribute("data-render-key", "intent:" + st.intent);
+      el.setAttribute("data-render-source", "unified");
+      SF.setReceipt({
+        historyLabel: null,
+        aiFraming: !!(st.answer && st.answer.framing),
+        expandedHtml:
+          '<p class="composition-from-intent">' +
+          flatReceiptLine(st) + "</p>" +
+          '<p class="composition-note">' + NOTE_BUILT + "</p>",
+        onRestore: function () { goFlat(F, 0); }
+      });
+    };
+    if (byIntent) finish();
+    else load().then(finish);
+  }
+
+  function wireFlatDialogue(F) {
+    var area = window.DCSurface.turnsArea();
+    if (!area) return;
+    var bh = area.querySelector("#prompt-build-here");
+    if (bh) {
+      bh.addEventListener("click", function () {
+        var p = F.pending;
+        F.pending = null; F.dialogue = null;
+        if (p) submitUnifiedFlat(F, p.prompt, { buildHere: true });
+      });
+    }
+    var cf = area.querySelector("#prompt-release-confirm");
+    if (cf) {
+      cf.addEventListener("click", function () {
+        track("Prompt Release Confirmed", { page: F.page });
+        confirmUnifiedFlat(F);
+      });
+    }
+    var dc = area.querySelector("#prompt-release-decline");
+    if (dc) {
+      dc.addEventListener("click", function () {
+        track("Prompt Release Declined", { page: F.page });
+        F.pending = null; F.dialogue = null;
+        renderFlat(F);
+      });
+    }
+  }
+
+  function registerFlatThread(SF, F) {
+    var stateEntries = [];
+    F.states.forEach(function (st, i) {
+      if (i === 0 || !st.prompt) return;
+      stateEntries.push({ seq: st.seq || 0, label: st.prompt,
+                          kind: "state", stateIdx: i });
+    });
+    var model = buildThreadModel(F.page, stateEntries, {
+      inert: F.inFlight,
+      activate: function (merged) {
+        if (!merged) return;
+        if (merged.kind === "state") {
+          goFlat(F, merged.stateIdx, true);
+          return;
+        }
+        threadActivateDialogue(merged, function (d) {
+          if (d.kind === "pointer") {
+            F.pending = {
+              prompt: d.prompt, turn: F.submits + 1,
+              covering_page: d.covering_page,
+              covering_name: d.covering_name
+            };
+            F.dialogue = { kind: "pointer",
+              covering_page: d.covering_page,
+              covering_name: d.covering_name };
+          } else {
+            F.dialogue = { kind: d.kind, text: d.text,
+                           link: d.link };
+          }
+          renderFlat(F);
+        });
+      }
+    });
+    SF.registerThread(model);
+  }
+
+  function goFlat(F, idx, viaThread) {
+    if (idx < 0 || idx >= F.states.length) return;
+    F.current = idx;
+    F.pending = null;
+    F.dialogue = null;
+    saveFlat(F);
+    renderFlat(F);
+    // Prompt History Restored belongs to the prompt series: it
+    // fires for unified states. Arrival and published restores
+    // on page-kind pages are measured by the page-composition
+    // events, and home intent restores by Composition Rendered.
+    if (F.states[idx].action === "unified") {
+      track("Prompt History Restored", {
+        page: F.page, restored_turn: F.states[idx].turn || 0,
+        via: viaThread ? "thread" : "state_line"
+      });
+    }
+    if (viaThread) focusCanvasHeading(F.el || slot());
+  }
+
+  function flatPriorSpecs(F) {
+    var out = [];
+    for (var i = 1; i < F.current; i++) {
+      if (F.states[i].spec) out.push({ spec: F.states[i].spec });
+    }
+    return out;
+  }
+
+  function submitUnifiedFlat(F, text, opts) {
+    opts = opts || {};
+    if (F.inFlight) return;
+    var st = F.states[F.current];
+    if (!opts.buildHere && !opts.releaseConfirm) {
+      if (st.prompt === text &&
+          F.current === F.states.length - 1) {
+        F.dialogue = { kind: "status", text: REPEAT_LINE };
+        renderFlat(F);
+        return;
+      }
+      if (F.submits >= PROMPT_CAP) {
+        F.dialogue = { kind: "status", text: UNIFIED_CAP_LINE };
+        renderFlat(F);
+        return;
+      }
+    }
+    F.pending = null;
+    F.dialogue = null;
+    var freshStartActive = freshStartFor(text, F.page);
+    var turnNo = opts.releaseConfirm ? (opts.turnNo || F.submits + 1)
+      : F.submits + 1;
+    var requestId = newRequestId();
+    var scope = opts.releaseConfirm ? "released"
+      : (st.scope || (F.kind === "home" ? "released" : "page"));
+    if (!opts.releaseConfirm) {
+      track("Prompt Submitted", {
+        page: F.page, turn_number: turnNo, scope: scope,
+        path: "surface", request_id: requestId
+      });
+    }
+    F.inFlight = true;
+    renderFlat(F);
+    postUnified({
+      mode: "unified", text: text, page: F.page,
+      current_spec: st.spec || null,
+      prior_specs: flatPriorSpecs(F),
+      turn: turnNo, scope: scope,
+      release_confirm: !!opts.releaseConfirm,
+      build_here: !!opts.buildHere,
+      request_id: requestId
+    }).then(function (data) {
+      F.inFlight = false;
+      handleUnifiedFlatResponse(F, data, {
+        prompt: text, turn: turnNo, requestId: requestId,
+        freshStart: freshStartActive,
+        releaseConfirm: !!opts.releaseConfirm
+      });
+    });
+  }
+
+  function flatDialogue(F, dialogue, threadEntry) {
+    F.pending = null;
+    F.dialogue = dialogue;
+    if (threadEntry) threadAddDialogue(F.page, threadEntry);
+    renderFlat(F);
+  }
+
+  function handleUnifiedFlatResponse(F, data, ctx) {
+    var record = !ctx.releaseConfirm;
+    if (!data) {
+      flatDialogue(F,
+        { kind: "status", text: UNIFIED_FAILURE_LINE },
+        record ? { prompt: ctx.prompt, outcome: "failure" } : null);
+      return;
+    }
+    if (data.outcome === "disabled") {
+      flatDialogue(F,
+        { kind: "status", text: UNIFIED_DISABLED_LINE },
+        record ? { prompt: ctx.prompt, outcome: "disabled" } : null);
+      return;
+    }
+    if (data.outcome === "refused") {
+      flatDialogue(F,
+        { kind: "status", text: data.text || UNIFIED_FAILURE_LINE },
+        record ? { prompt: ctx.prompt, outcome: "refused",
+                   text: data.text } : null);
+      return;
+    }
+    if (data.outcome === "none") {
+      flatDialogue(F,
+        { kind: "none", text: data.text, link: data.link || null },
+        record ? { prompt: ctx.prompt, outcome: "none",
+                   text: data.text, link: data.link || null } : null);
+      return;
+    }
+    if (data.outcome === "pointer_only") {
+      var p = cleanPointer(data.pointer);
+      if (!p) {
+        flatDialogue(F,
+          { kind: "status", text: UNIFIED_FAILURE_LINE },
+          record ? { prompt: ctx.prompt, outcome: "failure" } : null);
+        return;
+      }
+      F.pending = {
+        prompt: ctx.prompt, turn: ctx.turn,
+        covering_page: p.covering_page,
+        covering_name: p.covering_name
+      };
+      F.dialogue = { kind: "pointer",
+        covering_page: p.covering_page,
+        covering_name: p.covering_name };
+      if (record) {
+        threadAddDialogue(F.page, {
+          prompt: ctx.prompt, outcome: "pointer",
+          covering_page: p.covering_page,
+          covering_name: p.covering_name
+        });
+        track("Prompt Pointer Shown", {
+          page: F.page, covering_page: p.covering_page,
+          placement: "dialogue", request_id: ctx.requestId
+        });
+      }
+      renderFlat(F);
+      return;
+    }
+    if (data.outcome === "release_offer") {
+      F.pending = { prompt: ctx.prompt, turn: ctx.turn };
+      F.dialogue = { kind: "release", page_name: F.pageName };
+      track("Prompt Release Offered", { page: F.page });
+      renderFlat(F);
+      return;
+    }
+    if (data.outcome === "state") {
+      applyUnifiedFlatState(F, data, ctx);
+      return;
+    }
+    flatDialogue(F,
+      { kind: "status", text: UNIFIED_FAILURE_LINE },
+      record ? { prompt: ctx.prompt, outcome: "failure" } : null);
+  }
+
+  function applyUnifiedFlatState(F, data, ctx) {
+    var st = F.states[F.current];
+    var answer = cleanAnswer(data.answer);
+    var scope = data.scope === "released" ? "released"
+      : (F.kind === "home" ? "released" : (st.scope || "page"));
+    var apply = function () {
+      var spec = null;
+      var specNew = false;
+      var turnCategories = null;
+      if (data.spec) {
+        var candidate = data.spec;
+        if (validateFlatSpec(F, candidate, scope)) {
+          spec = candidate;
+          specNew = true;
+          try {
+            if (window.DCLedger && window.DCLedger.enabled &&
+                !ctx.freshStart &&
+                typeof window.DCLedger.weightTurn === "function") {
+              var weighted = window.DCLedger.weightTurn(spec.blocks);
+              if (weighted && weighted.blocks) {
+                var wSpec = { blocks: weighted.blocks };
+                if (validateFlatSpec(F, wSpec, scope)) {
+                  spec = wSpec;
+                  turnCategories = weighted.categories || null;
+                }
+              }
+            }
+          } catch (e) { /* the ledger never breaks the page */ }
+        }
+      }
+      var pointer = cleanPointer(data.pointer);
+      if (!specNew && !answer && !pointer) {
+        flatDialogue(F,
+          { kind: "status", text: UNIFIED_FAILURE_LINE },
+          ctx.releaseConfirm ? null
+            : { prompt: ctx.prompt, outcome: "failure" });
+        return;
+      }
+      var mixture = answer && specNew ? "mixed"
+        : answer ? "answer" : "composition";
+      var newState = {
+        action: "unified", mixture: mixture,
+        // Answer-only: the current state's view carries forward
+        // unchanged (its spec, or its intent on home), never
+        // re-weighted at carry time.
+        spec: specNew ? spec
+          : (st.action === "intent" ? null : st.spec),
+        intent: specNew ? null
+          : (st.action === "intent" ? st.intent : null),
+        sig: specNew ? null
+          : (st.action === "intent" ? st.sig : null),
+        specNew: specNew,
+        scope: specNew ? scope : (st.scope || scope),
+        prompt: ctx.prompt, turn: ctx.turn,
+        answer: answer, pointer: pointer,
+        categories: turnCategories,
+        freshStart: !!ctx.freshStart,
+        seq: threadNextSeq(F.page)
+      };
+      F.states = F.states.slice(0, F.current + 1);
+      F.states.push(newState);
+      F.current = F.states.length - 1;
+      F.pending = null;
+      F.dialogue = null;
+      F.submits += 1;
+      saveFlat(F);
+      renderFlat(F);
+      track("Prompt Turn Rendered", {
+        page: F.page, turn_number: ctx.turn,
+        action: specNew ? "recompose" : "answer",
+        block_count: newState.spec ? newState.spec.blocks.length : 0,
+        scope: newState.scope, mixture: mixture,
+        request_id: ctx.requestId
+      });
+      if (pointer) {
+        track("Prompt Pointer Shown", {
+          page: F.page, covering_page: pointer.covering_page,
+          placement: "state", request_id: ctx.requestId
+        });
+      }
+      if (specNew && !ctx.freshStart) {
+        ledgerRecordSpec(spec, F.page, newState.scope);
+      }
+      if (answer) ledgerRecordAnswer(answer);
+      if (F.submits >= PROMPT_CAP && !F.capFired) {
+        F.capFired = true;
+        track("Prompt Cap Reached", { page: F.page });
+        renderFlat(F);
+      }
+    };
+    if ((scope === "released" || F.kind === "home") &&
+        !blocksPayload) {
+      loadBlocks().then(apply);
+    } else {
+      apply();
+    }
+  }
+
+  function confirmUnifiedFlat(F) {
+    var pending = F.pending;
+    if (!pending) { F.dialogue = null; renderFlat(F); return; }
+    F.pending = null;
+    F.dialogue = null;
+    submitUnifiedFlat(F, pending.prompt, {
+      releaseConfirm: true, turnNo: pending.turn
+    });
+  }
+
+  function homeStripSelect(F, intent) {
+    load().then(function () {
+      var entry = byIntent && byIntent[intent];
+      if (!entry) return;
+      var idx = -1;
+      for (var i = 1; i < F.states.length; i++) {
+        if (F.states[i].action === "intent") { idx = i; break; }
+      }
+      if (idx < 0) {
+        F.states.push({
+          action: "intent", intent: intent, sig: entry.sig,
+          prompt: null, turn: 0, spec: null, answer: null,
+          pointer: null, scope: "released", seq: 0
+        });
+        idx = F.states.length - 1;
+      } else {
+        F.states[idx].intent = intent;
+        F.states[idx].sig = entry.sig;
+        F.renderedState = null; // same object, new content
+      }
+      F.current = idx;
+      F.pending = null;
+      F.dialogue = null;
+      saveFlat(F);
+      renderFlat(F);
+      track("Composition Rendered", { intent: intent });
+      ledgerRecordIntent(intent);
+      ledgerRecordComposition("/");
+    });
+  }
+
+  function initHomeFlat(el) {
+    var F = makeFlatSession({ kind: "home", page: "/", el: el });
+    flatSession = F;
+    // Render once now so the unified submit handler is registered
+    // before the payloads land; restore re-renders after.
+    renderFlat(F);
+    loadBlocks().then(function () {
+      restoreFlatStore(F);
+      renderFlat(F);
+    });
+    return F;
+  }
+
+  function initPageFlat(el, page, entry, view, spec, source,
+                        historyCategories) {
+    var F = makeFlatSession({
+      kind: "page", page: page, pageName: entry.page_name,
+      el: el, entry: entry, view: view, arrivalSource: source
+    });
+    F.states.push({
+      action: "arrival", prompt: null, turn: 0, spec: spec,
+      answer: null, pointer: null, scope: "page",
+      categories: historyCategories || null, seq: 0
+    });
+    F.current = 1;
+    F.arrivalOnScreen = true;
+    flatSession = F;
+    renderFlat(F);
+    loadBlocks().then(function () {
+      restoreFlatStore(F);
+      renderFlat(F);
+    });
+    return F;
+  }
+
+  function initGenericFlat() {
+    var page = window.location.pathname;
+    if (page.charAt(page.length - 1) !== "/") page += "/";
+    var F = makeFlatSession({
+      kind: "generic", page: page, pageName: "this page"
+    });
+    flatSession = F;
+    renderFlat(F);
+    loadBlocks().then(function () {
+      restoreFlatStore(F);
+      renderFlat(F);
+    });
+    return F;
+  }
+
   function init() {
     var el = slot();
-    if (!el) return;
+    if (!el) {
+      // No composition mount: on the surface path a generic flat
+      // session still serves composer submits (unified batch);
+      // the composed region is created on the first state.
+      if (surfaceOn()) initGenericFlat();
+      return;
+    }
     if (el.hasAttribute("data-compose-page")) {
       // Surface build, session pages only: an Ask "none" routes
-      // its text to the active session as a turn (build sheet
-      // section 3, rule 3). Registered only under the surface
-      // presenter; the layered path keeps today's behavior, in
-      // which the event has no listener on page-mode pages.
+      // its text to the active session (build sheet section 3,
+      // rule 3). Under the unified batch the route lands on the
+      // unified submit; ask.js no longer dispatches the event on
+      // the surface path, so this is a backstop for stale callers.
+      // Registered only under the surface presenter; the layered
+      // path keeps today's behavior, in which the event has no
+      // listener on page-mode pages.
       if (surfaceOn()) {
         document.addEventListener("dc:problem", function (ev) {
           var text = ev && ev.detail && ev.detail.text;
-          if (text && pageSession) submitPrompt(pageSession, text);
+          if (text && pageSession) {
+            submitUnifiedSession(pageSession, text);
+          }
         });
       }
       pageInit(el); return;
     }
     el.setAttribute("aria-live", "polite");
+    var homeFlat = surfaceOn() ? initHomeFlat(el) : null;
     document.addEventListener("dc:problem", function (ev) {
       var text = ev && ev.detail && ev.detail.text;
-      if (text) classifyProblem(text);
+      if (!text) return;
+      if (homeFlat) submitUnifiedFlat(homeFlat, text);
+      else classifyProblem(text);
     });
     document.addEventListener("dc:composition-cleared", function () {
-      clearCompositionAny();
+      if (homeFlat) goFlat(homeFlat, 0);
+      else clearCompositionAny();
     });
     var btns = document.querySelectorAll(".intent-btn");
     Array.prototype.forEach.call(btns, function (btn) {
       btn.addEventListener("click", function () {
+        if (homeFlat) {
+          homeStripSelect(homeFlat, intentOfButton(btn));
+          return;
+        }
         load().then(function () { render(intentOfButton(btn)); });
       });
     });
     window.addEventListener("hashchange", function () {
       var hm = /#c=([0-9a-f]{24})/.exec(location.hash || "");
+      if (homeFlat) {
+        if (!hm) { goFlat(homeFlat, 0); return; }
+        load().then(function () {
+          var e2 = bySig && bySig[hm[1]];
+          if (e2) homeStripSelect(homeFlat, e2.intent);
+          else goFlat(homeFlat, 0);
+        });
+        return;
+      }
       if (!hm) { clearCompositionAny(); return; }
       load().then(function () {
         var e2 = bySig && bySig[hm[1]];
@@ -1912,6 +3358,13 @@
         var entry = bySig && bySig[m[1]];
         if (!entry) {
           track("Composition Fallback", {});
+          return;
+        }
+        if (homeFlat) {
+          homeStripSelect(homeFlat, entry.intent);
+          if (el.scrollIntoView) {
+            el.scrollIntoView({ block: "nearest" });
+          }
           return;
         }
         var target = document.querySelector(
