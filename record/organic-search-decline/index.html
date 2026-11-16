@@ -437,9 +437,9 @@
 document.addEventListener("click", function (e) {
   var a = e.target && e.target.closest ? e.target.closest("a[data-next-link]") : null;
   if (!a) return;
-  try { if (window.amplitude && typeof window.amplitude.track === "function") window.amplitude.track("record_next_click", { page: location.pathname, destination: a.getAttribute("href") }); } catch (err) {}
+  try { if (window.amplitude && typeof window.amplitude.track === "function") window.amplitude.track("Record Next Click", { page: location.pathname, destination: a.getAttribute("href") }); } catch (err) {}
 });
 </script>
-<script src="/assets/ask.js?v=20261115-12" defer></script>
+<script src="/assets/ask.js?v=20261116-1" defer></script>
 </body>
 </html>
