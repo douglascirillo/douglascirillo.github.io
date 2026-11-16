@@ -31,10 +31,16 @@
 
   var LINKEDIN = "https://www.linkedin.com/in/douglascirillo/";
   /* Outbound rule (Douglas, Nov 15): external links open in a new tab;
-     internal links stay in the same tab. Call after setting a.href. */
+     internal links stay in the same tab. Call after setting a.href.
+     External anchors also carry a visually hidden "(opens in new tab)"
+     hint so the new tab is announced (Audit #3, D2). */
   function extAttrs(a) {
     if (a && a.hostname && a.hostname !== "douglascirillo.com") {
       a.target = "_blank"; a.rel = "noopener";
+      var hint = document.createElement("span");
+      hint.className = "visually-hidden";
+      hint.textContent = "(opens in new tab)";
+      a.appendChild(hint);
     }
   }
   var CONVO = { label: "Start a conversation on LinkedIn", href: LINKEDIN };
