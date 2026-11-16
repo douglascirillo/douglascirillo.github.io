@@ -1056,33 +1056,92 @@
     bump("intents", id);
   }
 
-  function recordComposition(pageKey) { bump("compositions", pageKey); }
+  function recordComposition(pageKey) {
+    return bump("compositions", pageKey);
+  }
 
+  // The composition-view write races the same async Amplitude
+  // SDK load as the init page-view write, but compose.js calls
+  // it exactly once, at render, with no retry of its own. On
+  // the first page after a ledger clear the namespace is
+  // usually not resolvable yet at render time, so the write
+  // was silently dropped while the page-open beside it landed
+  // through its retry (the Nov 16 re-probe: a Gangverk visit
+  // recorded the open but never the view, so the Reading B
+  // promotion composite, open echo 0.5 + view echo 1.5 = the
+  // 2.0 floor, stopped at 0.5 and nothing promoted). Retry on
+  // the same bounded schedule as recordPageViewWithRetry
+  // until the write lands, exactly once. A false return from
+  // a validation drop simply exhausts the schedule, as with
+  // the page-view write.
+  function recordCompositionWithRetry(pageKey) {
+    if (recordComposition(pageKey)) return;
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries++;
+      var done = false;
+      try { done = !canUse() || recordComposition(pageKey); }
+      catch (e) { done = true; }
+      if (done || tries >= 12) {
+        try { clearInterval(timer); } catch (e) {}
+      }
+    }, 250);
+  }
+
+  // Returns true when the write landed. It returns false when
+  // there is no writable namespace yet, which recordSpecWithRetry
+  // retries on a bounded schedule; validation drops also return
+  // false and simply never land.
   function recordSpec(specInfo) {
     try {
-      if (!canUse() || !specInfo) return;
-      if (!Array.isArray(specInfo.blocks) || !specInfo.blocks.length) return;
-      if (typeof specInfo.page !== "string" || !specInfo.page) return;
-      if (specInfo.scope !== "page" && specInfo.scope !== "released") return;
+      if (!canUse() || !specInfo) return false;
+      if (!Array.isArray(specInfo.blocks) || !specInfo.blocks.length) return false;
+      if (typeof specInfo.page !== "string" || !specInfo.page) return false;
+      if (specInfo.scope !== "page" && specInfo.scope !== "released") return false;
       var ids = [];
       for (var i = 0; i < specInfo.blocks.length; i++) {
         var b = specInfo.blocks[i];
         var id = typeof b === "string" ? b : (b && b.id ? b.id : null);
-        if (!id) return;
+        if (!id) return false;
         ids.push(id);
       }
       if (manifest) {
-        if (!manifest.pages[specInfo.page]) return;
+        if (!manifest.pages[specInfo.page]) return false;
         for (var j = 0; j < ids.length; j++) {
-          if (!manifest.blocks[ids[j]]) return;
+          if (!manifest.blocks[ids[j]]) return false;
         }
       }
       var page = specInfo.page, scope = specInfo.scope;
-      mutateLedger(function (led) {
+      return mutateLedger(function (led) {
         led.specs.push({ blocks: ids, page: page, scope: scope, t: nowSec() });
         led.specs = led.specs.slice(-SPECS_MAX);
       });
-    } catch (e) {}
+    } catch (e) { return false; }
+  }
+
+  // The spec write races the same async Amplitude SDK load as
+  // the composition-view write: compose.js records a served
+  // turn's spec exactly once, and on the first page after a
+  // ledger clear the namespace is usually not resolvable yet
+  // at that moment, so the strongest signal in the ledger (a
+  // validated spec, tier 1) was silently dropped while the
+  // writes beside it landed through their retries. Retry on
+  // the same bounded schedule as recordCompositionWithRetry
+  // until the write lands, exactly once (a landed attempt
+  // returns true and stops the schedule, so the spec is never
+  // pushed twice).
+  function recordSpecWithRetry(specInfo) {
+    if (recordSpec(specInfo)) return;
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries++;
+      var done = false;
+      try { done = !canUse() || recordSpec(specInfo); }
+      catch (e) { done = true; }
+      if (done || tries >= 12) {
+        try { clearInterval(timer); } catch (e) {}
+      }
+    }, 250);
   }
 
   function recordAskOutcome(cls) {
@@ -1447,10 +1506,10 @@
       try { recordIntent(id); } catch (e) {}
     },
     recordComposition: function (pageKey) {
-      try { recordComposition(pageKey); } catch (e) {}
+      try { recordCompositionWithRetry(pageKey); } catch (e) {}
     },
     recordSpec: function (info) {
-      try { recordSpec(info); } catch (e) {}
+      try { recordSpecWithRetry(info); } catch (e) {}
     },
     recordAskOutcome: function (cls) {
       try { recordAskOutcome(cls); } catch (e) {}
