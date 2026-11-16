@@ -279,10 +279,17 @@
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
   /* control-plane (surface batch) */
-  .cp-composer.cp-live{min-height:132px;margin-top:12px}
-  .cp .explore{margin:0;padding:6px 0 2px;border:none;border-radius:0}
-  .cp-scope{font-size:13px;color:var(--muted);margin:8px 0 0}
-  .cp-session{margin-top:10px}
+  html{overflow-anchor:none}
+  .cp-dock{position:fixed;left:0;right:0;bottom:0;z-index:900;background:var(--bg);border-top:1px solid var(--line)}
+  .cp-dock-inner{max-width:760px;margin:0 auto;padding:8px 24px 10px;box-sizing:border-box;display:flex;flex-direction:column;max-height:var(--cp-dock-cap,40dvh)}
+  @media (min-width:860px){.cp-dock-inner{max-width:780px;padding-left:32px;padding-right:32px}}
+  .cp-dock .dc-ledger-gate--band{border-top:none}
+  .cp-consent:empty{display:none}
+  .cp-consent{flex:none}
+  .cp-dock-bar{flex:none;padding-bottom:env(safe-area-inset-bottom)}
+  .cp-dock .explore{margin:0;padding:6px 0 2px;border:none;border-radius:0}
+  .cp-scope{font-size:13px;color:var(--muted);margin:0 0 4px}
+  .cp-session:not([hidden]){display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow-y:auto}
   .cp-states{font-size:13.5px;color:var(--muted);margin:0 0 4px}
   .cp-state{font:inherit;font-size:inherit;background:none;border:none;padding:0;color:var(--accent);cursor:pointer;text-decoration:underline}
   .cp-state-current{color:var(--ink-2);font-weight:600}
@@ -294,19 +301,18 @@
   .cp-receipt-full .composition-note{font-size:13.5px;color:var(--muted);margin:0 0 4px}
   .cp-published{font:inherit;font-size:13.5px;background:none;border:none;padding:0;color:var(--accent);cursor:pointer;text-decoration:underline}
   .cp-turns .prompt-card{margin-top:10px}
-  .cp-slim{position:fixed;top:0;left:0;right:0;z-index:900;background:var(--bg);border-bottom:1px solid var(--line);padding:6px 12px;text-align:center}
-  .cp-slim-btn{font:inherit;font-size:14px;background:none;border:none;color:var(--ink-2);cursor:pointer;padding:6px 10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .cp-states-fold{display:none}
   @media (max-width:640px){.cp-states-fold{display:block}.cp-session>.cp-states{display:none}}
-  .cp-thread{margin-top:6px}
+  .cp-thread:not([hidden]){display:flex;flex-direction:column;flex:0 1 auto;min-height:0;margin-top:6px}
   .cp-thread-toggle{font:inherit;font-size:13.5px;background:none;border:none;padding:0;color:var(--muted);cursor:pointer;text-decoration:underline}
-  .cp-thread-list{list-style:none;margin:6px 0 0;padding:0}
+  .cp-thread-list{list-style:none;margin:6px 0 0;padding:0;overflow-y:auto;min-height:0}
   .cp-thread-list li{margin:0 0 4px}
-  .cp-thread-entry{font:inherit;font-size:14px;background:none;border:none;padding:0;color:var(--ink-2);cursor:pointer;text-align:left}
+  .cp-thread-entry{font:inherit;font-size:14px;background:none;border:none;padding:0;color:var(--ink-2);cursor:pointer;text-align:left;white-space:pre-line}
   .cp-thread-entry[aria-disabled="true"]{opacity:.55;cursor:default}
   .cp-thread-dropped{font-size:13px;color:var(--muted)}
   .cp-thread-fold{display:none}
   @media (max-width:640px){.cp-has-fold>.cp-thread{display:none}.cp-thread-fold{display:block;margin-top:6px}.cp-thread-fold-h{font-size:13.5px;color:var(--muted);margin:0 0 4px}}
+  @media print{.cp-dock{display:none}body{padding-bottom:0 !important}}
   /* /control-plane */
 </style>
 <!-- Amplitude Analytics - Browser SDK 2 (cdn.amplitude.com) -->
@@ -586,12 +592,17 @@
 
       <section aria-labelledby="address-h">
         <h2 id="address-h">One address, every page</h2>
-        <p>The machinery used to sit on top of each page: a search bar in the article, a prompt field inside one case study, receipts narrating from inside the view. It has moved into the frame. One composer now sits under the topline on every page, and it does every job: find a page, ask the record a question, and, where a page can rebuild itself, rebuild it. What a page builds still appears in the page. What accounts for it, the receipt, the list of views you can return to, the control over what this site remembers, now lives in the frame too, the same on every page, because it was never part of the content. The Lindblad prompt field is retired as a separate element; the composer does its job, and its sessions before today are the pilot&rsquo;s final count. The pattern is the one chat interfaces made familiar: a fixed place to address the site, and a page that answers.</p>
+        <p>The machinery used to sit on top of each page: a search bar in the article, a prompt field inside one case study, receipts narrating from inside the view. It has moved into the frame. One composer now sits docked at the foot of the screen on every page, and it does every job: find a page, ask the record a question, and, where a page can rebuild itself, rebuild it. What a page builds still appears in the page. What accounts for it, the receipt, the list of views you can return to, the control over what this site remembers, now lives in the frame too, the same on every page, because it was never part of the content. The Lindblad prompt field is retired as a separate element; the composer does its job, and its sessions before today are the pilot&rsquo;s final count. The pattern is the one chat interfaces made familiar: a fixed place to address the site, and a page that answers.</p>
       </section>
 
       <section aria-labelledby="answers-h">
         <h2 id="answers-h">The page answers</h2>
         <p>The composer used to sort every line typed into it. A question went one way, a search another, and a request to rebuild the page had to fail both before it was heard. That sorting is gone. Type what you need, in the words you would use in a chat, and the site gives one response: an answer from the published record when you asked something, the page rebuilt around it when there is more to show, a pointer when another page covers it, and a plain no when the record does not hold it. Your prompts stay listed in the frame as you go, so the visit reads as one conversation. The facts did not loosen. Every claim still comes from the record, word for word, and the same gates still decide what the site may say.</p>
+      </section>
+
+      <section aria-labelledby="docks-h">
+        <h2 id="docks-h">The composer docks</h2>
+        <p>The composer used to sit under the topline, where websites keep the search box, and it scrolled away with the page. Now it docks at the foot of the screen, where chat interfaces keep theirs, and stays put while the page scrolls above it. When there is something to show, the receipt, your prompts from this visit, and the controls for what this site remembers sit just above it. The page reserves the dock&rsquo;s height, so the last line of every page stays readable.</p>
       </section>
 
       <section aria-labelledby="arch-h">
@@ -712,6 +723,7 @@
           <li><strong>Reading history, weighted as described:</strong> what you have opened here can now reorder and promote the blocks a page rebuilds from, on a returning visit.</li>
           <li><strong>One address, every page:</strong> the search bar, the prompt field, and the receipts moved into a single control layer in the frame, identical on every page; the canvas keeps only the content.</li>
           <li><strong>The page answers:</strong> the composer no longer sorts a line into search, question, or rebuild; it answers once, with an answer, a rebuilt page, or a pointer, as the need requires, and keeps the visit&rsquo;s prompts listed in the frame.</li>
+          <li><strong>The composer docks:</strong> it moved from under the topline to the foot of the screen and stays there as you scroll; the receipt, this visit&rsquo;s prompts, and the memory controls sit just above it, and the page reserves its height so nothing hides beneath it.</li>
         </ul></div></details>
       </section>
 
@@ -736,9 +748,9 @@
   </footer>
 
 </div>
-<script src="/assets/ledger.js?v=20261116-5" defer></script>
-<script src="/assets/ask.js?v=20261116-4" defer></script>
-<script src="/assets/surface.js?v=20261116-2" defer></script>
+<script src="/assets/surface.js?v=20261116-3"></script>
+<script src="/assets/ledger.js?v=20261116-5"></script>
+<script src="/assets/ask.js?v=20261116-5"></script>
 <script src="/assets/compose.js?v=20261116-8" defer></script>
 </body>
 </html>
