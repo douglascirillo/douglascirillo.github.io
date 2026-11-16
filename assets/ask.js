@@ -618,6 +618,7 @@
     setActive(-1);
   }
   var debounce = null, lastQuery = "";
+  var lastSearch = null; // {q, hits} of the last completed search
   function runSearch(q) {
     fetch("https://" + ALGOLIA_APP + "-dsn.algolia.net/1/indexes/" + ALGOLIA_INDEX + "/query", {
       method: "POST",
@@ -628,6 +629,7 @@
       .then(function (data) {
         if (ein.value.trim() !== q) return;
         var hits = data.hits || [], queryID = data.queryID;
+        lastSearch = { q: q, hits: hits.length };
         track("Search Query", { page: page, length: q.length, result_class: hits.length ? "results" : "none" });
         panel.innerHTML = "";
         if (!hits.length) {
@@ -662,7 +664,13 @@
   }
 
   ein.addEventListener("focus", function () {
-    track("Explore Focus", { page: page });
+    var origin = "composer";
+    try {
+      if (window.DCSurface && window.DCSurface.consumeFocusOrigin) {
+        origin = window.DCSurface.consumeFocusOrigin() || "composer";
+      }
+    } catch (e) { /* origin is measurement only */ }
+    track("Explore Focus", { page: page, origin: origin });
     if (!ein.value.trim() && answerBox.hidden) showStart();
   });
   ein.addEventListener("input", function () {
@@ -685,7 +693,19 @@
     if (activeIdx >= 0 && items[activeIdx]) { items[activeIdx].click(); return; }
     if (isQuestion(q)) { saveRecent(q); ask(q, "unified"); return; }
     var first = panel.querySelector(".explore-hit");
-    if (first) { saveRecent(q); window.location.href = first.getAttribute("href"); }
+    if (first) { saveRecent(q); window.location.href = first.getAttribute("href"); return; }
+    /* Surface build (control-plane batch): non-question text whose
+       search completed with zero hits, on a page with an active
+       prompt session, submits a session turn instead of ending
+       nowhere. Find keeps its meaning everywhere: a hit would
+       have navigated above, and a question would have asked. */
+    if (lastSearch && lastSearch.q === q && lastSearch.hits === 0 &&
+        window.DCSurface && window.DCSurface.tryTurn(q)) {
+      panel.hidden = true;
+      answerBox.hidden = true;
+      ein.value = "";
+      lastSearch = null;
+    }
   });
   document.addEventListener("click", function (ev) { if (!bar.contains(ev.target)) panel.hidden = true; });
 
