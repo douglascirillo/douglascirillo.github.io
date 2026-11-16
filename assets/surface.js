@@ -53,7 +53,20 @@
    the live region (#cp-live-region) behind announce(), and
    receipt rendering into a supplied container
    (setReceiptIn). With the flag off none of these render
-   and every shipped API behaves exactly as shipped. */
+   and every shipped API behaves exactly as shipped.
+
+   Engaged-UI revision batch (Nov 16, 2026;
+   engaged-ui-revision-build-sheet.md, decisions D1 to
+   D9, ruling F7): the dock gains a fixed context lane
+   above the input lane — one slot built at dock
+   construction holding two pre-built tenants, the
+   starters (#cp-starters) before engagement and the
+   session controls (#cp-controls) after, swapped by
+   visibility so the lane's height is its tallest
+   tenant's height in every state. The reservation
+   counts the input lane at its grown maximum, so
+   typing never moves the page; the dock cap constrains
+   the session band alone. */
 (function () {
   "use strict";
 
@@ -335,34 +348,47 @@
   }
 
   /* ---- Engaged-mode plane furniture (sheet sections 6, 7,
-     10) ---- Created lazily by their first render, so a
-     flag-off document's DOM is exactly today's. The controls
-     row is the session region's first child; its labels are
-     the approved strings. While exited the row carries
+     10; context lane per the engaged-UI revision, section
+     3.1) ---- The lane's two tenant containers are built
+     once at dock construction (buildDock); the renders below
+     write into them and toggle visibility, never rebuild or
+     re-insert them. The tenants never coexist: turning one
+     on turns the other off. A tenant that is off keeps its
+     nodes and loses only visibility, so the lane's height
+     is its tallest tenant's height in every state and the
+     swap moves nothing. The lane itself hides only when
+     neither tenant is on. The controls' labels are the
+     approved strings. While exited the controls carry
      Clear alone: Exit hides itself (section 6), and Restore
      hides too — re-entry happens through the next submit
      (flagged item C, ruled Nov 16, 2026). */
-  function lazyRow(id, parent) {
-    var row = $(id);
-    if (row || !parent) return row;
-    row = document.createElement("div");
-    row.className = id;
-    row.id = id;
-    parent.insertBefore(row, parent.firstChild);
-    return row;
+  function setLaneTenant(id, on) {
+    var t = $(id);
+    if (!t) return;
+    t.classList.toggle("cp-lane-on", !!on);
+    if (on) {
+      var other = $(id === "cp-starters" ? "cp-controls" :
+                    "cp-starters");
+      if (other) other.classList.remove("cp-lane-on");
+    }
+    var lane = $("cp-lane");
+    if (lane) {
+      var s = $("cp-starters"), c = $("cp-controls");
+      lane.hidden = !((s && s.classList.contains("cp-lane-on")) ||
+                      (c && c.classList.contains("cp-lane-on")));
+    }
   }
 
   function renderControls() {
-    var row = lazyRow("cp-controls", $("cp-session"));
+    var row = $("cp-controls");
     if (!row) return;
-    row.innerHTML = "";
     if (!controlsModel) {
-      row.hidden = true;
+      setLaneTenant("cp-controls", false);
       if (document.body) document.body.classList.remove("cp-engaged");
       refreshBand();
       return;
     }
-    row.hidden = false;
+    row.innerHTML = "";
     function btn(label, key) {
       var b = document.createElement("button");
       b.type = "button";
@@ -378,21 +404,20 @@
       row.appendChild(btn("Exit to the published page", "onExit"));
     }
     row.appendChild(btn("Clear the conversation", "onClear"));
+    setLaneTenant("cp-controls", true);
     if (document.body) document.body.classList.toggle("cp-engaged", !controlsModel.exited);
     refreshBand();
   }
 
   function renderStarters() {
-    var row = lazyRow("cp-starters",
-      document.querySelector(".cp-dock-bar"));
+    var row = $("cp-starters");
     if (!row) return;
-    row.innerHTML = "";
     if (!startersModel || !startersModel.starters ||
         !startersModel.starters.length) {
-      row.hidden = true;
+      setLaneTenant("cp-starters", false);
       return;
     }
-    row.hidden = false;
+    row.innerHTML = "";
     startersModel.starters.forEach(function (s) {
       var b = document.createElement("button");
       b.type = "button";
@@ -403,6 +428,7 @@
       });
       row.appendChild(b);
     });
+    setLaneTenant("cp-starters", true);
   }
 
   function announce(text) {
@@ -425,8 +451,11 @@
     var hasTurns = !!(turns && turns.innerHTML &&
       turns.innerHTML.replace(/<[^>]*>/g, "").trim());
     var hasThread = !!(threadModel && threadModel.entries.length);
+    /* Engaged-UI revision: the controls live in the context
+       lane now, not the band; they are no longer a reason to
+       show the session band. */
     band.hidden = !(statesModel || receiptModel || hasTurns ||
-      hasThread || controlsModel);
+      hasThread);
   }
 
   var api = {
@@ -568,15 +597,17 @@
   } catch (e) { isHuman = false; }
   if (!isHuman) return;
 
-  /* ---- The dock (docked-composer batch, sheet sections 3-7) ----
+  /* ---- The dock (docked-composer batch, sheet sections 3-7;
+     context lane per the engaged-UI revision, section 3.1) ----
      The static mounts stay in the header, byte-identical; this
      builds one dock element at the end of the body and moves the
      four mount children into it, in one synchronous task, so no
      intermediate state is paintable: the consent mount and the
-     session band into the inner stack, the scope label and the
-     composer mount into the bar, the scope label above the
-     composer (D8.6). If any mount is missing the document is
-     left untouched and the layer stays off. */
+     session band into the inner stack; into the bar, the context
+     lane first (built here, with its two tenant containers),
+     then the scope label and the composer mount, the scope label
+     above the composer (D8.6). If any mount is missing the
+     document is left untouched and the layer stays off. */
   function buildDock() {
     var consent = $("cp-consent");
     var session = $("cp-session");
@@ -593,8 +624,21 @@
     inner.className = "cp-dock-inner";
     var bar = document.createElement("div");
     bar.className = "cp-dock-bar";
+    var lane = document.createElement("div");
+    lane.className = "cp-lane";
+    lane.id = "cp-lane";
+    lane.hidden = true;
+    var laneStarters = document.createElement("div");
+    laneStarters.className = "cp-starters";
+    laneStarters.id = "cp-starters";
+    var laneControls = document.createElement("div");
+    laneControls.className = "cp-controls";
+    laneControls.id = "cp-controls";
+    lane.appendChild(laneStarters);
+    lane.appendChild(laneControls);
     inner.appendChild(consent);
     inner.appendChild(session);
+    bar.appendChild(lane);
     bar.appendChild(scope);
     bar.appendChild(composer);
     inner.appendChild(bar);
@@ -604,39 +648,39 @@
     return true;
   }
 
-  /* ---- Canvas reservation (sheet section 6) ----
+  /* ---- Canvas reservation (sheet section 6; re-scoped by
+     the engaged-UI revision, sections 3.2 and 3.4) ----
      The dock reserves its own height: body padding-bottom and
      the document's scroll-padding-bottom track the dock's
      measured height, so the footer's last line scrolls fully
-     into view above the dock and anchors land clear of it. One
+     into view above the dock and anchors land clear of it. The
+     input lane is reserved at its maximum in every computation
+     (F7): ask.js publishes the textarea's grown maximum on the
+     element (_qMaxH), and the reservation counts the lane at
+     that height whether or not the current text fills it, so
+     typing changes only the input's own height, inside the
+     reservation, and never moves the page. There is no
+     compensating scroll adjustment: the reserved total is
+     invariant across focus, typing, and the lane swap. One
      ResizeObserver on the dock, animation-frame-debounced,
      writing only on a change of at least 1px; the CP CSS sets
-     overflow-anchor: none on the document element so exactly
-     one adjustment acts near maximum scroll: this one, which
-     holds a reader at the foot of the page in place through a
-     height change in both directions. */
+     overflow-anchor: none on the document element. */
   var lastReserved = -1;
   var reserveQueued = false;
 
   function applyReservation() {
     if (!dockEl || !document.body) return;
     var h = dockEl.offsetHeight || 0;
+    var ein = $("explore-q");
+    if (ein && ein._qMaxH) {
+      var cur = ein.offsetHeight || 0;
+      if (ein._qMaxH > cur) h += ein._qMaxH - cur;
+    }
     if (lastReserved >= 0 && Math.abs(h - lastReserved) < 1) return;
     var doc = document.documentElement;
-    var nearMax = false;
-    try {
-      var max = (doc.scrollHeight || 0) - (window.innerHeight || 0);
-      var y = window.scrollY != null ? window.scrollY :
-        (window.pageYOffset || 0);
-      nearMax = y >= max - 2;
-    } catch (e) { /* anchoring is best-effort */ }
-    var delta = lastReserved < 0 ? 0 : h - lastReserved;
     document.body.style.paddingBottom = h + "px";
     try { doc.style.scrollPaddingBottom = h + "px"; } catch (e) {}
     lastReserved = h;
-    if (nearMax && delta !== 0) {
-      try { window.scrollBy(0, delta); } catch (e) {}
-    }
   }
 
   function scheduleReservation() {
@@ -653,15 +697,20 @@
     }
   }
 
-  /* The cap and the dock's position are held against the visual
-     viewport (sheet sections 4 and 6): the cap property is 40
-     percent of visualViewport.height, refreshed on its resize,
-     and when the visual viewport diverges from the layout
-     viewport (an open mobile keyboard, iOS Safari's toolbars)
-     the dock is offset by the divergence so it tracks what the
-     visitor actually sees. interactive-widget is not relied on.
-     Where visualViewport is unavailable, the CSS 40dvh fallback
-     stands alone. */
+  /* The dock's position is held against the visual viewport
+     (sheet sections 4 and 6; engaged-UI revision section 3.4):
+     position only — the dock sits above the keyboard, as
+     today — and the cap property (40 percent of
+     visualViewport.height, refreshed on its resize) now
+     constrains the session band alone (CP CSS), never the
+     bar's internal layout, which is identical at every
+     viewport size and keyboard state. When the visual
+     viewport diverges from the layout viewport (an open
+     mobile keyboard, iOS Safari's toolbars) the dock is
+     offset by the divergence so it tracks what the visitor
+     actually sees. interactive-widget is not relied on.
+     Where visualViewport is unavailable, the CSS 40dvh
+     fallback stands alone. */
   function positionDock() {
     if (!dockEl) return;
     var vv = window.visualViewport;
