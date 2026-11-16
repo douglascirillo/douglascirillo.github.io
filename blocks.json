@@ -262,7 +262,8 @@
       "scope_required": [],
       "forbidden_intents": [],
       "lengths": {
-        "full": "This page is the Lindblad Expeditions case study: the booking-engine rebuild Douglas Cirillo led at Lindblad Expeditions, where he led digital product, and the reservation-platform work that continued in a later engagement through Gangverk. The records behind it cover the replatform, the team and portfolio he ran, and the results within eight months."
+        "full": "This page is the Lindblad Expeditions case study: the booking-engine rebuild Douglas Cirillo led at Lindblad Expeditions, where he led digital product, and the reservation-platform work that continued in a later engagement through Gangverk. The records behind it cover the replatform, the team and portfolio he ran, and the results within eight months.",
+        "short": "Fourth in the record: recruited by leaders he had worked for at Madison Square Garden and Sotheby’s, and the platform work here continued through Gangverk."
       },
       "page": "/case-studies/lindblad-expeditions/",
       "page_name": "the Lindblad Expeditions case study"
@@ -275,7 +276,8 @@
       "scope_required": [],
       "forbidden_intents": [],
       "lengths": {
-        "full": "This page is the Sotheby's case study: the growth-stack rearchitecture Douglas Cirillo directed from 2017 to 2020. The records behind it cover the migration from Adobe Experience Manager onto a composable, data-first stack, and the organic growth the whole stack produced together."
+        "full": "This page is the Sotheby's case study: the growth-stack rearchitecture Douglas Cirillo directed from 2017 to 2020. The records behind it cover the migration from Adobe Experience Manager onto a composable, data-first stack, and the organic growth the whole stack produced together.",
+        "short": "Second in the record, 2017 to 2020, between Madison Square Garden and A Place for Mom; the customer data thread that runs through the later stops starts here."
       },
       "page": "/case-studies/sothebys/",
       "page_name": "the Sotheby's case study"
@@ -288,7 +290,8 @@
       "scope_required": [],
       "forbidden_intents": [],
       "lengths": {
-        "full": "This page is the Madison Square Garden case study: the digital product function Douglas Cirillo built and ran from 2012 to 2016. The records behind it cover the single operating model across 29+ websites and 4+ apps, the replatform he proposed and led, and what that portfolio produced."
+        "full": "This page is the Madison Square Garden case study: the digital product function Douglas Cirillo built and ran from 2012 to 2016. The records behind it cover the single operating model across 29+ websites and 4+ apps, the replatform he proposed and led, and what that portfolio produced.",
+        "short": "The record starts here, 2012 to 2016, and leaders from these years later recruited him to Lindblad and to Gangverk."
       },
       "page": "/case-studies/madison-square-garden/",
       "page_name": "the Madison Square Garden case study"
@@ -301,7 +304,8 @@
       "scope_required": [],
       "forbidden_intents": [],
       "lengths": {
-        "full": "This page is the A+E Networks case study: the complete redesign and replatform of History.com that Douglas Cirillo directed through Gangverk, in four months. The records behind it cover the build itself and the architecture A+E Networks adopted as its migration standard across its brands."
+        "full": "This page is the A+E Networks case study: the complete redesign and replatform of History.com that Douglas Cirillo directed through Gangverk, in four months. The records behind it cover the build itself and the architecture A+E Networks adopted as its migration standard across its brands.",
+        "short": "This one sits inside the Gangverk years: a client engagement from the record’s last stop, not a separate stop of its own."
       },
       "page": "/case-studies/ae-networks/",
       "page_name": "the A+E Networks case study"
@@ -314,7 +318,8 @@
       "scope_required": [],
       "forbidden_intents": [],
       "lengths": {
-        "full": "This page is the A Place for Mom case study: the search decline Douglas Cirillo diagnosed as equal parts content problem and architecture problem. The records behind it cover the diagnosis, the content platform and governance rebuild, and the recovery in SEO market share from 26% to 68%."
+        "full": "This page is the A Place for Mom case study: the search decline Douglas Cirillo diagnosed as equal parts content problem and architecture problem. The records behind it cover the diagnosis, the content platform and governance rebuild, and the recovery in SEO market share from 26% to 68%.",
+        "short": "Third in the record, 2020 to 2021: the organic search thread from Sotheby's runs through here, before the record moves to Lindblad."
       },
       "page": "/case-studies/a-place-for-mom/",
       "page_name": "the A Place for Mom case study"
@@ -327,10 +332,57 @@
       "scope_required": [],
       "forbidden_intents": [],
       "lengths": {
-        "full": "This page is the Gangverk case study: the transformation portfolio and go-to-market Douglas Cirillo built as Head of Marketing and Product Strategy from 2022 to 2025. The records behind it cover the firm's growth from 1 client brand to more than 60 and the work that anchored it, including the History.com replatform."
+        "full": "This page is the Gangverk case study: the transformation portfolio and go-to-market Douglas Cirillo built as Head of Marketing and Product Strategy from 2022 to 2025. The records behind it cover the firm's growth from 1 client brand to more than 60 and the work that anchored it, including the History.com replatform.",
+        "short": "The record’s last completed stop, 2022 to 2025, and the second time leaders from the early stops recruited him."
       },
       "page": "/case-studies/gangverk/",
       "page_name": "the Gangverk case study"
+    }
+  ],
+  "page_blocks": [
+    {
+      "id": "principle-gates",
+      "kind": "principle",
+      "description": "Principle: gates, not prompts. A prompt is a request; a gate is a control.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Gates, not prompts. A prompt is a request; a gate is a control."
+      }
+    },
+    {
+      "id": "principle-harness-checks",
+      "kind": "principle",
+      "description": "Principle: the harness checks applied to AI-assisted work: Brand Out-of-Bounds, Contextual Switch, and Guardrails.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "The harness checks are Brand Out-of-Bounds, Contextual Switch, and Guardrails. A prompt is a request; a gate is a control."
+      }
+    },
+    {
+      "id": "principle-approval",
+      "kind": "principle",
+      "description": "Principle: nothing on the site publishes without Douglas Cirillo's approval; every draft comes back to him.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Nothing on douglascirillo.com publishes without Douglas Cirillo's approval. Every draft comes back to him; he edits, decides, and approves."
+      }
+    },
+    {
+      "id": "stack-cdp-definition",
+      "kind": "concept",
+      "description": "Concept: his published definition of a customer data platform, the system that creates and activates real-time customer profiles across channels.",
+      "link": null,
+      "scope_required": [],
+      "forbidden_intents": [],
+      "lengths": {
+        "full": "Douglas Cirillo's published definition of a customer data platform: the system that creates and activates real-time customer profiles across channels."
+      }
     }
   ],
   "pages": {
