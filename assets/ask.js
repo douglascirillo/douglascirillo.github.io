@@ -378,11 +378,23 @@
             a2.addEventListener("click", function () { track("ask_next_click", { page: page, kind: "hub" }); });
             answerBox.appendChild(a2);
           }
+          if (data.type === "none") maybeClassify(q);
         }
       })
       .catch(function () {
         answerBox.innerHTML = "<p class=\"ask-msg\">The record is not answering right now. The case studies are the fastest way through it.</p>";
       });
+  }
+
+  /* Unified input (home only): when the record has no direct answer,
+     the same text is offered to the composition classifier. The offer
+     happens only where the composition mount point exists (the home
+     page); compose.js listens for the event there. Answers and refusals
+     never reach this point, and every other page behaves exactly as
+     before. */
+  function maybeClassify(q) {
+    if (!document.getElementById("composition")) return;
+    document.dispatchEvent(new CustomEvent("dc:problem", { detail: { text: q } }));
   }
 
   /* ---------- Search ---------- */
