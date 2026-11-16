@@ -481,14 +481,6 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
 .intent-links a{margin-right:16px}
 .intent-reset{margin:6px 0 0}
 .intent-reset button{font:inherit;font-size:13.5px;background:none;border:none;padding:0;color:var(--muted);cursor:pointer;text-decoration:underline}
-.intent-freeform{margin:16px 0 0}
-.intent-freeform-label{display:block;font-size:14.5px;margin:0 0 8px}
-.intent-freeform-row{display:flex;gap:8px;flex-wrap:wrap}
-.intent-freeform-row input{font:inherit;font-size:14.5px;flex:1 1 260px;padding:11px 14px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink)}
-.intent-freeform-go{font:inherit;font-size:14.5px;padding:11px 16px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);cursor:pointer}
-.intent-freeform-go:hover{background:var(--accent-light)}
-.intent-freeform-go[disabled]{opacity:.55;cursor:default}
-.intent-none{font-size:13.5px;color:var(--muted);margin:10px 0 0}
 .composition-from-intent{font-size:13.5px;color:var(--muted);margin:0 0 8px}
 </style></head>
 <body>
@@ -536,14 +528,6 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
         <button type="button" class="intent-btn" data-intent="intent_coherence" aria-pressed="false">An experience that does not hold together across channels</button>
         <button type="button" class="intent-btn" data-intent="intent_measurement" aria-pressed="false">Testing plenty, and learning little</button>
     </div>
-    <form class="intent-freeform" id="intent-freeform">
-      <label class="intent-freeform-label" for="intent-text">Or describe what you are trying to solve</label>
-      <div class="intent-freeform-row">
-        <input type="text" id="intent-text" name="intent-text" maxlength="300" autocomplete="off" placeholder="The problem, in your own words">
-        <button type="submit" class="intent-freeform-go" id="intent-go">Find my view</button>
-      </div>
-      <p class="intent-none" id="intent-none" hidden>No close match in the library yet. The standard view is below.</p>
-    </form>
     <section class="composition" id="composition" hidden aria-label="Assembled from the record"></section>
   </section>
 
@@ -716,7 +700,7 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
     }catch(e){}
   });
 })();
-</script><script src="/assets/ask.js?v=20261115-9" defer></script>
-<script src="/assets/compose.js?v=20261115-5" defer></script>
+</script><script src="/assets/ask.js?v=20261115-10" defer></script>
+<script src="/assets/compose.js?v=20261115-6" defer></script>
 </body>
 </html>
