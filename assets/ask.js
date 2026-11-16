@@ -588,6 +588,7 @@
         b.type = "button"; b.className = "ask-chip"; b.textContent = r;
         b.addEventListener("click", function () {
           ein.value = r;
+          if (unifiedAccepted(r)) return;
           if (isQuestion(r)) ask(r, "unified"); else runSearch(r);
         });
         rw.appendChild(b);
@@ -600,7 +601,11 @@
     ctx.chips.forEach(function (c) {
       var b = document.createElement("button");
       b.type = "button"; b.className = "ask-chip"; b.textContent = c;
-      b.addEventListener("click", function () { ein.value = c; ask(c, "chip"); });
+      b.addEventListener("click", function () {
+        ein.value = c;
+        if (unifiedAccepted(c)) return;
+        ask(c, "chip");
+      });
       w.appendChild(b);
     });
     panel.appendChild(w);
@@ -612,7 +617,10 @@
     var row = document.createElement("button");
     row.type = "button"; row.className = "explore-askrow";
     row.textContent = "Ask my record: \u201C" + q + "\u201D";
-    row.addEventListener("click", function () { ask(q, "unified"); });
+    row.addEventListener("click", function () {
+      if (unifiedAccepted(q)) return;
+      ask(q, "unified");
+    });
     panel.appendChild(row);
     panel.hidden = false;
     setActive(-1);
@@ -681,6 +689,31 @@
     if (isQuestion(q)) { showAskRow(q); return; }
     debounce = setTimeout(function () { if (q !== lastQuery) { lastQuery = q; runSearch(q); } }, 300);
   });
+  /* Unified response (surface path only; build sheet P-1116-21,
+     section 3.1): a plain Enter addresses the system and produces
+     one unified response through the presenter. There is no
+     isQuestion predicate, no find-hit gate, and no fall-through
+     on this path: find suggestions render while typing and
+     navigate only on explicit selection (a click, or an
+     arrow-key highlight plus Enter, handled above). When the
+     surface layer is off, absent, or declines, the layered
+     triage below runs exactly as it always has. */
+  function unifiedAccepted(q) {
+    if (!(window.DCSurface && window.DCSurface.active &&
+          typeof window.DCSurface.tryUnified === "function")) {
+      return false;
+    }
+    var accepted = false;
+    try { accepted = window.DCSurface.tryUnified(q) === true; }
+    catch (e) { accepted = false; }
+    if (!accepted) return false;
+    saveRecent(q);
+    panel.hidden = true;
+    answerBox.hidden = true;
+    ein.value = "";
+    lastSearch = null;
+    return true;
+  }
   ein.addEventListener("keydown", function (ev) {
     var items = panelItems();
     if (ev.key === "ArrowDown" && items.length) { ev.preventDefault(); setActive(Math.min(activeIdx + 1, items.length - 1)); return; }
@@ -691,6 +724,7 @@
     var q = ein.value.trim();
     if (q.length < 3) return;
     if (activeIdx >= 0 && items[activeIdx]) { items[activeIdx].click(); return; }
+    if (unifiedAccepted(q)) return;
     if (isQuestion(q)) { saveRecent(q); ask(q, "unified"); return; }
     var first = panel.querySelector(".explore-hit");
     if (first) { saveRecent(q); window.location.href = first.getAttribute("href"); return; }
