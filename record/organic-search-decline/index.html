@@ -273,6 +273,7 @@
       if (!ua) { isBot = true; type = 'unknown'; }
       return { is_bot: isBot, user_agent_type: type };
     })();
+    try { document.documentElement.setAttribute("data-botcls", BOT_CLS.user_agent_type); } catch (e) {}
 
     var pending = [];
     var ready = false;
@@ -474,6 +475,7 @@ document.addEventListener("click", function (e) {
   try { if (window.amplitude && typeof window.amplitude.track === "function") window.amplitude.track("Record Next Click", { page: location.pathname, destination: a.getAttribute("href") }); } catch (err) {}
 });
 </script>
-<script src="/assets/ask.js?v=20261116-1" defer></script>
+<script src="/assets/ledger.js?v=20261116-1" defer></script>
+<script src="/assets/ask.js?v=20261116-2" defer></script>
 </body>
 </html>
