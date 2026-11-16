@@ -30,6 +30,13 @@
   if (!ASK_ENABLED) return;
 
   var LINKEDIN = "https://www.linkedin.com/in/douglascirillo/";
+  /* Outbound rule (Douglas, Nov 15): external links open in a new tab;
+     internal links stay in the same tab. Call after setting a.href. */
+  function extAttrs(a) {
+    if (a && a.hostname && a.hostname !== "douglascirillo.com") {
+      a.target = "_blank"; a.rel = "noopener";
+    }
+  }
   var CONVO = { label: "Start a conversation on LinkedIn", href: LINKEDIN };
   var DEFAULT_CTX = {
     placeholder: "Ask about a role, a result, a method\u2026",
@@ -325,6 +332,7 @@
     var a = document.createElement("a");
     a.href = ctx.cta.href;
     a.textContent = ctx.cta.label;
+    extAttrs(a);
     a.addEventListener("click", function () { track("ask_next_click", { page: page, kind: "cta" }); });
     p.appendChild(a);
     return p;
@@ -358,7 +366,7 @@
             var div = document.createElement("div");
             div.className = "ask-item";
             var p = document.createElement("p"); p.textContent = it.claim;
-            var a = document.createElement("a"); a.href = it.source; a.textContent = "Read it in context";
+            var a = document.createElement("a"); a.href = it.source; a.textContent = "Read it in context"; extAttrs(a);
             a.addEventListener("click", function () { track("ask_next_click", { page: page, kind: "source" }); });
             div.appendChild(p); div.appendChild(a);
             answerBox.appendChild(div);
@@ -374,7 +382,7 @@
           answerBox.appendChild(p2);
           if (data.link) {
             var a2 = document.createElement("a");
-            a2.href = data.link; a2.textContent = "Browse the case studies";
+            a2.href = data.link; a2.textContent = "Browse the case studies"; extAttrs(a2);
             a2.addEventListener("click", function () { track("ask_next_click", { page: page, kind: "hub" }); });
             answerBox.appendChild(a2);
           }
@@ -502,7 +510,7 @@
         }
         hits.forEach(function (h) {
           var a = document.createElement("a");
-          a.className = "explore-hit"; a.href = h.url;
+          a.className = "explore-hit"; a.href = h.url; extAttrs(a);
           var t = document.createElement("span"); t.className = "t"; t.textContent = h.type || "";
           var ti = document.createElement("span"); ti.className = "ti"; ti.textContent = h.title || "";
           var sm = document.createElement("span"); sm.className = "sm"; sm.textContent = h.summary || "";
@@ -600,7 +608,7 @@
       var li = document.createElement("li");
       li.className = "dl-card";
       var a = document.createElement("a");
-      a.className = "dl-card-a"; a.href = h.url;
+      a.className = "dl-card-a"; a.href = h.url; extAttrs(a);
       a.addEventListener("click", function () { listClick(surface, h); });
       if (h.image) {
         var im = document.createElement("img");
@@ -632,7 +640,7 @@
       var mli = document.createElement("li");
       mli.className = "dynamic-more";
       var ma = document.createElement("a");
-      ma.href = hubUrl; ma.textContent = hubLabel || "View all";
+      ma.href = hubUrl; ma.textContent = hubLabel || "View all"; extAttrs(ma);
       ma.addEventListener("click", function () { track("dynamic_list_click", { surface: surface, destination_type: "Hub" }); });
       mli.appendChild(ma);
       ul.appendChild(mli);
