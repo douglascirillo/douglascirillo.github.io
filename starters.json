@@ -1,0 +1,98 @@
+{
+  "/": [
+    {
+      "id": "what-is-he-known-for",
+      "text": "What is he known for?"
+    },
+    {
+      "id": "show-me-the-strongest-results",
+      "text": "Show me the strongest results"
+    }
+  ],
+  "/case-studies/a-place-for-mom/": [
+    {
+      "id": "why-did-organic-search-decline",
+      "text": "Why did organic search decline?"
+    },
+    {
+      "id": "how-did-seo-market-share-grow",
+      "text": "How did SEO market share grow?"
+    },
+    {
+      "id": "how-did-the-team-grow",
+      "text": "How did the team grow?"
+    }
+  ],
+  "/case-studies/ae-networks/": [
+    {
+      "id": "what-was-the-work-here",
+      "text": "What was the work here?"
+    },
+    {
+      "id": "how-does-this-fit-the-record",
+      "text": "How does this fit the record?"
+    }
+  ],
+  "/case-studies/gangverk/": [
+    {
+      "id": "what-did-he-lead-here",
+      "text": "What did he lead here?"
+    },
+    {
+      "id": "what-did-the-history-com-replatform-change",
+      "text": "What did the History.com replatform change?"
+    },
+    {
+      "id": "what-does-composable-mean-in-practice",
+      "text": "What does composable mean in practice?"
+    }
+  ],
+  "/case-studies/lindblad-expeditions/": [
+    {
+      "id": "show-me-the-platform-work",
+      "text": "Show me the platform work"
+    },
+    {
+      "id": "what-did-the-booking-funnel-work-change",
+      "text": "What did the booking funnel work change?"
+    },
+    {
+      "id": "how-did-bookings-grow",
+      "text": "How did bookings grow?"
+    }
+  ],
+  "/case-studies/madison-square-garden/": [
+    {
+      "id": "what-did-he-build-here",
+      "text": "What did he build here?"
+    },
+    {
+      "id": "how-did-rockettes-ticket-sales-grow",
+      "text": "How did Rockettes ticket sales grow?"
+    },
+    {
+      "id": "what-was-the-replatform",
+      "text": "What was the replatform?"
+    }
+  ],
+  "/case-studies/sothebys/": [
+    {
+      "id": "how-did-organic-search-grow",
+      "text": "How did organic search grow?"
+    },
+    {
+      "id": "what-did-the-cdp-do-here",
+      "text": "What did the CDP do here?"
+    },
+    {
+      "id": "what-was-rebuilt",
+      "text": "What was rebuilt?"
+    }
+  ],
+  "/practice/": [
+    {
+      "id": "how-does-he-approach-customer-data",
+      "text": "How does he approach customer data?"
+    }
+  ]
+}
