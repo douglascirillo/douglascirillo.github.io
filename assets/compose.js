@@ -22,12 +22,20 @@
 
    Increment 0 (full generative experience): a page that carries the
    mount with a data-compose-page attribute runs in page mode instead.
-   On arrival the page's enumerated starting spec (its own anchor
-   block, its proof, the fitting practice, the contact block) is
-   validated against the page's payload slice (blocks-<type>s.json)
-   and rendered in place ahead of the static body, which stays
-   complete underneath. "View this page as published" dismisses the
-   assembly. Page assemblies carry a self-describing share code
+   On arrival the page's enumerated starting spec is validated
+   against the page's payload slice (blocks-<type>s.json) and
+   rendered in place ahead of the static body, which stays complete
+   underneath. The v2 starting spec (Nov 16, 2026) is additive, not a
+   restatement: the page's anchor at its short length (one line
+   placing the page in the arc of the record), the paired sibling
+   case study's proof, one principle or concept block, the fitting
+   practice, and the contact block. The page's own proof is
+   deliberately absent: the page is its own proof. A composition
+   never links to the page it renders on (self-link ban): compose.py
+   rejects a page spec that carries such a block, and the renderer
+   strips any such link anyway, leaving the text standing.
+   "View this page as published" dismisses the assembly. Page
+   assemblies carry a self-describing share code
    (#a=v1.<page-slug>.<block>:<length>,...) that is re-validated on
    arrival; a code that fails validation serves the static page.
    Only fragments starting with a= are codes (any other fragment is
@@ -290,6 +298,14 @@
     var byId = {};
     payload.blocks.forEach(function (b) { byId[b.id] = b; });
     (payload.page_anchors || []).forEach(function (b) { byId[b.id] = b; });
+    // Page-only blocks (Increment 0 v2: the principle and concept
+    // blocks assigned to case-study assemblies) resolve only in a
+    // page context, mirroring the Lambda validator, so a home spec
+    // can never select one (P-1116-04, risks 1-3). Page slices carry
+    // them inside their blocks array, so page mode is unaffected.
+    if (page) {
+      (payload.page_blocks || []).forEach(function (b) { byId[b.id] = b; });
+    }
     var anchors = {};
     (payload.anchor_kinds || ["intro", "intent_frame", "contact"])
       .forEach(function (k) { anchors[k] = true; });
@@ -347,21 +363,29 @@
   }
 
   // Mirror of compose.py's render_fragment(): approved payload text,
-  // escaped; links come from the payload only.
-  function renderFragmentHtml(spec, payload) {
+  // escaped; links come from the payload only. Self-link ban
+  // (Increment 0 v2): a block whose link target is the page the
+  // composition renders on renders without the link; the text
+  // stands, the link affordance goes. `page` is the render page in
+  // page mode; home renders pass nothing and the current path is
+  // used (no block links to the home page, so it is a no-op there).
+  function renderFragmentHtml(spec, payload, page) {
     var byId = {};
     payload.blocks.forEach(function (b) { byId[b.id] = b; });
+    var here = page || location.pathname;
     return spec.blocks.map(function (item) {
       var block = byId[item.id];
       var text = block.lengths[item.length];
+      var link = block.link;
+      if (link && here && link === here) link = null;
       var paras = text.split("\n\n").map(function (p) {
         return "<p>" + esc(p) + "</p>";
       }).join("");
-      if (block.kind === "proof" && block.link) {
-        paras += '<p><a href="' + esc(block.link) + '"' + extAttr(block.link) + trackAttr(block.link, "Read the case study") + '>Read the case study' + extHint(block.link) + '</a></p>';
+      if (block.kind === "proof" && link) {
+        paras += '<p><a href="' + esc(link) + '"' + extAttr(link) + trackAttr(link, "Read the case study") + '>Read the case study' + extHint(link) + '</a></p>';
       }
-      if (block.kind === "contact" && block.link) {
-        paras = '<p><a href="' + esc(block.link) + '"' + extAttr(block.link) + trackAttr(block.link, "Start a conversation on LinkedIn") + '>' + esc(text) + extHint(block.link) + "</a></p>";
+      if (block.kind === "contact" && link) {
+        paras = '<p><a href="' + esc(link) + '"' + extAttr(link) + trackAttr(link, "Start a conversation on LinkedIn") + '>' + esc(text) + extHint(link) + "</a></p>";
       }
       return '<section data-block="' + esc(block.id) + '" data-length="' +
         esc(item.length) + '">' + paras + "</section>";
@@ -456,7 +480,7 @@
       '<h3 class="composition-h">The full picture</h3>' +
       '<p class="composition-from-intent">Assembled from the published ' +
       "record, starting from " + esc(pageEntry.page_name) + ".</p>" +
-      renderFragmentHtml(spec, view) +
+      renderFragmentHtml(spec, view, page) +
       '<p class="composition-note">Assembled for this visit. The page ' +
       "as published stands underneath, unchanged.</p>" +
       '<p class="intent-reset"><button type="button" id="page-published">' +
