@@ -130,7 +130,10 @@
     }
   }
 
-  var NOTE_BUILT = "Built for this visit from the published record.";
+  /* NOTE_BUILT (the "Built for this visit" note) was dropped
+     from every expanded receipt by the engaged-UI revision
+     (D4): it restated the collapsed line it sat under. The
+     collapsed line itself is untouched (S4). */
   var lastHomeRender = null; // surface restore model for home views
   var pageSurfaceDismissed = false;
 
@@ -191,7 +194,6 @@
         "Assembled from the published record, weighted by " +
         esc(label) + " you opened here on earlier visits.</p>";
     }
-    expanded += '<p class="composition-note">' + NOTE_BUILT + "</p>";
     el.innerHTML = '<h3 class="composition-h">The full picture</h3>' +
       renderFragmentHtml(spec, payload);
     el.hidden = false;
@@ -225,7 +227,6 @@
       expanded += '<p class="composition-from-intent">' +
         "Assembled from the intent you described.</p>";
     }
-    expanded += '<p class="composition-note">' + NOTE_BUILT + "</p>";
     el.innerHTML = '<h3 class="composition-h">The full picture</h3>' +
       entry.html + linksHtml;
     el.hidden = false;
@@ -292,8 +293,7 @@
       ? ledgerCategoriesLabel(historyCategories) : null;
     var expanded = '<p class="composition-from-intent">' +
       (clause || ("Assembled from the published record, starting " +
-        "from " + esc(pageEntry.page_name) + ".")) + "</p>" +
-      '<p class="composition-note">' + NOTE_BUILT + "</p>";
+        "from " + esc(pageEntry.page_name) + ".")) + "</p>";
     S.registerStates(pageStatesModel(1));
     S.setReceipt({
       historyLabel: label || null, aiFraming: false,
@@ -515,15 +515,23 @@
         chip.categories);
       if (clauseText) cats = chip.categories;
     }
-    var expanded = '<p class="composition-from-intent">' +
-      chipScopeLine(S, chip) + "</p>";
+    /* D4 (engaged-UI revision): the account line drops when
+       the history clause rides in the same expansion — cats
+       is set exactly then, and the clause already names the
+       starting point. When no history clause rides, the
+       account line stays: it is the only line naming where
+       the view started from. */
+    var expanded = "";
+    if (!cats) {
+      expanded += '<p class="composition-from-intent">' +
+        chipScopeLine(S, chip) + "</p>";
+    }
     if (clauseText) {
       expanded += '<p class="composition-from-intent">' +
         clauseText + "</p>";
     }
     expanded += '<p class="composition-from-intent ' +
-      'prompt-turnline">' + chipTurnLine(chip) + "</p>" +
-      '<p class="composition-note">' + NOTE_BUILT + "</p>";
+      'prompt-turnline">' + chipTurnLine(chip) + "</p>";
     el.innerHTML = '<h3 class="composition-h">The full picture</h3>' +
       answerElementHtml(chip.answer) +
       (chip.spec
@@ -2017,7 +2025,9 @@
   var UNIFIED_CAP_LINE = "You have reached this session\u2019s prompt limit. Your views and the published page remain.";
   var UNIFIED_FAILURE_LINE = "That did not go through. Nothing was built. Try again.";
   var UNIFIED_DISABLED_LINE = "The rebuilding is off right now. The published record stands as it is.";
-  var FRAMING_LABEL = "Framing written by AI. The claims below are quoted word for word from the record.";
+  /* The answer element's framing label was removed by the
+     engaged-UI revision (D5): the receipt's "Framing written
+     by AI" segment is the turn's one AI disclosure. */
   var THREAD_DIALOGUE_KEY = "dc_thread_dialogue_v1";
   var UNIFIED_TIMEOUT_MS = 25000;
 
@@ -2026,15 +2036,18 @@
       if (document.getElementById("cp-unified-css")) return;
       var st = document.createElement("style");
       st.id = "cp-unified-css";
+      /* Engaged-UI revision (section 5.2): one type size for
+         a turn's prose; claims are paragraph lines with the
+         citation inline; the pointer is a filled link row,
+         not a bordered box. */
       st.textContent =
         ".cp-answer{margin:0 0 6px}" +
-        ".cp-answer-label{font-size:12px;color:var(--muted);margin:0 0 6px}" +
-        ".cp-answer-framing{font-size:15.5px;line-height:1.55;margin:0 0 10px}" +
-        ".cp-answer-item{padding:12px 16px;border:1px solid var(--line);border-radius:10px;margin:0 0 8px}" +
-        ".cp-answer-item p{margin:0 0 6px;font-size:16px;line-height:1.55}" +
-        ".cp-answer-item a{font-size:14px}" +
-        ".cp-pointer{padding:12px 16px;border:1px solid var(--line);border-radius:10px;margin:0 0 8px}" +
-        ".cp-pointer p{margin:0 0 6px}" +
+        ".cp-answer-framing{font-size:16px;line-height:1.55;margin:0 0 10px}" +
+        ".cp-answer-claim{font-size:16px;line-height:1.55;margin:0 0 8px}" +
+        ".cp-answer-claim a{font-size:14px;white-space:nowrap}" +
+        ".cp-pointer{background:var(--surface);border-radius:10px;padding:10px 14px;margin:0 0 8px}" +
+        ".cp-pointer p{margin:0 0 4px}" +
+        ".cp-pointer p:last-child{margin:0}" +
         ".cp-composed{margin:22px 0 4px}" +
         ".cp-composed-h{font-family:Newsreader,Georgia,serif;font-size:21px;margin:0 0 10px}";
       document.head.appendChild(st);
@@ -2097,17 +2110,24 @@
              covering_name: raw.covering_name };
   }
 
+  /* The shared answer renderer (engaged-UI revision,
+     section 5.2, D5/D9): framing as a plain paragraph with
+     no label above it; claims as paragraph lines in the
+     prose flow, each followed by its "Read it in context"
+     link inline. The claims themselves stay verbatim.
+     Serves both paths, so the fallback's canvas answers
+     take the same dress. */
   function answerElementHtml(answer) {
     if (!answer) return "";
     var html = '<div class="cp-answer">';
     if (answer.framing) {
-      html += '<p class="cp-answer-label">' + FRAMING_LABEL + "</p>" +
-        '<p class="cp-answer-framing">' + esc(answer.framing) + "</p>";
+      html += '<p class="cp-answer-framing">' + esc(answer.framing) +
+        "</p>";
     }
     answer.items.forEach(function (it) {
-      html += '<div class="cp-answer-item"><p>' + esc(it.claim) +
-        '</p><a href="' + esc(it.source) +
-        '">Read it in context</a></div>';
+      html += '<p class="cp-answer-claim">' + esc(it.claim) +
+        ' <a href="' + esc(it.source) +
+        '">Read it in context</a></p>';
     });
     return html + "</div>";
   }
@@ -2786,8 +2806,7 @@
           aiFraming: !!(st.answer && st.answer.framing),
           expandedHtml:
             '<p class="composition-from-intent">' +
-            flatReceiptLine(st) + "</p>" +
-            '<p class="composition-note">' + NOTE_BUILT + "</p>",
+            flatReceiptLine(st) + "</p>",
           onRestore: function () { goFlat(F, 0); }
         });
         if (F.kind !== "home") {
@@ -2848,8 +2867,7 @@
       } catch (e) {}
       SF.setReceipt({
         historyLabel: null, aiFraming: false,
-        expandedHtml: '<p class="composition-note">' + NOTE_BUILT +
-          "</p>",
+        expandedHtml: "",
         onRestore: function () { goFlat(F, 0); }
       });
       track("Composition Rendered", { intent: st.intent });
@@ -2876,8 +2894,7 @@
         aiFraming: !!(st.answer && st.answer.framing),
         expandedHtml:
           '<p class="composition-from-intent">' +
-          flatReceiptLine(st) + "</p>" +
-          '<p class="composition-note">' + NOTE_BUILT + "</p>",
+          flatReceiptLine(st) + "</p>",
         onRestore: function () { goFlat(F, 0); }
       });
     };
@@ -3871,12 +3888,14 @@
     }
   }
 
-  function updateStreamScope(ctx) {
-    if (ctx.kind === "home") return;
-    streamSF().setScope(ctx.segScope === "released"
-      ? "Building from across the published record"
-      : "Starting from " + ctx.pageName);
-  }
+  /* D3 (engaged-UI revision, section 6 string 7): the scope
+     label is removed on the engaged path — the opening turn
+     already names where the conversation started. This
+     stays as the stream's single scope call site, now a
+     no-op; exit and clear still clear the label directly,
+     and the fallback's scope behavior is untouched (it
+     never calls this). */
+  function updateStreamScope(ctx) { }
 
   function streamControlsModel(ctx) {
     return {
@@ -3998,6 +4017,7 @@
     ctx.adoptedRun = null;
     ctx.collapsed = false;
     ctx.startersEl = null;
+    ctx.releaseEl = null;
   }
 
   /* ---- Restore, exit, clear (sheet section 6) ---- */
@@ -4184,7 +4204,6 @@
   function streamDialogueEl(plan) {
     var d = document.createElement("div");
     d.className = "stream-response stream-dialogue";
-    d.setAttribute("tabindex", "-1");
     d.innerHTML = "<p>" + esc(plan.text) + "</p>" +
       (plan.link
         ? '<p class="prompt-actions"><a href="' + esc(plan.link) +
@@ -4205,20 +4224,23 @@
     return pg || blocksPayload;
   }
 
+  /* Stream turn markup (engaged-UI revision, section 5):
+     no heading inside a turn — a featured turn reads as a
+     written answer built from the record's blocks, and the
+     aria-live lead is the first block sentence (section
+     5.3). The canvas composition renderers keep their
+     heading; this renderer serves stream turns only. */
   function streamResponseHtml(ctx, plan) {
-    var heading = ctx.kind === "generic"
-      ? '<h3 class="cp-composed-h">The full picture</h3>'
-      : '<h3 class="composition-h">The full picture</h3>';
     if (plan.intent && !plan.specNew) {
       var entry = byIntent && byIntent[plan.intent];
-      return heading + answerElementHtml(plan.answer) +
+      return answerElementHtml(plan.answer) +
         (entry ? entry.html : "") + intentLinksHtml(plan.intent) +
         (plan.pointer
           ? streamPointerCardHtml(plan.pointer, false) : "");
     }
     var html = answerElementHtml(plan.answer);
     if (plan.specNew && plan.spec) {
-      html += heading + renderFragmentHtml(plan.spec,
+      html += renderFragmentHtml(plan.spec,
         streamSpecPayload(ctx, plan),
         ctx.kind === "page" ? (plan.page || ctx.page) : undefined);
     }
@@ -4292,10 +4314,16 @@
   function streamTurnReceiptModel(ctx, plan) {
     var expanded;
     if (plan.mixture === "intent") {
-      expanded = '<p class="composition-note">' + NOTE_BUILT + "</p>";
+      expanded = "";
     } else {
       var parts = [];
-      if (ctx.kind === "page" && ctx.pageName) {
+      /* D4 (engaged-UI revision): the account line drops when
+         the history clause rides in the same expansion — the
+         clause already names the starting point. A fresh
+         start carries no history clause, so its account line
+         stays. */
+      var hasHistoryClause = !plan.freshStart && !!plan.categories;
+      if (ctx.kind === "page" && ctx.pageName && !hasHistoryClause) {
         parts.push('<p class="composition-from-intent">' +
           (plan.scope === "released"
             ? "Assembled from the published record, beyond " +
@@ -4315,8 +4343,6 @@
       }
       parts.push('<p class="composition-from-intent ' +
         'prompt-turnline">' + flatReceiptLine(plan) + "</p>");
-      parts.push('<p class="composition-note">' + NOTE_BUILT +
-        "</p>");
       expanded = parts.join("");
     }
     return {
@@ -4331,7 +4357,6 @@
   function streamResponseEl(ctx, plan) {
     var d = document.createElement("div");
     d.className = "stream-response";
-    d.setAttribute("tabindex", "-1");
     d.innerHTML = streamResponseHtml(ctx, plan);
     fillStreamPointerSubstance(d, plan);
     var bh = d.querySelector(".stream-build-here");
@@ -4355,10 +4380,50 @@
     return m ? m[0] : t;
   }
 
+  /* The composition turn's announce lead (engaged-UI
+     revision, section 5.3): the turn's first block
+     sentence, from the same payload the turn rendered
+     against. Falls back to the intent entry's first
+     sentence for intent turns. */
+  function streamSpecLead(plan) {
+    try {
+      var ctx = streamCtx;
+      if (ctx && plan.specNew && plan.spec &&
+          plan.spec.blocks && plan.spec.blocks.length) {
+        var payload = streamSpecPayload(ctx, plan);
+        if (payload && payload.blocks) {
+          var item = plan.spec.blocks[0];
+          var block = null;
+          payload.blocks.forEach(function (b) {
+            if (b.id === item.id) block = b;
+          });
+          if (block && block.lengths) {
+            var text = block.lengths[item.length] ||
+              block.lengths.full || "";
+            var lead = firstSentenceOf(
+              String(text).split("\n\n")[0]);
+            if (lead) return lead;
+          }
+        }
+      }
+      if (plan.mixture === "intent" && plan.intent) {
+        var entry = byIntent && byIntent[plan.intent];
+        if (entry && entry.html) {
+          var plain = String(entry.html)
+            .replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+          var s = firstSentenceOf(plain);
+          if (s) return s;
+        }
+      }
+    } catch (e) { /* the lead is best-effort */ }
+    return null;
+  }
+
   /* Announce arrival plus lead, never the whole turn (sheet
      section 10.1): the framing's first sentence, the
-     assembly's heading, the card's title, or the fixed text's
-     first sentence, once per response turn. */
+     composition's first block sentence, the card's title,
+     or the fixed text's first sentence, once per response
+     turn. */
   function streamAnnounce(plan) {
     var lead = null;
     if (plan.kind === "dialogue") {
@@ -4368,24 +4433,23 @@
         ? firstSentenceOf(plan.answer.framing)
         : firstSentenceOf(plan.answer.items[0].claim);
     } else if (plan.specNew || plan.mixture === "intent") {
-      lead = "The full picture";
+      lead = streamSpecLead(plan);
     } else if (plan.pointer) {
       lead = capFirst(plan.pointer.covering_name);
     }
     if (lead) streamSF().announce(lead);
   }
 
-  function streamFocusTurn(el) {
+  /* D8 (engaged-UI revision, section 5.5): focus no longer
+     moves to a new turn. The caret stays in the input; the
+     turn scrolls into view and announce() speaks its lead. */
+  function streamScrollTurn(el) {
     if (!el) return;
     try {
       if (el.scrollIntoView) {
         el.scrollIntoView({ block: "nearest" });
       }
     } catch (e) { /* scroll is best-effort */ }
-    try { el.focus({ preventScroll: true }); }
-    catch (e) {
-      try { el.focus(); } catch (e2) { /* focus is best-effort */ }
-    }
   }
 
   function clearStreamFailure(ctx) {
@@ -4397,6 +4461,28 @@
     }
   }
 
+  /* One home for dialogue (engaged-UI revision, section
+     5.4): the per-page and visit cap lines render in-stream
+     as dialogue turns on the engaged path, stored like a
+     refusal — they are part of the conversation's history.
+     When no stream stands (a cap met before the stream
+     builds), the dock's turns area carries the line, as the
+     fallback's does (F4). */
+  function streamCapDialogue(ctx, text) {
+    if (ctx.streamEl && ctx.store) {
+      var plan = streamAppendPlan(ctx, ctx.store, {
+        kind: "dialogue", page: ctx.page,
+        outcome: "cap", text: text, link: null
+      });
+      var el = streamDialogueEl(plan);
+      ctx.streamEl.appendChild(el);
+      streamAnnounce(plan);
+      streamScrollTurn(el);
+    } else {
+      streamSF().showDialogue("status", { text: text });
+    }
+  }
+
   /* ---- The submit (sheet section 2.4) ---- */
 
   function streamSubmitText(ctx, text, opts) {
@@ -4404,6 +4490,10 @@
     if (ctx.inFlight) return;
     var SF = streamSF();
     clearStreamFailure(ctx);
+    /* A new submit retires an unanswered release offer, as
+       the dock card cleared on the next submit. */
+    dropStreamRelease(ctx);
+    if (!opts.releaseConfirm) ctx.pendingRelease = null;
     retireStreamStarters(ctx);
     if (!ctx.store) ctx.store = streamReadStore();
     if (!opts.releaseConfirm && !opts.buildHere) {
@@ -4427,7 +4517,7 @@
           var rdel = streamDialogueEl(rdplan);
           ctx.streamEl.appendChild(rdel);
           streamAnnounce(rdplan);
-          streamFocusTurn(rdel);
+          streamScrollTurn(rdel);
         } else {
           SF.showDialogue("status", { text: REPEAT_LINE });
         }
@@ -4436,11 +4526,11 @@
       var caps = ctx.store ? ctx.store.caps
         : { pages: {}, visit: 0 };
       if ((caps.pages[ctx.page] || 0) >= STREAM_PAGE_CAP) {
-        SF.showDialogue("status", { text: UNIFIED_CAP_LINE });
+        streamCapDialogue(ctx, UNIFIED_CAP_LINE);
         return;
       }
       if ((caps.visit || 0) >= STREAM_VISIT_CAP) {
-        SF.showDialogue("status", { text: VISIT_CAP_LINE });
+        streamCapDialogue(ctx, VISIT_CAP_LINE);
         return;
       }
     }
@@ -4555,7 +4645,18 @@
     if (!data) { failFlagB(); return; }
     if (data.outcome === "disabled") {
       dropSkeleton();
-      SF.showDialogue("status", { text: UNIFIED_DISABLED_LINE });
+      /* Section 5.4: the disabled line renders in-stream as
+         a dialogue turn; the prompt turn stays stored, as
+         with a refusal. */
+      var displan = streamAppendPlan(ctx, ctx.store, {
+        kind: "dialogue", page: ctx.page,
+        outcome: "disabled", text: UNIFIED_DISABLED_LINE,
+        link: null
+      });
+      var disel = streamDialogueEl(displan);
+      ctx.streamEl.appendChild(disel);
+      streamAnnounce(displan);
+      streamScrollTurn(disel);
       return;
     }
     if (data.outcome === "refused" || data.outcome === "none") {
@@ -4569,7 +4670,7 @@
       var del = streamDialogueEl(dplan);
       ctx.streamEl.appendChild(del);
       streamAnnounce(dplan);
-      streamFocusTurn(del);
+      streamScrollTurn(del);
       return;
     }
     if (data.outcome === "pointer_only") {
@@ -4590,14 +4691,22 @@
         placement: "stream", request_id: rctx.requestId
       });
       streamAnnounce(pplan);
-      streamFocusTurn(pel);
+      streamScrollTurn(pel);
       return;
     }
     if (data.outcome === "release_offer") {
       dropSkeleton();
       ctx.pendingRelease = { prompt: rctx.prompt, turn: rctx.turn };
-      SF.showDialogue("release", { page_name: ctx.pageName });
-      wireStreamRelease(ctx);
+      /* D7 (engaged-UI revision, section 5.4): the release
+         confirmation renders in-stream, at the position the
+         response would have filled. */
+      var relEl = streamReleaseEl(ctx);
+      ctx.streamEl.appendChild(relEl);
+      ctx.releaseEl = relEl;
+      streamSF().announce(firstSentenceOf(
+        "You\u2019re moving beyond " + ctx.pageName +
+        ". Build from the broader record instead?"));
+      streamScrollTurn(relEl);
       track("Prompt Release Offered", { page: ctx.page });
       return;
     }
@@ -4608,18 +4717,34 @@
     failFlagB();
   }
 
-  /* The release confirmation stays in the control plane (sheet
-     section 3.5): the shipped card, wired here. */
-  function wireStreamRelease(ctx) {
-    var area = streamSF().turnsArea();
-    if (!area) return;
-    var cf = area.querySelector("#prompt-release-confirm");
+  /* The release confirmation (D7, engaged-UI revision,
+     section 5.4): a dialogue turn in the stream, rendered
+     from the same pending state as the dock card used
+     (ctx.pendingRelease) and never stored as a plan — an
+     unanswered offer drops with the page's pending state on
+     navigation, as the card did. Copy and events are the
+     settled ones; the buttons carry the settled ids and are
+     wired from the element itself. The fallback keeps the
+     dock card (surface's showDialogue "release", wired by
+     wireFlatDialogue). */
+  function streamReleaseEl(ctx) {
+    var d = document.createElement("div");
+    d.className = "stream-response stream-dialogue stream-release";
+    d.innerHTML = '<div class="prompt-card"><p>You&rsquo;re ' +
+      "moving beyond " + esc(ctx.pageName) +
+      ". Build from the broader record instead?</p>" +
+      '<p class="prompt-actions"><button type="button" ' +
+      'id="prompt-release-confirm">Build from the broader ' +
+      'record</button><button type="button" ' +
+      'id="prompt-release-decline">Stay on this page</button>' +
+      "</p></div>";
+    var cf = d.querySelector("#prompt-release-confirm");
     if (cf) {
       cf.addEventListener("click", function () {
         track("Prompt Release Confirmed", { page: ctx.page });
         var pr = ctx.pendingRelease;
         ctx.pendingRelease = null;
-        streamSF().showDialogue("clear");
+        dropStreamRelease(ctx);
         if (pr) {
           streamSubmitText(ctx, pr.prompt, {
             releaseConfirm: true, turnNo: pr.turn
@@ -4627,14 +4752,22 @@
         }
       });
     }
-    var dc = area.querySelector("#prompt-release-decline");
+    var dc = d.querySelector("#prompt-release-decline");
     if (dc) {
       dc.addEventListener("click", function () {
         track("Prompt Release Declined", { page: ctx.page });
         ctx.pendingRelease = null;
-        streamSF().showDialogue("clear");
+        dropStreamRelease(ctx);
       });
     }
+    return d;
+  }
+
+  function dropStreamRelease(ctx) {
+    if (ctx.releaseEl && ctx.releaseEl.parentNode) {
+      ctx.releaseEl.parentNode.removeChild(ctx.releaseEl);
+    }
+    ctx.releaseEl = null;
   }
 
   function applyStreamState(ctx, data, rctx, els) {
@@ -4733,7 +4866,7 @@
       }
       if (answer) ledgerRecordAnswer(answer);
       streamAnnounce(plan);
-      streamFocusTurn(el);
+      streamScrollTurn(el);
     };
     if ((scope === "released" || ctx.kind === "home") &&
         !blocksPayload) {
@@ -4786,7 +4919,7 @@
         ledgerRecordComposition("/");
         collapseStreamOpeningAfterTurn(ctx);
         streamAnnounce(plan);
-        streamFocusTurn(el);
+        streamScrollTurn(el);
       });
     });
   }
@@ -4839,8 +4972,7 @@
       ? ledgerCategoriesLabel(historyCategories) : null;
     var expanded = '<p class="composition-from-intent">' +
       (clause || ("Assembled from the published record, " +
-        "starting from " + esc(entry.page_name) + ".")) + "</p>" +
-      '<p class="composition-note">' + NOTE_BUILT + "</p>";
+        "starting from " + esc(entry.page_name) + ".")) + "</p>";
     ctx.arrivalReceiptModel = {
       historyLabel: label || null, aiFraming: false,
       expandedHtml: expanded,
@@ -4907,8 +5039,7 @@
       el.setAttribute("data-render-source", "share");
       ctx.arrivalReceiptModel = {
         historyLabel: null, aiFraming: false,
-        expandedHtml: '<p class="composition-note">' + NOTE_BUILT +
-          "</p>",
+        expandedHtml: "",
         onRestore: function () { streamClearHomeShare(ctx); }
       };
       streamSF().setReceipt(ctx.arrivalReceiptModel);
