@@ -5,9 +5,9 @@
    code assembles the answer verbatim, and it renders in place, in the bar's
    own answer region. There is no second input and no jump.
    Set ASK_ENABLED to false to remove the feature site-wide.
-   Amplitude events: ask_module_viewed, ask_submitted, ask_answered,
-   ask_no_evidence, ask_refused, ask_next_click, search_query,
-   search_result_click, explore_focus. Every event carries the page path.
+   Amplitude events: Ask Module Viewed, Ask Submitted, Ask Answered,
+   Ask No Evidence, Ask Refused, Ask Next Click, Search Query,
+   Search Result Click, Explore Focus. Every event carries the page path.
    Amplitude <> Algolia pipe: Algolia Insights events carry the visitor's
    Amplitude anonymous device ID as the user token when Amplitude is
    present (PIPE_ENABLED), so search behavior and site behavior join on one
@@ -271,7 +271,7 @@
   if ("IntersectionObserver" in window) {
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (en) {
-        if (en.isIntersecting && !viewed) { viewed = true; track("ask_module_viewed", { page: page }); io.disconnect(); }
+        if (en.isIntersecting && !viewed) { viewed = true; track("Ask Module Viewed", { page: page }); io.disconnect(); }
       });
     }, { threshold: 0.4 });
     io.observe(bar);
@@ -339,12 +339,12 @@
     a.href = ctx.cta.href;
     a.textContent = ctx.cta.label;
     extAttrs(a);
-    a.addEventListener("click", function () { track("ask_next_click", { page: page, kind: "cta" }); });
+    a.addEventListener("click", function () { track("Ask Next Click", { page: page, kind: "cta" }); });
     p.appendChild(a);
     return p;
   }
   function ask(q, via) {
-    track("ask_submitted", { page: page, via: via });
+    track("Ask Submitted", { page: page, via: via });
     panel.hidden = true;
     answerBox.hidden = false;
     answerBox.innerHTML = "<p class=\"ask-msg\">Checking the record\u2026</p>";
@@ -357,7 +357,7 @@
       .then(function (data) {
         answerBox.innerHTML = "";
         if (data.type === "answer" && data.items && data.items.length) {
-          track("ask_answered", { page: page, records: data.items.length, generated: !!data.generated });
+          track("Ask Answered", { page: page, records: data.items.length, generated: !!data.generated });
           if (data.generated && data.prose) {
             var lead = document.createElement("p");
             lead.className = "ask-prose";
@@ -373,23 +373,23 @@
             div.className = "ask-item";
             var p = document.createElement("p"); p.textContent = it.claim;
             var a = document.createElement("a"); a.href = it.source; a.textContent = "Read it in context"; extAttrs(a);
-            a.addEventListener("click", function () { track("ask_next_click", { page: page, kind: "source" }); });
+            a.addEventListener("click", function () { track("Ask Next Click", { page: page, kind: "source" }); });
             div.appendChild(p); div.appendChild(a);
             answerBox.appendChild(div);
           });
           var ns = nextStep(); if (ns) answerBox.appendChild(ns);
         } else if (data.type === "refusal") {
-          track("ask_refused", { page: page });
+          track("Ask Refused", { page: page });
           var p1 = document.createElement("p"); p1.className = "ask-msg"; p1.textContent = data.text;
           answerBox.appendChild(p1);
         } else {
-          track("ask_no_evidence", { page: page });
+          track("Ask No Evidence", { page: page });
           var p2 = document.createElement("p"); p2.className = "ask-msg"; p2.textContent = data.text || "";
           answerBox.appendChild(p2);
           if (data.link) {
             var a2 = document.createElement("a");
             a2.href = data.link; a2.textContent = "Browse the case studies"; extAttrs(a2);
-            a2.addEventListener("click", function () { track("ask_next_click", { page: page, kind: "hub" }); });
+            a2.addEventListener("click", function () { track("Ask Next Click", { page: page, kind: "hub" }); });
             answerBox.appendChild(a2);
           }
           if (data.type === "none") maybeClassify(q);
@@ -506,7 +506,7 @@
       .then(function (data) {
         if (ein.value.trim() !== q) return;
         var hits = data.hits || [], queryID = data.queryID;
-        track("search_query", { page: page, length: q.length, result_class: hits.length ? "results" : "none" });
+        track("Search Query", { page: page, length: q.length, result_class: hits.length ? "results" : "none" });
         panel.innerHTML = "";
         if (!hits.length) {
           var none = document.createElement("p");
@@ -522,7 +522,7 @@
           var sm = document.createElement("span"); sm.className = "sm"; sm.textContent = h.summary || "";
           a.appendChild(t); a.appendChild(ti); a.appendChild(sm);
           a.addEventListener("click", function () {
-            track("search_result_click", { page: page, destination_type: h.type || "" });
+            track("Search Result Click", { page: page, destination_type: h.type || "" });
             saveRecent(q);
             var aa = insights();
             if (aa && queryID) { try { aa("clickedObjectIDsAfterSearch", { eventName: "Search Result Clicked", index: ALGOLIA_INDEX, queryID: queryID, objectIDs: [h.objectID] }); } catch (e) {} }
@@ -540,7 +540,7 @@
   }
 
   ein.addEventListener("focus", function () {
-    track("explore_focus", { page: page });
+    track("Explore Focus", { page: page });
     if (!ein.value.trim() && answerBox.hidden) showStart();
   });
   ein.addEventListener("input", function () {
@@ -581,7 +581,7 @@
     }).then(function (r) { return r.json(); });
   }
   function listClick(surface, h) {
-    track("dynamic_list_click", { surface: surface, destination_type: h.type || "" });
+    track("Dynamic List Click", { surface: surface, destination_type: h.type || "" });
     var aa = insights();
     if (aa) { try { aa("clickedObjectIDs", { eventName: "List Item Clicked", index: ALGOLIA_INDEX, objectIDs: [h.objectID] }); } catch (e) {} }
   }
@@ -647,7 +647,7 @@
       mli.className = "dynamic-more";
       var ma = document.createElement("a");
       ma.href = hubUrl; ma.textContent = hubLabel || "View all"; extAttrs(ma);
-      ma.addEventListener("click", function () { track("dynamic_list_click", { surface: surface, destination_type: "Hub" }); });
+      ma.addEventListener("click", function () { track("Dynamic List Click", { surface: surface, destination_type: "Hub" }); });
       mli.appendChild(ma);
       ul.appendChild(mli);
     }
@@ -660,7 +660,7 @@
         if (!hits.length) return;
         var shown = hits.slice(0, 3);
         renderEssayList(homeList, shown, "home_writing", "/writing/", "View all writing");
-        track("dynamic_list_rendered", { surface: "home_writing", count: shown.length });
+        track("Dynamic List Rendered", { surface: "home_writing", count: shown.length });
       })
       .catch(function () {});
   }
@@ -711,14 +711,14 @@
           sec.appendChild(hd); sec.appendChild(ul);
           renderEssayList(ul, hits, "related_writing", "/writing/", "All writing");
           main.appendChild(sec);
-          track("dynamic_list_rendered", { surface: "related_writing", count: hits.length });
+          track("Dynamic List Rendered", { surface: "related_writing", count: hits.length });
           if (BRIDGES_ENABLED) {
             var hostOid = here.replace(/^\/|\/$/g, "").replace(/\//g, "-");
             var itemIds = hits.map(function (h) { return h.objectID; }).sort();
             var sig = "related_writing|" + hostOid + "|" + itemIds.join(",");
             fetchBridges().then(function (doc) {
               var entry = doc && doc.bridges ? doc.bridges[sig] : null;
-              track("bridge_rendered", { surface: "related_writing", matched: !!entry });
+              track("Bridge Rendered", { surface: "related_writing", matched: !!entry });
               if (entry && entry.text) {
                 var bp = document.createElement("p");
                 bp.className = "bridge";
@@ -750,7 +750,7 @@
         var hsig = "selected_writing|home|" + oids.join(",");
         fetchBridges().then(function (doc) {
           var entry = doc && doc.bridges ? doc.bridges[hsig] : null;
-          track("bridge_rendered", { surface: "selected_writing", matched: !!entry });
+          track("Bridge Rendered", { surface: "selected_writing", matched: !!entry });
           if (entry && entry.text && !document.querySelector(".selected-writing-bridge")) {
             var hst = document.createElement("style");
             hst.textContent = ".selected-writing-bridge{margin:2px 0 14px;font-size:15.5px;line-height:1.6;color:var(--ink-2,#444)}.selected-writing-bridge .bridge-tag{display:inline-block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line,#ddd);border-radius:4px;padding:0 5px;margin-right:8px;vertical-align:1px}";
