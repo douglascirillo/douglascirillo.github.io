@@ -123,7 +123,7 @@
     try {
       history.replaceState(null, "", "#c=" + (sig || entry.sig));
     } catch (e) {}
-    track("composition_rendered", { intent: intent });
+    track("Composition Rendered", { intent: intent });
   }
 
   function intentOfButton(btn) {
@@ -151,7 +151,7 @@
   var classifySeq = 0;
 
   function classifiedEvent(intent, outcome, source) {
-    track("composition_intent_classified",
+    track("Composition Intent Classified",
       { intent_id: intent, outcome: outcome, source: source });
   }
 
@@ -356,7 +356,7 @@
     // No share code for a novel spec (manifest-only rule): the render
     // is session-only and the URL is not modified.
     scrollSlotIntoView(el);
-    track("composition_rendered", { intent: null, via: "spec" });
+    track("Composition Rendered", { intent: null, via: "spec" });
   }
 
   function classifyProblem(text) {
@@ -436,7 +436,7 @@
       load().then(function () {
         var entry = bySig && bySig[m[1]];
         if (!entry) {
-          track("composition_fallback", {});
+          track("Composition Fallback", {});
           return;
         }
         var target = document.querySelector(
