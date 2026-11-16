@@ -90,7 +90,7 @@
     var linksHtml = "";
     if (links.length) {
       linksHtml = '<p class="intent-links">' + links.map(function (l) {
-        return '<a href="' + l.href + '"' + extAttr(l.href) + '>' + l.label + "</a>";
+        return '<a href="' + l.href + '"' + extAttr(l.href) + trackAttr(l.href, l.label) + '>' + l.label + extHint(l.href) + "</a>";
       }).join("") + "</p>";
     }
     // A classified render (the visitor described the problem in their
@@ -233,6 +233,21 @@
       ? ' target="_blank" rel="noopener"' : "";
   }
 
+  /* Audit #3 follow-ups (D2, D3): a built external anchor gets the
+     same treatment as a static one: the pages' delegated handler keys
+     on data-outbound-link and reads data-link-label to fire
+     "Outbound Link Click", and a visually hidden "(opens in new tab)"
+     hint is announced to screen readers. Internal hrefs get neither. */
+  function trackAttr(href, label) {
+    return extAttr(href)
+      ? ' data-outbound-link data-link-label="' +
+        esc(String(label).replace(/&rsquo;/g, "'")) + '"' : "";
+  }
+  function extHint(href) {
+    return extAttr(href)
+      ? '<span class="visually-hidden">(opens in new tab)</span>' : "";
+  }
+
   // Port of compose.py's validate() plus the two free-form additions
   // from the Stage 2 design (block-count cap, frame-or-contact anchor).
   // The payload itself carries only servable blocks: a withdrawn
@@ -304,10 +319,10 @@
         return "<p>" + esc(p) + "</p>";
       }).join("");
       if (block.kind === "proof" && block.link) {
-        paras += '<p><a href="' + esc(block.link) + '"' + extAttr(block.link) + '>Read the case study</a></p>';
+        paras += '<p><a href="' + esc(block.link) + '"' + extAttr(block.link) + trackAttr(block.link, "Read the case study") + '>Read the case study' + extHint(block.link) + '</a></p>';
       }
       if (block.kind === "contact" && block.link) {
-        paras = '<p><a href="' + esc(block.link) + '"' + extAttr(block.link) + '>' + esc(text) + "</a></p>";
+        paras = '<p><a href="' + esc(block.link) + '"' + extAttr(block.link) + trackAttr(block.link, "Start a conversation on LinkedIn") + '>' + esc(text) + extHint(block.link) + "</a></p>";
       }
       return '<section data-block="' + esc(block.id) + '" data-length="' +
         esc(item.length) + '">' + paras + "</section>";
