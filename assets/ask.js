@@ -11,7 +11,21 @@
    Amplitude <> Algolia pipe: Algolia Insights events carry the visitor's
    Amplitude anonymous device ID as the user token when Amplitude is
    present (PIPE_ENABLED), so search behavior and site behavior join on one
-   anonymous ID in both systems. Otherwise a session-scoped token is used. */
+   anonymous ID in both systems. Otherwise a session-scoped token is used.
+
+   Engaged-UI revision (Nov 16, 2026;
+   engaged-ui-revision-build-sheet.md, decisions D2, D9): the bar
+   loses its label line and its privacy-note paragraph (the full
+   disclosure stands in the colophon); focus no longer opens any
+   panel — the "Ask my record" chips are retired and find renders
+   as an overlay list anchored to the bar, carrying hits, the ask
+   row, and recent searches as list rows; growInput no longer
+   negotiates with the dock cap or any furniture — the textarea's
+   height is a function of its own content only, and its grown
+   maximum is published on the element (_qMaxH) for surface.js's
+   reservation. This module serves every path, including the
+   layered path when the surface layer is off: the bar stages at
+   the top of main there, in the same rebuilt form. */
 (function () {
   var ASK_ENABLED = true;
   var PIPE_ENABLED = true;
@@ -213,13 +227,11 @@
   var ctx = CONTEXTS[page] || DEFAULT_CTX;
 
   var css = [
-    ".explore{margin:26px 0 4px;padding:18px 18px 12px;border:1px solid var(--line);border-radius:12px}",
-    ".explore .explore-label{display:block;font-size:15px;color:var(--ink-2);margin:0 0 10px}",
+    ".explore{position:relative;margin:26px 0 4px;padding:18px 18px 12px;border:1px solid var(--line);border-radius:12px}",
     ".explore textarea{font:inherit;font-size:16px;width:100%;box-sizing:border-box;padding:11px 16px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);resize:none;display:block}",
     ".explore textarea:focus{outline:none;border-color:var(--accent)}",
     ".explore textarea.explore-q-grown{border-radius:14px}",
-    ".explore .explore-note{margin:10px 0 0;font-size:13px;color:var(--muted)}",
-    ".explore .explore-panel{margin-top:12px}",
+    ".explore .explore-panel{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:70;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;box-shadow:0 12px 32px rgba(0,0,0,.16);max-height:46vh;overflow-y:auto}",
     ".explore .explore-hit{display:block;padding:10px 14px;border:1px solid var(--line);border-radius:10px;margin:0 0 8px;text-decoration:none;color:var(--ink)}",
     ".explore .explore-hit:hover,.explore .explore-hit.active{border-color:var(--accent)}",
     ".explore .explore-hit .t{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 2px}",
@@ -227,11 +239,10 @@
     ".explore .explore-hit .sm{display:block;font-size:14px;color:var(--ink-2);line-height:1.45}",
     ".explore .explore-askrow{display:block;width:100%;text-align:left;font:inherit;font-size:15px;padding:10px 14px;border:1px solid var(--accent);border-radius:10px;background:transparent;color:var(--ink);cursor:pointer;margin:0 0 8px}",
     ".explore .explore-askrow.active{background:var(--accent-light)}",
+    ".explore .explore-recent{display:block;width:100%;text-align:left;font:inherit;font-size:15px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--ink);cursor:pointer;margin:0 0 8px}",
+    ".explore .explore-recent:hover,.explore .explore-recent.active{border-color:var(--accent)}",
     ".explore .explore-none{font-size:14.5px;color:var(--muted);margin:2px 0 10px}",
     ".explore .explore-head{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:4px 0 6px}",
-    ".explore .explore-chips{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 8px}",
-    ".explore .ask-chip{font:inherit;font-size:13.5px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink-2);cursor:pointer;text-align:left}",
-    ".explore .ask-chip:hover{border-color:var(--accent);color:var(--ink)}",
     ".explore .explore-answer{margin-top:14px}",
     ".explore .ask-prose{font-size:15.5px;line-height:1.55;margin:0 0 4px}.ask-gen-tag{font-size:12px;color:var(--muted,#777);margin:0 0 10px}.ask-item{padding:14px 18px;border:1px solid var(--line);border-radius:10px;margin:0 0 10px}",
     ".explore .ask-item p{margin:0 0 6px;font-size:16.5px;line-height:1.55}",
@@ -373,17 +384,21 @@
   var bar = document.createElement("div");
   bar.className = "explore";
   bar.id = "ask-h";
+  /* Engaged-UI revision (sheet section 6, strings 1 and 2):
+     the label line and the privacy note leave the DOM on
+     every path; the placeholder and the dock's aria-label
+     carry the invitation, and the colophon carries the full
+     disclosure. */
   bar.innerHTML =
-    "<span class=\"explore-label\">Search the record, or ask it a question.</span>" +
     "<textarea id=\"explore-q\" rows=\"1\" maxlength=\"300\" autocomplete=\"off\" enterkeyhint=\"send\" aria-label=\"Search the record or ask a question\"></textarea>" +
     "<div class=\"explore-panel\" id=\"explore-panel\" hidden></div>" +
-    "<div class=\"explore-answer\" id=\"explore-answer\" hidden></div>" +
-    "<p class=\"explore-note\">Questions are kept for 90 days and read by Douglas to improve the record. Searches are measured by length and result only. Please leave out personal details.</p>";
+    "<div class=\"explore-answer\" id=\"explore-answer\" hidden></div>";
   /* Docked-composer batch (sheet section 2): surface.js runs
      first and builds the dock, so when a dock exists the bar is
      born inside #cp-composer in the dock. When none does (the
      surface layer off, bot-gated, or failed), the bar stages at
-     the top of main, exactly as it always has. */
+     the top of main — the layered path runs through this same
+     rebuilt bar (engaged-UI revision, F8 resolution). */
   var dockMount = document.getElementById("cp-composer");
   if (dockMount && document.getElementById("cp-dock")) {
     dockMount.appendChild(bar);
@@ -393,15 +408,24 @@
   var ein = document.getElementById("explore-q");
   ein.setAttribute("placeholder", ctx.placeholder);
 
-  /* Auto-grow (docked-composer batch, sheet section 5): the
-     composer is a textarea. While the surface layer is active
-     it grows from its one-line rest height to the content's
-     height, capped at five lines, past which it scrolls
-     internally. On the layered path it holds one line and
-     overflow scrolls internally, so the kill path's at-rest
-     layout is the shipped layout. Growth is measured once
-     (rest height, line height, border) and is pure progressive
-     enhancement: any failure leaves a working one-line input. */
+  /* Auto-grow (docked-composer batch, sheet section 5;
+     re-scoped by the engaged-UI revision, sections 3.2 and
+     3.4, ruling F7): the composer is a textarea. While the
+     surface layer is active it grows from its one-line rest
+     height to the content's height, capped at five lines,
+     past which it scrolls internally. On the layered path it
+     holds one line and overflow scrolls internally. The
+     height is a function of the textarea's own content only:
+     the cap-minus-furniture measurement is deleted — there
+     is nothing left to negotiate with, the find panel being
+     an overlay and the dock cap constraining the session
+     band alone. Measurement publishes the grown maximum on
+     the element (_qMaxH) once, at boot, so surface.js's
+     reservation counts the input lane at its maximum from
+     the first frame. Growth is measured once (rest height,
+     line height, border) and is pure progressive
+     enhancement: any failure leaves a working one-line
+     input. */
   var restHeight = 0, lineHeight = 0, borderH = 0;
   function measureInput() {
     if (restHeight) return;
@@ -411,54 +435,19 @@
       restHeight = ein.offsetHeight || 0;
       borderH = restHeight - (ein.clientHeight || 0);
       if (borderH < 0) borderH = 0;
+      if (restHeight && lineHeight) {
+        try { ein._qMaxH = restHeight + lineHeight * 4; }
+        catch (e) { /* the reservation falls back to actuals */ }
+      }
     } catch (e) { /* ungrown is fine */ }
   }
+  measureInput();
   function growInput() {
     if (!(window.DCSurface && window.DCSurface.active)) return;
     measureInput();
     if (!restHeight || !lineHeight) return;
     try {
       var max = restHeight + lineHeight * 4;
-      /* Priority rule (sheet section 4): when the dock's cap
-         is small, the input's growth yields first. surface.js
-         publishes the cap as --cp-dock-cap on the dock. The
-         yield is measured, not estimated (dock fix batch,
-         Nov 16, 2026): everything in the dock that is neither
-         the textarea nor the session region is fixed furniture
-         the growth must leave room for: the consent band, the
-         dock bar minus the textarea itself (the scope label,
-         the explore label, the find panel at its current
-         height, the note), and the inner's vertical padding.
-         An open panel therefore reduces the allowance by its
-         own height, which the flat reserve this replaces could
-         not see: with the panel open or the furniture
-         underestimated, the bar alone exceeded the cap, the
-         session region flexed to zero, and the bar's tail
-         painted below the viewport. Fallback 170 when a
-         measurement is unavailable. Unset cap, no clamp. */
-      var dock = document.getElementById("cp-dock");
-      if (dock) {
-        var capPx = parseFloat(
-          window.getComputedStyle(dock)
-            .getPropertyValue("--cp-dock-cap")) || 0;
-        if (capPx > 0) {
-          var fixed = 170;
-          try {
-            var m = 18; /* the dock inner's vertical padding */
-            var consentEl = document.getElementById("cp-consent");
-            if (consentEl && consentEl.offsetHeight) {
-              m += consentEl.offsetHeight;
-            }
-            var barBox = dock.querySelector(".cp-dock-bar");
-            if (barBox && barBox.offsetHeight) {
-              m += Math.max(0,
-                barBox.offsetHeight - (ein.offsetHeight || 0));
-            }
-            if (m > 18) fixed = m;
-          } catch (e2) { /* the fallback stands */ }
-          max = Math.min(max, Math.max(restHeight, capPx - fixed));
-        }
-      }
       ein.style.height = restHeight + "px";
       var sh = ein.scrollHeight || 0;
       if (!sh) {
@@ -667,7 +656,7 @@
   }
 
   var activeIdx = -1;
-  function panelItems() { return panel.querySelectorAll(".explore-hit, .explore-askrow"); }
+  function panelItems() { return panel.querySelectorAll(".explore-hit, .explore-askrow, .explore-recent"); }
   function setActive(i) {
     var items = panelItems();
     items.forEach(function (el) { el.classList.remove("active"); });
@@ -679,47 +668,38 @@
     h.className = "explore-head"; h.textContent = text;
     return h;
   }
-  function showStart() {
-    panel.innerHTML = "";
+  /* Find overlay (engaged-UI revision, section 4): the
+     panel is an overlay anchored to the bar, outside every
+     layout stack; it opens and closes without moving
+     anything. Focus opens nothing — the focus handler does
+     nothing but focus. The "Ask my record" chips are
+     retired; recent searches render here as list rows while
+     a short query is being typed, under their settled
+     heading. */
+  function showRecents() {
     var recents = getRecents();
-    if (recents.length) {
-      panel.appendChild(headRow("Recent searches"));
-      var rw = document.createElement("div");
-      rw.className = "explore-chips";
-      recents.forEach(function (r) {
-        var b = document.createElement("button");
-        b.type = "button"; b.className = "ask-chip"; b.textContent = r;
-        b.addEventListener("click", function () {
-          ein.value = r;
-          if (unifiedAccepted(r)) return;
-          if (isQuestion(r)) ask(r, "unified"); else runSearch(r);
-        });
-        rw.appendChild(b);
-      });
-      panel.appendChild(rw);
-    }
-    panel.appendChild(headRow("Ask my record"));
-    var w = document.createElement("div");
-    w.className = "explore-chips";
-    ctx.chips.forEach(function (c) {
+    if (!recents.length) { panel.hidden = true; return; }
+    panel.innerHTML = "";
+    panel.appendChild(headRow("Recent searches"));
+    recents.forEach(function (r) {
       var b = document.createElement("button");
-      b.type = "button"; b.className = "ask-chip"; b.textContent = c;
+      b.type = "button"; b.className = "explore-recent"; b.textContent = r;
       b.addEventListener("click", function () {
-        ein.value = c;
-        if (unifiedAccepted(c)) return;
-        ask(c, "chip");
+        ein.value = r;
+        growInput();
+        if (unifiedAccepted(r)) return;
+        if (isQuestion(r)) ask(r, "unified"); else runSearch(r);
       });
-      w.appendChild(b);
+      panel.appendChild(b);
     });
-    panel.appendChild(w);
     panel.hidden = false;
     setActive(-1);
-    /* The panel is bar furniture: the input's growth yields
-       to it in the same task it opens (growInput). */
-    growInput();
   }
   function showAskRow(q) {
     panel.innerHTML = "";
+    /* The heading survives the chips' retirement (sheet
+       section 6, strings 4-6; flag F3). */
+    panel.appendChild(headRow("Ask my record"));
     var row = document.createElement("button");
     row.type = "button"; row.className = "explore-askrow";
     row.textContent = "Ask my record: \u201C" + q + "\u201D";
@@ -730,7 +710,6 @@
     panel.appendChild(row);
     panel.hidden = false;
     setActive(-1);
-    growInput();
   }
   var debounce = null, lastQuery = "";
   var lastSearch = null; // {q, hits} of the last completed search
@@ -774,7 +753,6 @@
         }
         panel.hidden = false;
         setActive(-1);
-        growInput();
       })
       .catch(function () { panel.hidden = true; });
   }
@@ -787,14 +765,16 @@
       }
     } catch (e) { /* origin is measurement only */ }
     track("Explore Focus", { page: page, origin: origin });
-    if (!ein.value.trim() && answerBox.hidden) showStart();
+    /* Engaged-UI revision (section 4): the focus handler
+       does nothing but focus. No node appears, no panel
+       opens, on either path. */
   });
   ein.addEventListener("input", function () {
     growInput();
     answerBox.hidden = true;
     var q = ein.value.trim();
     if (debounce) clearTimeout(debounce);
-    if (q.length < 3) { if (!q) showStart(); else panel.hidden = true; return; }
+    if (q.length < 3) { if (q) showRecents(); else panel.hidden = true; return; }
     if (isQuestion(q)) { showAskRow(q); return; }
     debounce = setTimeout(function () { if (q !== lastQuery) { lastQuery = q; runSearch(q); } }, 300);
   });
