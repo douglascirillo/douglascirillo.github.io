@@ -3682,6 +3682,11 @@
     for (var i = turns.length - 1; i >= 0; i--) {
       var p = turns[i];
       if (p.page !== ctx.page) continue;
+      /* Dialogue turns (a refusal, a repeat notice) and the
+         prompt turns in front of them do not change the
+         standing view; the walk continues past them to the
+         last content turn. */
+      if (p.kind === "dialogue" || p.kind === "prompt") continue;
       if (p.kind === "response") {
         return p.mixture !== "pointer" &&
           p.prompt === ctx.segLastPrompt;
@@ -4404,7 +4409,28 @@
     if (!opts.releaseConfirm && !opts.buildHere) {
       if (ctx.segLastPrompt === text &&
           streamTailIsContentFor(ctx)) {
-        SF.showDialogue("status", { text: REPEAT_LINE });
+        /* A repeat is a dialogue turn in the stream, like a
+           refusal: the prompt renders, then the line. No
+           request, no cap spend. (The turns-area rendering
+           this replaces was the flat path's behavior; the
+           engaged path keeps dialogue in the conversation.) */
+        SF.showDialogue("clear");
+        if (ctx.streamEl && ctx.store) {
+          var rplan = streamAppendPlan(ctx, ctx.store, {
+            kind: "prompt", page: ctx.page, text: text
+          });
+          ctx.streamEl.appendChild(streamPromptEl(rplan));
+          var rdplan = streamAppendPlan(ctx, ctx.store, {
+            kind: "dialogue", page: ctx.page,
+            outcome: "repeat", text: REPEAT_LINE, link: null
+          });
+          var rdel = streamDialogueEl(rdplan);
+          ctx.streamEl.appendChild(rdel);
+          streamAnnounce(rdplan);
+          streamFocusTurn(rdel);
+        } else {
+          SF.showDialogue("status", { text: REPEAT_LINE });
+        }
         return;
       }
       var caps = ctx.store ? ctx.store.caps
