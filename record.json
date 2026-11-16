@@ -190,8 +190,7 @@
       "context": "Sotheby's",
       "attribution": "Contributed",
       "status": "restricted",
-      "verified": "2026-11-14",
-      "constraint": "Never use as a headline figure or as a total attributable to his tenure; the total postdated his tenure."
+      "verified": "2026-11-14"
     },
     {
       "id": "apfm-share",
@@ -258,8 +257,7 @@
       "context": "MSG, 2012-2016",
       "attribution": "Led the digital product function",
       "status": "restricted",
-      "verified": "2026-11-14",
-      "constraint": "Scope is Rockettes and Radio City Music Hall only. Never generalize to all of MSG."
+      "verified": "2026-11-14"
     },
     {
       "id": "msg-emmy",
@@ -385,27 +383,25 @@
     },
     {
       "id": "excluded-vanguard-outcomes",
-      "claim": "Vanguard outcome figures and internal details.",
+      "claim": "Withheld from the public record.",
       "class": "excluded",
       "source": "https://douglascirillo.com/",
-      "evidence": "No Vanguard outcomes are published; the Vanguard entry is presented as building since February 2026.",
+      "evidence": "Not published.",
       "context": "Vanguard, 2026-present",
       "attribution": "n/a",
       "status": "excluded",
-      "verified": "2026-11-14",
-      "constraint": "Never surface. Vanguard internals, figures, and program details are not part of the public record."
+      "verified": "2026-11-14"
     },
     {
       "id": "excluded-tripadvisor",
-      "claim": "The TripAdvisor and Hightouch backstory.",
+      "claim": "Withheld from the public record.",
       "class": "excluded",
       "source": "https://douglascirillo.com/",
-      "evidence": "Interview-room context only, per Douglas Cirillo.",
+      "evidence": "Not published.",
       "context": "Career history",
       "attribution": "n/a",
       "status": "excluded",
-      "verified": "2026-11-14",
-      "constraint": "Never surface in writing or generated output."
+      "verified": "2026-11-14"
     },
     {
       "id": "stack-cdp-definition",
