@@ -670,15 +670,20 @@
     map[key] = { c: 1, f: now, l: now };
   }
 
+  // Returns true when the write landed. It returns false when
+  // there is no writable namespace yet (device ID unresolved and
+  // no single fallback key), which the init page-view write
+  // retries on a bounded schedule; validation drops also return
+  // false and simply never land.
   function bump(cat, key) {
-    if (!canUse()) return;
-    if (typeof key !== "string" || !key) return;
-    if (manifest && !validForCategory(cat, key)) return;
+    if (!canUse()) return false;
+    if (typeof key !== "string" || !key) return false;
+    if (manifest && !validForCategory(cat, key)) return false;
     if (!manifest && !validForCategory(cat, key) &&
-        (cat === "intents" || cat === "ask_outcomes")) return;
+        (cat === "intents" || cat === "ask_outcomes")) return false;
     try {
-      mutateLedger(function (led) { bumpIn(led, cat, key); });
-    } catch (e) {}
+      return mutateLedger(function (led) { bumpIn(led, cat, key); });
+    } catch (e) { return false; }
   }
 
   /* ---------- emphasis (build sheet section 4) ---------- */
@@ -985,7 +990,28 @@
 
   function recordRecordOpened(recordId) { bump("records", recordId); }
 
-  function recordPageView() { bump("pages", currentPath()); }
+  function recordPageView() { return bump("pages", currentPath()); }
+
+  // The init page-view write races the Amplitude SDK: ledger.js
+  // is deferred and the SDK loads async, so at init the device ID
+  // is usually not resolvable yet, and a fresh or just-cleared
+  // ledger has no fallback key either; that first write was
+  // silently dropped (the Nov 16 live probe lost exactly that
+  // write). Retry on the same bounded schedule the Session
+  // Replay loader uses (250ms, up to about 3s) until the
+  // namespace resolves and the write lands, once.
+  function recordPageViewWithRetry() {
+    if (recordPageView()) return;
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries++;
+      var done = false;
+      try { done = !canUse() || recordPageView(); } catch (e) { done = true; }
+      if (done || tries >= 12) {
+        try { clearInterval(timer); } catch (e) {}
+      }
+    }, 250);
+  }
 
   /* ---------- styling, consent gate, inspect panel ---------- */
 
@@ -1352,7 +1378,7 @@
         gatePending = true;
         renderGate();
       } else if (canUse()) {
-        recordPageView();
+        recordPageViewWithRetry();
       }
     }
   } catch (e) { /* the stub discipline: the page never breaks */ }
