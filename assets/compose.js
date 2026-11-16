@@ -103,6 +103,92 @@
     } catch (e) { /* measurement never breaks the page */ }
   }
 
+  /* ----- Increment 3: on-device ledger integration -----
+     Every DCLedger call is guarded and wrapped: a missing or inert
+     ledger changes nothing, and measurement-and-ledger work never
+     breaks the page. freshStartActive is a per-turn local at the
+     call sites that have one (submitPrompt / handleTurnResponse /
+     classifyProblem); the other call sites have no fresh-start
+     context and guard on the ledger being enabled only. */
+  function ledgerEnabled() {
+    try {
+      return !!(window.DCLedger && window.DCLedger.enabled);
+    } catch (e) { return false; }
+  }
+
+  function ledgerRecordIntent(intent) {
+    try {
+      if (window.DCLedger && window.DCLedger.enabled &&
+          typeof window.DCLedger.recordIntent === "function") {
+        window.DCLedger.recordIntent(intent);
+      }
+    } catch (e) { /* the ledger never breaks the page */ }
+  }
+
+  function ledgerRecordComposition(pageKey) {
+    try {
+      if (window.DCLedger && window.DCLedger.enabled &&
+          typeof window.DCLedger.recordComposition === "function") {
+        window.DCLedger.recordComposition(pageKey);
+      }
+    } catch (e) { /* the ledger never breaks the page */ }
+  }
+
+  function ledgerRecordSpec(spec, page, scope) {
+    try {
+      if (window.DCLedger && window.DCLedger.enabled &&
+          typeof window.DCLedger.recordSpec === "function") {
+        window.DCLedger.recordSpec({
+          blocks: spec.blocks.map(function (b) { return b.id; }),
+          page: page, scope: scope
+        });
+      }
+    } catch (e) { /* the ledger never breaks the page */ }
+  }
+
+  function ledgerCategoriesLabel(categories) {
+    try {
+      if (window.DCLedger && window.DCLedger.enabled && categories &&
+          categories.length &&
+          typeof window.DCLedger.categoriesLabel === "function") {
+        var label = window.DCLedger.categoriesLabel(categories);
+        return label ? String(label) : "";
+      }
+    } catch (e) { /* the ledger never breaks the page */ }
+    return "";
+  }
+
+  var LEDGER_DOOR_BUTTON =
+    '<p class="ledger-door"><button type="button" class="ledger-open">' +
+    "What this site remembers on this device</button></p>";
+  var FRESH_START_CLAUSE =
+    "Built without your earlier reading here, as you asked.";
+
+  function historyClauseLine(pageName, categories) {
+    var label = ledgerCategoriesLabel(categories);
+    if (!label) return "";
+    return "Assembled from the published record, starting from " +
+      esc(pageName) + ", weighted by " + esc(label) +
+      " you opened here on earlier visits.";
+  }
+
+  function wireLedgerDoor(el) {
+    try {
+      Array.prototype.forEach.call(
+        el.querySelectorAll(".ledger-open"),
+        function (btn) {
+          btn.addEventListener("click", function () {
+            try {
+              if (window.DCLedger && window.DCLedger.enabled &&
+                  typeof window.DCLedger.openPanel === "function") {
+                window.DCLedger.openPanel("receipt");
+              }
+            } catch (e) { /* the ledger never breaks the page */ }
+          });
+        });
+    } catch (e) { /* the ledger never breaks the page */ }
+  }
+
   function load() {
     if (byIntent) return Promise.resolve(byIntent);
     if (loading) return loading;
@@ -191,6 +277,15 @@
       history.replaceState(null, "", "#c=" + (sig || entry.sig));
     } catch (e) {}
     track("Composition Rendered", { intent: intent });
+    // Increment 3 writers: the intent pick and the composition
+    // render write to the ledger at the same points their events
+    // fire. A classified render records its intent once, in
+    // renderClassifiedIntent, so render() skips the intent write
+    // for classified renders to avoid counting it twice.
+    if (!(opts && (opts.classified || opts.connectionLine))) {
+      ledgerRecordIntent(intent);
+    }
+    ledgerRecordComposition("/");
   }
 
   function intentOfButton(btn) {
@@ -265,6 +360,9 @@
 
   function renderClassifiedIntent(intent) {
     if (repeatIfSame("intent:" + intent)) return;
+    // Increment 3 writer (classified path): recorded here, once;
+    // render() skips its intent write for classified renders.
+    ledgerRecordIntent(intent);
     render(intent, null, { connectionLine: CONNECTION_LINE });
     scrollSlotIntoView(slot());
   }
@@ -435,12 +533,27 @@
     }).join(",");
   }
 
-  function renderSpec(spec, payload) {
+  function renderSpec(spec, payload, historyCategories, freshStartActive) {
     var el = slot();
     if (!el) return;
+    var historyHtml = "";
+    if (freshStartActive) {
+      historyHtml = '<p class="composition-from-intent">' +
+        FRESH_START_CLAUSE + "</p>";
+    } else if (historyCategories) {
+      var historyLabel = ledgerCategoriesLabel(historyCategories);
+      if (historyLabel) {
+        historyHtml = '<p class="composition-from-intent">' +
+          "Assembled from the published record, weighted by " +
+          esc(historyLabel) +
+          " you opened here on earlier visits.</p>" +
+          LEDGER_DOOR_BUTTON;
+      }
+    }
     el.innerHTML =
       '<h3 class="composition-h">The full picture</h3>' +
       '<p class="composition-from-intent">' + CONNECTION_LINE + "</p>" +
+      historyHtml +
       renderFragmentHtml(spec, payload) +
       '<p class="composition-note">Assembled for this visit from the ' +
       "published record. The static pages underneath do not change.</p>" +
@@ -456,7 +569,9 @@
     // No share code for a novel spec (manifest-only rule): the render
     // is session-only and the URL is not modified.
     scrollSlotIntoView(el);
+    if (historyHtml) wireLedgerDoor(el);
     track("Composition Rendered", { intent: null, via: "spec" });
+    ledgerRecordComposition("/");
   }
 
   /* ----- Increment 0: page composition (landing context) -----
@@ -512,11 +627,23 @@
     return true;
   }
 
-  function renderPageComposition(el, page, pageEntry, view, spec, source) {
+  var lastPageRender = null;
+
+  function renderPageComposition(el, page, pageEntry, view, spec, source,
+                                 historyCategories) {
+    var clause = historyCategories
+      ? historyClauseLine(pageEntry.page_name, historyCategories) : "";
+    var fromIntent = clause ||
+      ("Assembled from the published record, starting from " +
+       esc(pageEntry.page_name) + ".");
+    lastPageRender = {
+      el: el, page: page, entry: pageEntry, view: view, spec: spec,
+      source: source, categories: clause ? historyCategories : null
+    };
     el.innerHTML =
       '<h3 class="composition-h">The full picture</h3>' +
-      '<p class="composition-from-intent">Assembled from the published ' +
-      "record, starting from " + esc(pageEntry.page_name) + ".</p>" +
+      '<p class="composition-from-intent">' + fromIntent + "</p>" +
+      (clause ? LEDGER_DOOR_BUTTON : "") +
       renderFragmentHtml(spec, view, page) +
       '<p class="composition-note">Assembled for this visit. The page ' +
       "as published stands underneath, unchanged.</p>" +
@@ -547,10 +674,12 @@
         history.replaceState(null, "", "#a=" + encodePageCode(page, spec));
       } catch (e) {}
     }
+    if (clause) wireLedgerDoor(el);
     track("Page Composition Rendered", {
       page: page, page_type: pageEntry.type, source: source,
       block_count: spec.blocks.length
     });
+    ledgerRecordComposition(page);
   }
 
   function pageInit(el) {
@@ -592,7 +721,55 @@
         }
         var start = entry.starting_spec;
         if (start && validateSpec(start, view, page)) {
-          renderArrival(el, page, entry, view, start, "arrival");
+          // Increment 3 arrival weighting (plain arrivals only;
+          // share-code arrivals above are never weighted). Wait for
+          // the ledger, weight the validated starting spec, and
+          // render the weighted spec only if it re-validates;
+          // otherwise the plain starting spec renders as before.
+          var freshStartActive = false;
+          if (window.DCLedger && window.DCLedger.enabled &&
+              !freshStartActive) {
+            try {
+              var readyResult = null;
+              try {
+                readyResult = window.DCLedger.ready();
+              } catch (e) { readyResult = null; }
+              if (readyResult && typeof readyResult.then === "function") {
+                readyResult.then(function () {
+                  try {
+                    if (!(window.DCLedger && window.DCLedger.enabled &&
+                          !freshStartActive)) {
+                      renderArrival(el, page, entry, view, start,
+                        "arrival");
+                      return;
+                    }
+                    var weighted = null;
+                    try {
+                      weighted = window.DCLedger.weightArrival(start, page);
+                    } catch (e) { weighted = null; }
+                    if (weighted && weighted.spec &&
+                        validateSpec(weighted.spec, view, page)) {
+                      renderArrival(el, page, entry, view, weighted.spec,
+                        "arrival", weighted.categories || null);
+                    } else {
+                      renderArrival(el, page, entry, view, start,
+                        "arrival");
+                    }
+                  } catch (e) {
+                    renderArrival(el, page, entry, view, start, "arrival");
+                  }
+                }, function () {
+                  renderArrival(el, page, entry, view, start, "arrival");
+                });
+              } else {
+                renderArrival(el, page, entry, view, start, "arrival");
+              }
+            } catch (e) {
+              renderArrival(el, page, entry, view, start, "arrival");
+            }
+          } else {
+            renderArrival(el, page, entry, view, start, "arrival");
+          }
         }
       })
       .catch(function () { /* the static page serves, unchanged */ });
@@ -613,11 +790,13 @@
      stateless and re-validates everything it is sent; this layer
      validates every served spec again before rendering it. */
 
-  function renderArrival(el, page, entry, view, spec, source) {
+  function renderArrival(el, page, entry, view, spec, source,
+                         historyCategories) {
     if (PROMPT_PAGES[page]) {
-      initSession(el, page, entry, view, spec, source);
+      initSession(el, page, entry, view, spec, source, historyCategories);
     } else {
-      renderPageComposition(el, page, entry, view, spec, source);
+      renderPageComposition(el, page, entry, view, spec, source,
+        historyCategories);
     }
   }
 
@@ -719,16 +898,19 @@
     return "Turn " + chip.turn + (words ? " \u00B7 " + words : "");
   }
 
-  function initSession(el, page, entry, view, spec, source) {
+  function initSession(el, page, entry, view, spec, source,
+                       historyCategories) {
     var S = {
       el: el, page: page, entry: entry, view: view, source: source,
       chips: [{ turn: 0, action: "published", spec: null, scope: "page",
                 prompt: null },
               { turn: 0, action: "start", spec: spec, scope: "page",
-                prompt: null }],
+                prompt: null,
+                categories: historyCategories || null }],
       current: 1, submits: 0, pending: null, ui: "field",
       status: "", docked: false, dead: false, inFlight: false,
-      capFired: false, lastBuilt: 1
+      capFired: false, lastBuilt: 1,
+      arrivalCategories: historyCategories || null
     };
     pageSession = S;
     var restored = loadStoredSession(S);
@@ -740,6 +922,7 @@
       page: page, page_type: entry.type, source: source,
       block_count: spec.blocks.length
     });
+    ledgerRecordComposition(page);
     if (!restored && !sameSpec(spec, entry.starting_spec)) {
       try {
         history.replaceState(null, "", "#a=" + encodePageCode(page, spec));
@@ -784,12 +967,36 @@
       return;
     }
     var chip = S.chips[S.current];
+    // Increment 3 receipts: the start chip carries the arrival
+    // clause under its scope line; a turn chip carries its history
+    // clause (or the fresh-start clause) under its turn line.
+    var startClauseHtml = "";
+    var turnClauseHtml = "";
+    if (chip.action === "start") {
+      var startCats = chip.categories || S.arrivalCategories;
+      var startClause = startCats
+        ? historyClauseLine(S.entry.page_name, startCats) : "";
+      if (startClause) {
+        startClauseHtml = '<p class="composition-from-intent">' +
+          startClause + "</p>" + LEDGER_DOOR_BUTTON;
+      }
+    } else if (chip.freshStart) {
+      turnClauseHtml = '<p class="composition-from-intent">' +
+        FRESH_START_CLAUSE + "</p>";
+    } else if (chip.categories) {
+      var turnClause = historyClauseLine(S.entry.page_name,
+        chip.categories);
+      if (turnClause) {
+        turnClauseHtml = '<p class="composition-from-intent">' +
+          turnClause + "</p>" + LEDGER_DOOR_BUTTON;
+      }
+    }
     var html = chipsHtml +
       '<h3 class="composition-h">The full picture</h3>' +
       '<p class="composition-from-intent">' + chipScopeLine(S, chip) +
-      "</p>" +
+      "</p>" + startClauseHtml +
       '<p class="composition-from-intent prompt-turnline">' +
-      chipTurnLine(chip) + "</p>" +
+      chipTurnLine(chip) + "</p>" + turnClauseHtml +
       renderFragmentHtml(chip.spec, sessionViewFor(S, chip), S.page) +
       '<p class="composition-note">Assembled for this visit. The page ' +
       "as published stands underneath, unchanged.</p>" +
@@ -800,6 +1007,7 @@
     el.hidden = false;
     el.setAttribute("data-render-key", "page:" + S.page);
     el.setAttribute("data-render-source", S.source);
+    if (startClauseHtml || turnClauseHtml) wireLedgerDoor(el);
     wireSession(S);
   }
 
@@ -809,14 +1017,14 @@
       ? '<p class="composition-from-intent prompt-status">' +
         esc(S.status) + "</p>" : "";
     if (S.ui === "pointer" && S.pending) {
-      return '<div class="prompt-card"><p>That&rsquo;s covered in ' +
+      return status + '<div class="prompt-card"><p>That&rsquo;s covered in ' +
         esc(S.pending.covering_name) + '.</p><p class="prompt-actions">' +
         '<a href="' + esc(S.pending.covering_page) + '">Open it</a>' +
         '<button type="button" id="prompt-build-here">Build it here ' +
         "instead</button></p></div>";
     }
     if (S.ui === "confirm") {
-      return '<div class="prompt-card"><p>You&rsquo;re moving beyond ' +
+      return status + '<div class="prompt-card"><p>You&rsquo;re moving beyond ' +
         esc(S.entry.page_name) + ". Build from the broader record " +
         "instead?</p>" +
         '<p class="prompt-actions"><button type="button" ' +
@@ -958,6 +1166,19 @@
     S.submits += 1;
     var turnNo = S.submits;
     var kind = matchTurnKind(text);
+    // Increment 3 fresh start: a prompt in the fresh-start set is
+    // built without weighting for this turn. The ledger itself is
+    // not modified by the prompt; the event records only that the
+    // class of request was made, never the prompt text.
+    var freshStartActive = false;
+    try {
+      freshStartActive = !!(window.DCLedger && window.DCLedger.enabled &&
+        typeof window.DCLedger.freshStart === "function" &&
+        window.DCLedger.freshStart(text));
+    } catch (e) { freshStartActive = false; }
+    if (freshStartActive) {
+      track("History Fresh Start Invoked", { page: S.page });
+    }
     track("Prompt Submitted", {
       page: S.page, turn_number: turnNo, scope: chip.scope,
       turn_kind: kind
@@ -972,7 +1193,9 @@
       turn_kind: kind, scope: chip.scope, current_spec: chip.spec,
       prior_specs: priorSpecsFor(S), turn: turnNo
     }).then(function (data) {
-      handleTurnResponse(S, data, { prompt: text, turn: turnNo });
+      handleTurnResponse(S, data, {
+        prompt: text, turn: turnNo, freshStart: freshStartActive
+      });
     });
   }
 
@@ -1010,17 +1233,40 @@
         if (!validateSessionSpec(S, spec, scope)) {
           // A served spec that fails the client gate is a contract
           // break: the failure discipline applies, the view and
-          // the chips are exactly as they were.
-          S.status = PROMPT_NONE_LINE;
+          // the chips are exactly as they were. A fresh-start turn
+          // carries its clause here instead of the none line.
+          S.status = ctx.freshStart ? FRESH_START_CLAUSE
+            : PROMPT_NONE_LINE;
           renderSession();
           return;
         }
+        // Increment 3 turn weighting: reorder the validated spec
+        // by ledger emphasis, re-validate, and keep the unweighted
+        // spec if anything about the weighted one fails.
+        var turnCategories = null;
+        var freshStartActive = !!ctx.freshStart;
+        try {
+          if (window.DCLedger && window.DCLedger.enabled &&
+              !freshStartActive &&
+              typeof window.DCLedger.weightTurn === "function") {
+            var weightedTurn = window.DCLedger.weightTurn(spec.blocks);
+            if (weightedTurn && weightedTurn.blocks) {
+              var weightedSpec = { blocks: weightedTurn.blocks };
+              if (validateSessionSpec(S, weightedSpec, scope)) {
+                spec = weightedSpec;
+                turnCategories = weightedTurn.categories || null;
+              }
+            }
+          }
+        } catch (e) { /* the ledger never breaks the page */ }
         // A new prompt from a restored chip branches the row from
         // that point.
         S.chips = S.chips.slice(0, S.current + 1);
         S.chips.push({
           turn: ctx.turn, action: data.action, spec: spec,
-          scope: scope, prompt: ctx.prompt
+          scope: scope, prompt: ctx.prompt,
+          categories: turnCategories,
+          freshStart: !!ctx.freshStart
         });
         S.current = S.chips.length - 1;
         S.lastBuilt = S.current;
@@ -1032,6 +1278,12 @@
           page: S.page, turn_number: ctx.turn, action: data.action,
           block_count: spec.blocks.length, scope: scope
         });
+        // Increment 3 writer: the served spec, block IDs only.
+        // A fresh-start turn skips the ledger write, as it skips
+        // weighting: the prompt does not modify the ledger.
+        if (!freshStartActive) {
+          ledgerRecordSpec(spec, S.page, scope);
+        }
         afterSubmit(S);
       };
       if (scope === "released" && !blocksPayload) {
@@ -1045,9 +1297,11 @@
       S.pending = {
         prompt: ctx.prompt, turn: ctx.turn,
         covering_page: data.covering_page,
-        covering_name: data.covering_name
+        covering_name: data.covering_name,
+        freshStart: !!ctx.freshStart
       };
-      S.ui = "pointer"; S.status = "";
+      S.ui = "pointer";
+      S.status = ctx.freshStart ? FRESH_START_CLAUSE : "";
       renderSession();
       track("Prompt Pointer Shown",
         { page: S.page, covering_page: data.covering_page });
@@ -1055,8 +1309,12 @@
       return;
     }
     if (data.action === "release_offer") {
-      S.pending = { prompt: ctx.prompt, turn: ctx.turn };
-      S.ui = "confirm"; S.status = "";
+      S.pending = {
+        prompt: ctx.prompt, turn: ctx.turn,
+        freshStart: !!ctx.freshStart
+      };
+      S.ui = "confirm";
+      S.status = ctx.freshStart ? FRESH_START_CLAUSE : "";
       renderSession();
       track("Prompt Release Offered", { page: S.page });
       afterSubmit(S);
@@ -1064,8 +1322,9 @@
     }
     // The null shape: the view, the chips, and the scroll position
     // are exactly as they were; one fixed line, naming no topic.
+    // A fresh-start turn carries its clause instead of that line.
     S.ui = "field"; S.pending = null;
-    S.status = PROMPT_NONE_LINE;
+    S.status = ctx.freshStart ? FRESH_START_CLAUSE : PROMPT_NONE_LINE;
     renderSession();
     afterSubmit(S);
   }
@@ -1097,13 +1356,26 @@
       turn: pending.turn, release_confirm: true
     }).then(function (data) {
       S.pending = null;
-      handleTurnResponse(S, data,
-        { prompt: pending.prompt, turn: pending.turn });
+      handleTurnResponse(S, data, {
+        prompt: pending.prompt, turn: pending.turn,
+        freshStart: !!pending.freshStart
+      });
     });
   }
 
   function classifyProblem(text) {
     var seq = ++classifySeq;
+    // Increment 3 fresh start, home path: a fresh-start text is
+    // rendered without weighting, with its clause on the receipt.
+    var freshStartActive = false;
+    try {
+      freshStartActive = !!(window.DCLedger && window.DCLedger.enabled &&
+        typeof window.DCLedger.freshStart === "function" &&
+        window.DCLedger.freshStart(text));
+    } catch (e) { freshStartActive = false; }
+    if (freshStartActive) {
+      track("History Fresh Start Invoked", { page: "/" });
+    }
     showPending();
     fetch(ASK_ENDPOINT, {
       method: "POST",
@@ -1121,8 +1393,31 @@
           loadBlocks().then(function (payload) {
             if (seq !== classifySeq) return;
             if (payload && validateSpec(data.spec, payload)) {
-              if (!repeatIfSame(specKey(data.spec))) {
-                renderSpec(data.spec, payload);
+              // Increment 3 turn weighting, home classify path:
+              // weight the validated spec, re-validate, and fall
+              // back to the unweighted spec on any failure.
+              var specToRender = data.spec;
+              var turnCategories = null;
+              try {
+                if (window.DCLedger && window.DCLedger.enabled &&
+                    !freshStartActive &&
+                    typeof window.DCLedger.weightTurn === "function") {
+                  var weightedHome = window.DCLedger.weightTurn(
+                    data.spec.blocks);
+                  if (weightedHome && weightedHome.blocks) {
+                    var weightedHomeSpec = {
+                      blocks: weightedHome.blocks
+                    };
+                    if (validateSpec(weightedHomeSpec, payload)) {
+                      specToRender = weightedHomeSpec;
+                      turnCategories = weightedHome.categories || null;
+                    }
+                  }
+                }
+              } catch (e) { /* the ledger never breaks the page */ }
+              if (!repeatIfSame(specKey(specToRender))) {
+                renderSpec(specToRender, payload, turnCategories,
+                  freshStartActive);
               }
               classifiedEvent(null, "matched", "typed_spec");
             } else {
@@ -1192,6 +1487,38 @@
       });
     }
   }
+
+  /* ----- Increment 3: clear rebuild -----
+     When the ledger is cleared, a view that history shaped is
+     rebuilt plain: weights are now empty. Page mode re-renders
+     the plain starting spec; session mode rebuilds the start
+     chip from the starting spec when that chip is on screen.
+     Anything else is a no-op. */
+  document.addEventListener("dc:ledger-cleared", function () {
+    try {
+      if (pageSession) {
+        var S = pageSession;
+        if (S.current > 0 && S.chips[S.current]) {
+          var chip = S.chips[S.current];
+          if (chip.action === "start" &&
+              (chip.categories || S.arrivalCategories)) {
+            chip.spec = S.entry.starting_spec;
+            chip.categories = null;
+            chip.freshStart = false;
+            S.arrivalCategories = null;
+            saveSession(S);
+            renderSession();
+          }
+        }
+        return;
+      }
+      if (lastPageRender && lastPageRender.categories) {
+        var r = lastPageRender;
+        renderPageComposition(r.el, r.page, r.entry, r.view,
+          r.entry.starting_spec || r.spec, r.source);
+      }
+    } catch (e) { /* the ledger never breaks the page */ }
+  });
 
   // Exposed for the eval harness: the shipped validator, exercised
   // against the shipped payload by run_specs_stage2.py, and the
