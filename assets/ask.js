@@ -25,7 +25,24 @@
    maximum is published on the element (_qMaxH) for surface.js's
    reservation. This module serves every path, including the
    layered path when the surface layer is off: the bar stages at
-   the top of main there, in the same rebuilt form. */
+   the top of main there, in the same rebuilt form.
+
+   Suggested-search fix (Nov 16, 2026;
+   suggested-search-fix-sheet.md, sections 4 and 4.3): focus on
+   the empty input opens the overlay with the current page's
+   registered starters as suggestion rows (read from the
+   surface's model at open time, never cached here), recents
+   beneath; typing runs the Algolia composition — from the
+   match floor (2 characters) the panel carries the index's
+   ranked matches in its own order with the ask row at the
+   foot, and the hand-rolled find triage is gone (no question
+   gate on what the panel may show, no locally computed
+   ranking filter, no first-hit Enter fall-through). A failed
+   search renders the ask row alone, never the no-results
+   line; a response for the still-current query renders
+   whenever it arrives, bounded only by a 10-second
+   connection-hygiene abort. isQuestion survives only inside
+   the layered path's submit triage. */
 (function () {
   var ASK_ENABLED = true;
   var PIPE_ENABLED = true;
@@ -241,6 +258,8 @@
     ".explore .explore-askrow.active{background:var(--accent-light)}",
     ".explore .explore-recent{display:block;width:100%;text-align:left;font:inherit;font-size:15px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--ink);cursor:pointer;margin:0 0 8px}",
     ".explore .explore-recent:hover,.explore .explore-recent.active{border-color:var(--accent)}",
+    ".explore .explore-starter{display:block;width:100%;text-align:left;font:inherit;font-size:15px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--ink);cursor:pointer;margin:0 0 8px}",
+    ".explore .explore-starter:hover,.explore .explore-starter.active{border-color:var(--accent)}",
     ".explore .explore-none{font-size:14.5px;color:var(--muted);margin:2px 0 10px}",
     ".explore .explore-head{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:4px 0 6px}",
     ".explore .explore-answer{margin-top:14px}",
@@ -635,15 +654,6 @@
     if (words.length >= 6) return true;
     return QWORDS.indexOf(words[0].toLowerCase().replace(/[^a-z]/g, "")) >= 0;
   }
-  var TYPE_BY_PREFIX = [
-    ["/case-studies/", "Case study"], ["/practice/", "Practice"],
-    ["/writing/", "Essay"], ["/record/", "Record"],
-    ["/speaking/", "Speaking"], ["/scorecard/", "Tool"]
-  ];
-  var boostType = null;
-  TYPE_BY_PREFIX.forEach(function (pair) { if (page.indexOf(pair[0]) === 0) boostType = pair[1]; });
-  var optionalFilters = boostType ? ["type:" + boostType + "<score=2>"] : [];
-
   function getRecents() {
     try { return JSON.parse(window.localStorage.getItem("dc-recent-searches") || "[]"); } catch (e) { return []; }
   }
@@ -656,7 +666,7 @@
   }
 
   var activeIdx = -1;
-  function panelItems() { return panel.querySelectorAll(".explore-hit, .explore-askrow, .explore-recent"); }
+  function panelItems() { return panel.querySelectorAll(".explore-hit, .explore-askrow, .explore-recent, .explore-starter"); }
   function setActive(i) {
     var items = panelItems();
     items.forEach(function (el) { el.classList.remove("active"); });
@@ -668,35 +678,95 @@
     h.className = "explore-head"; h.textContent = text;
     return h;
   }
-  /* Find overlay (engaged-UI revision, section 4): the
-     panel is an overlay anchored to the bar, outside every
-     layout stack; it opens and closes without moving
-     anything. Focus opens nothing — the focus handler does
-     nothing but focus. The "Ask my record" chips are
-     retired; recent searches render here as list rows while
-     a short query is being typed, under their settled
-     heading. */
-  function showRecents() {
-    var recents = getRecents();
-    if (!recents.length) { panel.hidden = true; return; }
-    panel.innerHTML = "";
-    panel.appendChild(headRow("Recent searches"));
-    recents.forEach(function (r) {
-      var b = document.createElement("button");
-      b.type = "button"; b.className = "explore-recent"; b.textContent = r;
-      b.addEventListener("click", function () {
-        ein.value = r;
-        growInput();
-        if (unifiedAccepted(r)) return;
-        if (isQuestion(r)) ask(r, "unified"); else runSearch(r);
-      });
-      panel.appendChild(b);
+  /* Find overlay (engaged-UI revision, section 4; reshaped by
+     the suggested-search fix, sections 4 and 4.3): the panel is
+     an overlay anchored to the dock, outside every layout
+     stack; it opens and closes without moving anything. Its
+     contents compose from three sources: the current page's
+     registered starters (rows, from the surface's model), the
+     visitor's recent searches (rows, local), and Algolia's
+     ranked record matches as the visitor types. */
+  function clearTransientStatus() {
+    try {
+      if (window.DCSurface && window.DCSurface.clearTransientStatus) {
+        window.DCSurface.clearTransientStatus();
+      }
+    } catch (e) { /* the node is the surface's; absence is fine */ }
+  }
+  function recentRow(r) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "explore-recent"; b.textContent = r;
+    b.addEventListener("click", function () {
+      ein.value = r;
+      growInput();
+      if (unifiedAccepted(r)) return;
+      if (isQuestion(r)) ask(r, "unified"); else composeTyping(r);
     });
+    return b;
+  }
+  function appendRecents() {
+    var recents = getRecents();
+    if (!recents.length) return;
+    panel.appendChild(headRow("Recent searches"));
+    recents.forEach(function (r) { panel.appendChild(recentRow(r)); });
+  }
+  function showRecents() {
+    if (!getRecents().length) { panel.hidden = true; return; }
+    panel.innerHTML = "";
+    appendRecents();
     panel.hidden = false;
     setActive(-1);
   }
-  function showAskRow(q) {
+  /* The starter rows: the model is compose.js's registration
+     (starters.json under the ST8 gate), read at open time and
+     never cached here, so a mid-visit swap is always current.
+     A row tap is the lane tap this replaces: the panel hides,
+     the input resets as a submit resets it, and the model's
+     onTap — streamStarterTap — runs the engagement path.
+     Rows render ONLY from this model; a search hit is never
+     rendered as, or substituted for, one. */
+  function startersModelNow() {
+    try {
+      if (window.DCSurface && window.DCSurface.active &&
+          typeof window.DCSurface.currentStarters === "function") {
+        var m = window.DCSurface.currentStarters();
+        if (m && m.starters && m.starters.length) return m;
+      }
+    } catch (e) { /* no model: no starter rows */ }
+    return null;
+  }
+  function appendStarters(model) {
+    panel.appendChild(headRow("Ask my record"));
+    model.starters.forEach(function (s) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "explore-starter";
+      b.textContent = s.text;
+      b.addEventListener("click", function () {
+        panel.hidden = true;
+        ein.value = "";
+        resetInputHeight();
+        if (model.onTap) model.onTap(s);
+      });
+      panel.appendChild(b);
+    });
+  }
+  /* The empty state (focus, or cleared back to empty): the
+     starter section, then the recents beneath — both local;
+     no network request fires on focus, ever. With no set
+     current the panel does not open: recents do not open it
+     on their own. Opening the overlay clears the transient
+     status (fix section 6). */
+  function showEmptyState() {
+    var model = startersModelNow();
+    if (!model) { panel.hidden = true; return; }
     panel.innerHTML = "";
+    appendStarters(model);
+    appendRecents();
+    panel.hidden = false;
+    setActive(-1);
+    clearTransientStatus();
+  }
+  function appendAskSection(q) {
     /* The heading survives the chips' retirement (sheet
        section 6, strings 4-6; flag F3). */
     panel.appendChild(headRow("Ask my record"));
@@ -708,22 +778,53 @@
       ask(q, "unified");
     });
     panel.appendChild(row);
+  }
+  function showAskRow(q) {
+    panel.innerHTML = "";
+    appendAskSection(q);
     panel.hidden = false;
     setActive(-1);
   }
-  var debounce = null, lastQuery = "";
-  var lastSearch = null; // {q, hits} of the last completed search
+  var debounce = null;
+  var searchSeq = 0;
+  /* The typing composition (fix sheet section 4.3): the local
+     ask row renders immediately; Algolia's matches join it
+     when the response lands, in the response's own order —
+     no client code computes ranking inputs. A response for a
+     superseded query is discarded (sequence guard, on top of
+     the shipped value guard); one for the still-current query
+     renders whenever it arrives — the only threshold is a
+     10,000ms connection-hygiene abort. Failure renders the
+     ask row alone, never the no-results line, which renders
+     only on a successful zero-hit response. The submit path
+     never touches Algolia, so engagement cannot be blocked
+     by search being down. */
+  function composeTyping(q) {
+    showAskRow(q);
+    runSearch(q);
+  }
   function runSearch(q) {
-    fetch("https://" + ALGOLIA_APP + "-dsn.algolia.net/1/indexes/" + ALGOLIA_INDEX + "/query", {
+    var seq = ++searchSeq;
+    var fetchOpts = {
       method: "POST",
       headers: { "content-type": "application/json", "X-Algolia-API-Key": ALGOLIA_SEARCH_KEY, "X-Algolia-Application-Id": ALGOLIA_APP },
-      body: JSON.stringify({ query: q, hitsPerPage: 6, attributesToHighlight: [], clickAnalytics: true, optionalFilters: optionalFilters })
-    })
+      body: JSON.stringify({ query: q, hitsPerPage: 6, attributesToHighlight: [], clickAnalytics: true })
+    };
+    try {
+      if (typeof AbortController !== "undefined") {
+        var controller = new AbortController();
+        fetchOpts.signal = controller.signal;
+        setTimeout(function () {
+          try { controller.abort(); } catch (e) {}
+        }, 10000);
+      }
+    } catch (e) { /* no abort available; the guards still hold */ }
+    fetch("https://" + ALGOLIA_APP + "-dsn.algolia.net/1/indexes/" + ALGOLIA_INDEX + "/query", fetchOpts)
       .then(function (r) { return r.json(); })
       .then(function (data) {
+        if (seq !== searchSeq) return;
         if (ein.value.trim() !== q) return;
         var hits = data.hits || [], queryID = data.queryID;
-        lastSearch = { q: q, hits: hits.length };
         track("Search Query", { page: page, length: q.length, result_class: hits.length ? "results" : "none" });
         panel.innerHTML = "";
         if (!hits.length) {
@@ -747,6 +848,7 @@
           });
           panel.appendChild(a);
         });
+        appendAskSection(q);
         if (hits.length && queryID) {
           var aa2 = insights();
           if (aa2) { try { aa2("viewedObjectIDsAfterSearch", { eventName: "Search Results Viewed", index: ALGOLIA_INDEX, queryID: queryID, objectIDs: hits.slice(0, 20).map(function (h) { return h.objectID; }) }); } catch (e) {} }
@@ -754,7 +856,11 @@
         panel.hidden = false;
         setActive(-1);
       })
-      .catch(function () { panel.hidden = true; });
+      .catch(function () {
+        if (seq !== searchSeq) return;
+        if (ein.value.trim() !== q) return;
+        showAskRow(q);
+      });
   }
 
   ein.addEventListener("focus", function () {
@@ -765,18 +871,29 @@
       }
     } catch (e) { /* origin is measurement only */ }
     track("Explore Focus", { page: page, origin: origin });
-    /* Engaged-UI revision (section 4): the focus handler
-       does nothing but focus. No node appears, no panel
-       opens, on either path. */
+    /* Suggested-search fix (sheet section 4): focus on the
+       empty input opens the overlay with the current page's
+       starter rows when a set is registered; with no set
+       current it opens nothing, exactly as the revision
+       left it. Focus changes nothing in the bar's structure
+       or geometry — the overlay is outside every stack. */
+    if (!ein.value.trim()) showEmptyState();
   });
   ein.addEventListener("input", function () {
     growInput();
     answerBox.hidden = true;
     var q = ein.value.trim();
     if (debounce) clearTimeout(debounce);
-    if (q.length < 3) { if (q) showRecents(); else panel.hidden = true; return; }
-    if (isQuestion(q)) { showAskRow(q); return; }
-    debounce = setTimeout(function () { if (q !== lastQuery) { lastQuery = q; runSearch(q); } }, 300);
+    /* The floor state machine (fix sheet section 4.3):
+       below the floor (0-1 characters) the panel is
+       local-only — the empty state at zero, the recents
+       at one; at and above it the ask row renders at once
+       and the matches join on the response. The starters
+       drop away once typing starts (flag F8, as ruled). */
+    if (q.length === 0) { showEmptyState(); return; }
+    if (q.length < 2) { showRecents(); return; }
+    showAskRow(q);
+    debounce = setTimeout(function () { runSearch(q); }, 150);
   });
   /* Unified response (surface path only; build sheet P-1116-21,
      section 3.1): a plain Enter addresses the system and produces
@@ -801,7 +918,6 @@
     answerBox.hidden = true;
     ein.value = "";
     resetInputHeight();
-    lastSearch = null;
     return true;
   }
   ein.addEventListener("keydown", function (ev) {
@@ -822,21 +938,11 @@
     if (activeIdx >= 0 && items[activeIdx]) { items[activeIdx].click(); return; }
     if (unifiedAccepted(q)) return;
     if (isQuestion(q)) { saveRecent(q); ask(q, "unified"); return; }
-    var first = panel.querySelector(".explore-hit");
-    if (first) { saveRecent(q); window.location.href = first.getAttribute("href"); return; }
-    /* Surface build (control-plane batch): non-question text whose
-       search completed with zero hits, on a page with an active
-       prompt session, submits a session turn instead of ending
-       nowhere. Find keeps its meaning everywhere: a hit would
-       have navigated above, and a question would have asked. */
-    if (lastSearch && lastSearch.q === q && lastSearch.hits === 0 &&
-        window.DCSurface && window.DCSurface.tryTurn(q)) {
-      panel.hidden = true;
-      answerBox.hidden = true;
-      ein.value = "";
-      resetInputHeight();
-      lastSearch = null;
-    }
+    /* Suggested-search fix (sheet section 4.3): the first-hit
+       fall-through and the zero-hit session-turn branch are
+       deleted with the triage. Enter never navigates to an
+       unhighlighted hit; a hit is taken only by explicit
+       selection (a click, or the arrow-key highlight above). */
   });
   document.addEventListener("click", function (ev) { if (!bar.contains(ev.target)) panel.hidden = true; });
 
