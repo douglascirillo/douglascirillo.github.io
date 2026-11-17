@@ -54,7 +54,7 @@
       "mainEntityOfPage": "https://douglascirillo.com/colophon/",
       "image": "https://douglascirillo.com/assets/og-image.png",
       "datePublished": "2026-11-14",
-      "dateModified": "2026-11-15",
+      "dateModified": "2026-11-17",
       "inLanguage": "en-US",
       "publisher": {
         "@id": "https://douglascirillo.com/#person"
@@ -616,7 +616,7 @@
 
       <section aria-labelledby="measured-h">
         <h2 id="measured-h">How is it measured?</h2>
-        <p>Amplitude has measured the site since day one: page views, sessions, and outbound clicks. Google Search Console and Bing Webmaster Tools watch indexing, and Bing matters more than it used to because its index feeds AI answers. Semrush tracks a short list of keywords, my name and the ideas I write about. Amplitude also tracks AI visibility: how the name and the ideas surface in ChatGPT and Google AI Overview answers, against a baseline recorded when the tracking started. A personal site gets the same measurement discipline as a business property. Every event also carries a bot classification, an is_bot flag and a user_agent_type category parsed from the user agent at load, so the reporting can filter to humans and break the automated traffic down by kind.</p>
+        <p>Amplitude has measured the site since day one: page views, sessions, and outbound clicks. Google Search Console and Bing Webmaster Tools watch indexing, and Bing matters more than it used to because its index feeds AI answers. Semrush tracks a short list of keywords, my name and the ideas I write about. Amplitude also tracks AI visibility: how the name and the ideas surface in ChatGPT answers, against a baseline recorded when the tracking started. A personal site gets the same measurement discipline as a business property. Every event also carries a bot classification, an is_bot flag and a user_agent_type category parsed from the user agent at load, so the reporting can filter to humans and break the automated traffic down by kind.</p>
         <p>Amplitude also records sessions as replays, at full capture, so a visit that goes wrong can be watched instead of reconstructed from its events. Console output and failed requests are captured with the session, because the debugging record should show what the visitor&rsquo;s browser saw, errors included. Text typed into any field stays masked, sessions the page classifies as bots are not recorded, and nothing in a replay carries a name or an email.</p>
       </section>
 
@@ -628,14 +628,14 @@
 
       <section aria-labelledby="adapt-h">
         <h2 id="adapt-h">How does the site adapt?</h2>
-        <p>The home page asks what brought you here and routes you to the part of the record that answers it. The leadership <a href="/scorecard/">scorecard</a> runs as a self-diagnostic in your browser; nothing you enter is stored. Underneath sits the structured record the sections below describe: one registry behind the answers, the search, and the assemblies. The record does not change. How you move through it does.</p>
+        <p>Ask from the home page, or any page, and the conversation routes you to the part of the record that answers it. The leadership <a href="/scorecard/">scorecard</a> runs as a self-diagnostic in your browser; nothing you enter is stored. Underneath sits the structured record the sections below describe: one registry behind the answers, the search, and the conversation&rsquo;s assemblies. The record does not change. How you move through it does.</p>
       </section>
 
       <section aria-labelledby="ask-h2">
         <h2 id="ask-h2">How does Ask my record work?</h2>
         <p>Every page on this site has a question box. It answers from one source: a public evidence registry, record.json, that holds every claim on this site as data, word for word, with its source page. The registry is the site, in machine-readable form.</p>
-        <p>A small AI model (Claude Haiku) reads the question and picks which records answer it. The model never writes the answer. Code assembles the reply from the registry verbatim and links the source. Numbers cannot drift, because the model never touches them. If no record answers, the box says so and points to the case studies. If a question is out of bounds (my employer beyond my published role, compensation, my family), it gets one fixed refusal, every time. Some exclusions are enforced in code, not just in instructions to the model.</p>
-        <p>There is one input, docked at the foot of the screen on every page, and it is also the search box (next section). Ask a question and the answer renders right there, in place. The box knows which page you are on. It suggests questions that page can actually answer, prefers that page&rsquo;s records when several could answer, and ends with the next step that fits the page. The nav&rsquo;s Ask link just focuses the input.</p>
+        <p>A small AI model (Claude Haiku) reads the question and picks which records answer it. The model never writes the claims. Code assembles the reply from the registry verbatim and links the source. On factual questions the model may add short framing around the claims, checked in code before it can serve; questions about principles or definitions serve the published words alone. Numbers cannot drift, because the model never touches them. If no record answers, the box says so and points to the case studies. If a question is out of bounds (my employer beyond my published role, compensation, my family), it gets one fixed refusal, every time. Some exclusions are enforced in code, not just in instructions to the model.</p>
+        <p>There is one input, docked at the foot of the screen on every page, and it is also the search box (next section). Ask a question and the answer arrives as a turn in the conversation; the page you are on steps back into the conversation&rsquo;s opening turn. The box knows which page you are on. It suggests questions that page can actually answer, prefers that page&rsquo;s records when several could answer, and ends with the next step that fits the page.</p>
         <p>Questions are kept for 90 days so I can read what people actually ask and improve the record. Email addresses and phone numbers are stripped automatically before anything is stored. The question log keeps no visitor identifiers. After 90 days the log deletes itself.</p>
         <p>Cost is capped twice: a monthly ceiling in the code, and a spend limit where the model bill actually lands. There is a kill switch on the site side and on the server side.</p>
         <p>Before any of this shipped, it had to pass a 20-case test set: ordinary questions, scope traps, and adversarial ones. The first run passed 17. The three failures were fixed in the open: a missing record, a selection preference, and an exclusion that needed code instead of instructions. The set, 22 cases today, has to pass in full before changes go live.</p>
@@ -653,8 +653,8 @@
       <section aria-labelledby="search-h">
         <h2 id="search-h">How does search work?</h2>
         <p>The same input searches the site. It runs on Algolia, the on-site search and recommendations tool from my Sotheby&rsquo;s stack, over a public index built from the published pages: titles, fixed summaries, headings. Nothing else. Restricted records never enter it, and results show the fixed summary rather than a raw snippet, so a figure cannot be separated from its scope. The index rebuilds on every publish, into a temporary index that swaps in only on success, so the site and the index never disagree.</p>
-        <p>Type a few words, get pages. Ask a full question, and the input routes to Ask My Record instead. Results lean toward the kind of page you are already on.</p>
-        <p>The writing list on the home page and the related essays under each article are served from the same index. Publish a new essay and the index rebuilds itself, so the lists update on their own. Lists show the three most relevant items, with a link through to the full list.</p>
+        <p>Type a few words, get pages. Ask a full question, and the input routes to Ask My Record instead.</p>
+        <p>The writing list on the home page and the related essays under each article are built from the same index and ship as finished cards in the page itself. Publish a new essay and the index rebuilds, so the lists update on their own. Lists show the three most relevant items, with a link through to the full list.</p>
         <p>Search queries are measured by length and result count, never stored as text. Result clicks are sent to Algolia under the same anonymous ID that Amplitude uses, so I can read search behavior and site behavior together. No names, no emails, nothing that identifies a person.</p>
       </section>
 
@@ -672,44 +672,43 @@
 
       <section aria-labelledby="compose-h">
         <h2 id="compose-h">How do compositions work?</h2>
-        <p>When no record answers a question directly, the same words are read as the problem they describe: a classifier matches them to the closest of the seven intents or, when no single intent fits, assembles a new combination from the same block library. A new combination passes the same validator before it serves, carries no share code, and lives only for that visit. The view is labeled as assembled for the problem stated. A description outside the site&rsquo;s perimeter receives the same plain no-match as any other, so the boundary cannot be mapped by asking, and a description with no assembly to offer leaves the standard page in place.</p>
+        <p>When no record answers a question directly, the same words are read as the problem they describe: a classifier matches them to the closest of the seven intents or, when no single intent fits, assembles a new combination from the same block library. The combination arrives inside the conversation, as turns, not as a rebuilt page. It passes the same validator before it serves, carries no share code, and lives only for that visit. The answer is labeled as assembled for the problem stated. A description outside the site&rsquo;s perimeter receives the same plain no-match as any other, so the boundary cannot be mapped by asking, and a description with no assembly to offer gets the plain no-evidence answer.</p>
       </section>
 
 
 
       <section aria-labelledby="mirror-h">
         <h2 id="mirror-h">Starting where you land, with what you have already read</h2>
-        <p>When you come back to this site, its pages can rebuild themselves around what you have already opened here.</p>
+        <p>When you come back to this site, the conversation remembers what you have already opened here. That history preloads it: the opening starts from where you land, and the receipts note the pages and records you opened on earlier visits. The pages themselves no longer change on arrival.</p>
         <p>That memory is a small ledger kept in your own browser. It holds the names of pages and records you have opened, records Ask returned for you, the kinds of answers Ask gave, the intents you have picked, and the views you have built or looked at, each with a count and a date. It never holds the words you typed. Questions and prompts are answered or built from and then gone, exactly as they were before this feature existed.</p>
-        <p>There is no server-side activation copy. Amplitude, the measurement tool this site has used since launch, keeps its own record of activity on this site, for statistics, and nothing in that record is read back to shape a page. The ledger in your browser is the only memory a page here is ever rebuilt from.</p>
-        <p>Entries stop counting after 90 days at most and are deleted the next time you visit; depending on your browser, they may be kept for less time than that. You can read the ledger, remove a category from it, or clear it entirely, from any view it shaped and from this page. Clearing it does not change the anonymous device ID this browser uses for measurement, and it does not delete the measurement events already recorded for statistics.</p>
-        <p>If you are visiting from the European Union or the United Kingdom, this site asks before it keeps that ledger at all. Until you say yes, nothing goes into the ledger, and the pages build the way they do for a first visit. Whatever you choose, this browser keeps only your answer and when you gave it.</p>
+        <p>There is no server-side activation copy. Amplitude, the measurement tool this site has used since launch, keeps its own record of activity on this site, for statistics, and nothing in that record is read back to shape a page. The ledger in your browser is the only memory the conversation ever draws on.</p>
+        <p>Entries stop counting after 90 days at most and are deleted the next time you visit; depending on your browser, they may be kept for less time than that. You can read the ledger, remove a category from it, or clear it entirely, from the frame on any page and from this page. Clearing it does not change the anonymous device ID this browser uses for measurement, and it does not delete the measurement events already recorded for statistics.</p>
+        <p>If you are visiting from the European Union or the United Kingdom, this site asks before it keeps that ledger at all. Until you say yes, nothing goes into the ledger, and the conversation starts the way it does for a first visit. Whatever you choose, this browser keeps only your answer and when you gave it.</p>
         <p><button type="button" data-ledger-open="colophon">What this site remembers on this device</button></p>
       </section>
 
       <section aria-labelledby="address-h">
         <h2 id="address-h">One address, every page</h2>
-        <p>The machinery used to sit on top of each page: a search bar in the article, a prompt field inside one case study, receipts narrating from inside the view. It has moved into the frame. One composer now sits docked at the foot of the screen on every page, and it does every job: find a page, ask the record a question, and, where a page can rebuild itself, rebuild it. What a page builds still appears in the page. What accounts for it, the receipt, the list of views you can return to, the control over what this site remembers, now lives in the frame too, the same on every page, because it was never part of the content. The Lindblad prompt field is retired as a separate element; the composer does its job, and its sessions before today are the pilot&rsquo;s final count. The pattern is the one chat interfaces made familiar: a fixed place to address the site, and a page that answers.</p>
+        <p>The machinery used to sit on top of each page: a search bar in the article, a prompt field inside one case study, receipts narrating from inside the view. It has moved into the frame. One composer now sits docked at the foot of the screen on every page, and it does every job: find a page, ask the record a question, and answer in the conversation. What the conversation builds appears in the conversation, as turns. What accounts for it, the receipt, the list of views you can return to, the control over what this site remembers, now lives in the frame too, the same on every page, because it was never part of the content. The Lindblad prompt field is retired as a separate element; the composer does its job, and its sessions before today are the pilot&rsquo;s final count. The pattern is the one chat interfaces made familiar: a fixed place to address the site, and a page that answers.</p>
       </section>
 
       <section aria-labelledby="answers-h">
         <h2 id="answers-h">The page answers</h2>
-        <p>The composer used to sort every line typed into it. A question went one way, a search another, and a request to rebuild the page had to fail both before it was heard. That sorting is gone. Type what you need, in the words you would use in a chat, and the site gives one response: an answer from the published record when you asked something, the page rebuilt around it when there is more to show, a pointer when another page covers it, and a plain no when the record does not hold it. Your prompts stay in the conversation as you go, each followed by its answer. The facts did not loosen. Every claim still comes from the record, word for word, and the same gates still decide what the site may say.</p>
+        <p>The composer used to sort every line typed into it. A question went one way, a search another, and a request to rebuild the page had to fail both before it was heard. That sorting is gone. Type what you need, in the words you would use in a chat, and the site gives one response: an answer from the published record when you asked something, a view composed inside the conversation when there is more to show, a pointer when another page covers it, and a plain no when the record does not hold it. Your prompts stay in the conversation as you go, each followed by its answer. The facts did not loosen. Every claim still comes from the record, word for word, and the same gates still decide what the site may say.</p>
       </section>
 
       <section aria-labelledby="docks-h">
         <h2 id="docks-h">The composer docks</h2>
-        <p>The composer used to sit under the topline, where websites keep the search box, and it scrolled away with the page. Now it docks at the foot of the screen, where chat interfaces keep theirs, and stays put while the page scrolls above it. When there is something to show, the receipt and the controls for what this site remembers sit just above it. The page reserves the dock&rsquo;s height, so the last line of every page stays readable.</p>
+        <p>The composer used to sit at the top of the page, where websites keep the search box, and it scrolled away with the page. Now it docks at the foot of the screen, where chat interfaces keep theirs, and stays put while the page scrolls above it. When there is something to show, the receipt and the controls for what this site remembers sit just above it. The page reserves the dock&rsquo;s height, so the last line of every page stays readable.</p>
       </section>
 
       <section aria-labelledby="conversation-h">
         <h2 id="conversation-h">The page becomes a conversation</h2>
-        <p>The pages still load as pages. Ask one something and it steps back into the first turn of a conversation. Answers, rebuilt views, and pointers arrive as turns, in the order you asked. The conversation follows you from page to page in this tab, and it is gone when you close it. The plain published page is always one tap away.</p>
+        <p>The pages still load as pages. Ask one something and it steps back into the first turn of a conversation. Answers, composed views, and pointers arrive as turns, in the order you asked. The conversation follows you from page to page in this tab, and it is gone when you close it. The plain published page is always one tap away.</p>
       </section>
-
-      <section aria-labelledby="frame-h">
-        <h2 id="frame-h">The frame steps back</h2>
-        <p>Navigation works like the chat apps this site takes as its template. A slim bar stays at the top of every page with the name and a menu button. On smaller screens the menu opens a drawer with every section; on wider screens the main sections sit in the bar. The drawer's foot holds the name, the role, the links elsewhere, and this page. The bar and drawer behave the same whether you are reading or talking with the site.</p>
+      <section aria-labelledby="stays-h">
+        <h2 id="stays-h">The page stays the page</h2>
+        <p>Earlier builds let a page rebuild itself around your arrival and your reading history: a starting view on a case study, a generated introduction over a list, key points picked out of an essay, emphasis weighted by what you had already read. That machinery is retired, and the files behind it are deleted. What a page is no longer changes on arrival. Composition lives in the conversation now, in turns, and the published page underneath stays exactly as published.</p>
       </section>
 
       <section aria-labelledby="side-h">
@@ -720,7 +719,7 @@
       <section aria-labelledby="arch-h">
         <h2 id="arch-h">How is the site put together?</h2>
         <p>Three layers, one rule: a model can select and arrange. It cannot invent.</p>
-        <svg class="diagram" viewBox="0 0 720 452" role="img" aria-label="Diagram of the site architecture: a visitor uses the record bar, which routes keyword searches to an Algolia index built from the published pages and questions to a Lambda function that selects records from the static registry, with DynamoDB for the cost counter and question log, an offline checked generation step, and Amplitude measurement throughout.">
+        <svg class="diagram" viewBox="0 0 720 452" role="img" aria-label="Diagram of the site architecture: a visitor uses the composer, which routes keyword searches to an Algolia index built from the published pages and questions to a Lambda function that selects records from the static registry, with DynamoDB for the cost counter and question log, and Amplitude measurement throughout.">
           <defs>
             <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path d="M0,0 L10,5 L0,10 z" fill="var(--ink)"></path>
@@ -730,7 +729,7 @@
           <text class="dt" x="360" y="32" text-anchor="middle">Visitor</text>
           <line x1="360" y1="46" x2="360" y2="62" marker-end="url(#arr)"></line>
           <rect x="210" y="64" width="300" height="44" rx="8"></rect>
-          <text class="dt" x="360" y="84" text-anchor="middle">The record bar</text>
+          <text class="dt" x="360" y="84" text-anchor="middle">The composer</text>
           <text class="ds" x="360" y="100" text-anchor="middle">One input on every page</text>
           <line x1="300" y1="108" x2="190" y2="138" marker-end="url(#arr)"></line>
           <text class="dl" x="212" y="118">keywords</text>
@@ -743,7 +742,7 @@
           <rect x="390" y="140" width="290" height="58" rx="8"></rect>
           <text class="dt" x="406" y="163">Ask my record (AWS Lambda)</text>
           <text class="ds" x="406" y="180">A model selects the records</text>
-          <text class="ds" x="406" y="195">Code assembles the answer word for word</text>
+          <text class="ds" x="406" y="195" textLength="268" lengthAdjust="spacingAndGlyphs">Claims serve verbatim; framing checked in code</text>
           <line x1="185" y1="230" x2="185" y2="200" marker-end="url(#arr)"></line>
           <line x1="535" y1="198" x2="535" y2="230" marker-end="url(#arr)"></line>
           <rect x="40" y="232" width="290" height="58" rx="8"></rect>
@@ -754,21 +753,16 @@
           <text class="dt" x="406" y="255">DynamoDB</text>
           <text class="ds" x="406" y="272">Monthly cost counter</text>
           <text class="ds" x="406" y="287">Question log, kept 90 days, details stripped</text>
-          <line x1="185" y1="290" x2="185" y2="322" marker-end="url(#arr)"></line>
-          <rect x="40" y="324" width="290" height="58" rx="8"></rect>
-          <text class="dt" x="56" y="347">Generation, offline</text>
-          <text class="ds" x="56" y="364">Introductions written ahead of time</text>
-          <text class="ds" x="56" y="379">Checked by code and a second model</text>
-          <rect x="390" y="324" width="290" height="58" rx="8"></rect>
-          <text class="dt" x="406" y="347">Amplitude</text>
-          <text class="ds" x="406" y="364">Measurement for the whole site</text>
-          <text class="ds" x="406" y="379">Joined to Algolia under one anonymous ID</text>
+          <rect x="215" y="324" width="290" height="58" rx="8"></rect>
+          <text class="dt" x="231" y="347">Amplitude</text>
+          <text class="ds" x="231" y="364">Measurement for the whole site</text>
+          <text class="ds" x="231" y="379">Joined to Algolia under one anonymous ID</text>
           <rect class="band" x="40" y="404" width="640" height="36" rx="8"></rect>
           <text class="ds" x="360" y="427" text-anchor="middle">Every change is a git commit, byte-verified on deploy. Each layer has its own kill switch.</text>
         </svg>
         <p>The record layer is static: plain HTML pages and one data file, record.json, holding every approved claim with its source. GitHub Pages serves them.</p>
-        <p>The retrieval layer answers. Keyword searches go to an Algolia index built only from the published pages. Questions go to a small function on AWS: a Claude model picks the records that answer, and code assembles the reply from those records word for word. Nothing in the answer is written by the model.</p>
-        <p>The generative layer is narrow on purpose. The introductions over the writing lists are written ahead of time by an offline script, from the listed essays&rsquo; own summaries. A mechanical checker and a second model review each line before it is stored, and the site serves the stored file. Nothing is generated while a visitor waits.</p>
+        <p>The retrieval layer answers. Keyword searches go to an Algolia index built only from the published pages. Questions go to a small function on AWS: a Claude model picks the records that answer. The claims in the answer are never written by the model; the short framing around them can be, on factual questions, and code checks it before it serves.</p>
+        <p>Nothing is generated ahead of time for a page. The only words a model writes for a visitor are the short framing inside an answer, around claims that serve verbatim, checked in code before it can serve, and never on a refusal or an unanswered question.</p>
         <p>Measurement runs through Amplitude across the whole site. No names, no emails. Each layer can be switched off on its own; the static record serves either way.</p>
       </section>
 
@@ -781,7 +775,7 @@
       <section aria-labelledby="changelog-h">
         <h2 id="changelog-h">What changed, and when?</h2>
         <p>This log is part of the page. Every release that changes how the site works adds its bullet under its day, in the same batch as the change itself. The scope is features, technical changes, and corrections. New writing appears in the Writing section and is not logged here.</p>
-        <details class="acc log-acc-last"><summary>Nov 14, 2026</summary><div class="acc-body"><ul class="log">
+        <details class="acc"><summary>Nov 14, 2026</summary><div class="acc-body"><ul class="log">
           <li><strong>The site launches.</strong> Plain HTML on GitHub Pages: six case studies, four practice pages, a speaking page with the full Synapse transcript. An owned home base that search engines and AI engines can read, instead of renting reach from platforms.</li>
           <li><strong>This colophon.</strong> The build log is part of the product, published from day one.</li>
         </ul></div></details>
@@ -822,15 +816,8 @@
           <li><strong>A third audit, and a leaner colophon.</strong> The third full audit of the site: three inert nav links on the 404 page now point home, two endorsement links joined the outbound-click measurement, and llms.txt now describes the bar as it works today, framing and free-form assemblies included. In the same pass this page was streamlined: the registry, the single input, and the measurement join are each explained once, in the section that owns them, and the measurement section covers AI visibility.</li>
           <li><strong>Audit #3 follow-ups.</strong> The roadmap now points at what is actually next: the December question-log review, and graduating recurring assemblies into the manifest. External links carry a spoken &ldquo;(opens in new tab)&rdquo; hint for screen readers, composition links report their clicks like every other outbound link, the public record file no longer names the categories it withholds, and The Long Road Back is linked from two sibling essays.</li>
         </ul></div></details>
-        <details class="acc"><summary>Nov 17, 2026</summary><div class="acc-body"><ul class="log">
-          <li><strong>Navigation moves to the side:</strong> the desktop row is gone; a sidebar docks on wide screens, collapses to a slim bar when asked, and slides over the page on small ones.</li>
-          <li><strong>Correction:</strong> the starter questions return with the conversation to the home page; after the first question asked from home, they had stopped appearing there.</li>
-          <li><strong>Correction:</strong> on small screens the menu button now leads the top bar, ahead of the name.</li>
-          <li><strong>Correction:</strong> with the menu open on a small screen, the panel now holds still: scrolling no longer shifts its spacing or moves the page behind it.</li>
-        </ul></div></details>
         <details class="acc"><summary>Nov 16, 2026</summary><div class="acc-body"><ul class="log">
           <li><strong>Event names, in plain words.</strong> Every measurement event on the site now follows one naming rule: the object and the action, in title case, the way a person would say it. Outbound Link Click was already there; the rest of the events traded their machine-style names for plain ones. The properties keep their machine names, which is what properties are for.</li>
-          <li><strong>One frame per view.</strong></li>
           <li><strong>Composition leaves home:</strong> every case study now assembles a starting view around itself on arrival, with the published page standing underneath.</li>
           <li><strong>Starting views, made additive:</strong> a case study&rsquo;s assembly brings its place in the record, its sibling case, its principle, and its practice, and leaves its own proof to the page it stands on.</li>
           <li><strong>The prompt field:</strong> the Lindblad Expeditions case study rebuilds around a visitor&rsquo;s prompt, turn by turn, from the published record.</li>
@@ -847,6 +834,14 @@
           <li><strong>Suggested questions, offered like search:</strong> the starter questions no longer sit above the prompt as pills, and the lines that stood above it are gone. Tap the prompt and the questions appear, with matching pages as you type. Before you ask, the bar is the prompt alone.</li>
           <li><strong>The frame steps back:</strong> navigation moved into a slim sticky bar and a left-hand drawer; the drawer's foot carries the identity, the links elsewhere, and the colophon link.</li>
           <li><strong>Correction:</strong> the drawer&rsquo;s foot now aligns with its list.</li>
+          <li><strong>The page stays the page:</strong> starting views, in-page compositions, generated introductions, key points, and reading emphasis are retired. What a page is no longer changes on arrival; the record now speaks in the conversation alone.</li>
+        </ul></div></details>
+        <details class="acc log-acc-last"><summary>Nov 17, 2026</summary><div class="acc-body"><ul class="log">
+          <li><strong>Navigation moves to the side:</strong> the desktop row is gone; a sidebar docks on wide screens, collapses to a slim bar when asked, and slides over the page on small ones.</li>
+          <li><strong>Correction:</strong> the starter questions return with the conversation to the home page; after the first question asked from home, they had stopped appearing there.</li>
+          <li><strong>Correction:</strong> on small screens the menu button now leads the top bar, ahead of the name.</li>
+          <li><strong>Correction:</strong> with the menu open on a small screen, the panel now holds still: scrolling no longer shifts its spacing or moves the page behind it.</li>
+          <li><strong>Correction:</strong> the colophon catches up with the site: the change log is back in order and an empty entry is removed, the sections describing page rebuilding now describe the conversation, the architecture diagram drops the retired generation step, and the consent prompt no longer promises rebuilt pages.</li>
         </ul></div></details>
       </section>
 
@@ -854,7 +849,7 @@
         <h2 id="roadmap-h">Where is this going?</h2>
         <p>The record does not change. What changes is how much of the experience around it can assemble itself, under the same gates. The set lives in <a href="/record/">the record</a>.</p>
         <details class="acc"><summary>Next</summary><div class="acc-body"><p>The question log gets its first review: a month of real visitor questions, audited in December. What the bar refused, and what it could not answer, becomes new published evidence or new blocks for the library, so the record grows where visitors actually press on it.</p></div></details>
-        <details class="acc"><summary>Then: the manifest</summary><div class="acc-body"><p>When the same novel assembly keeps recurring in the log, it gets a spot check, and the ones that hold up join the manifest as permanent compositions, with share codes of their own. Until then, a new combination lives only for the visit that asked for it.</p></div></details>
+        <details class="acc"><summary>Then: recurring questions join the record</summary><div class="acc-body"><p>When the same question keeps recurring in the log, the answer it needs joins the record itself, as a published claim or a new block in the library, checked the same way as everything else in the record. Until then, a new combination lives only for the visit that asked for it.</p></div></details>
         <details class="acc"><summary>In a private lab</summary><div class="acc-body"><p>Not linked from this site: vendor generative tooling, tested against the same gates before anything is adopted.</p></div></details>
         <details class="acc log-acc-last"><summary>Not on the roadmap</summary><div class="acc-body"><p>Personalization based on who a visitor works for, and generated text a visitor sees before it has been checked against the record.</p></div></details>
       </section>
@@ -872,7 +867,7 @@
 
 </div>
 <script src="/assets/surface.js?v=20261117-10"></script>
-<script src="/assets/ledger.js?v=20261116-6"></script>
+<script src="/assets/ledger.js?v=20261117-1"></script>
 <script src="/assets/ask.js?v=20261116-11"></script>
 <script src="/assets/compose.js?v=20261117-16" defer></script>
 </body>
