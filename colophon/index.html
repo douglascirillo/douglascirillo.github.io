@@ -337,6 +337,7 @@
   html.shell-open .shell-elsewhere{flex-direction:column;flex-wrap:nowrap;gap:0}
   html.shell-open .shell-elsewhere a{display:flex;width:100%;padding:8px 0}
   html.shell-open .shell-scrim{display:block;position:fixed;inset:0;background:rgba(20,22,21,.45);z-index:955}
+  html.shell-open{overflow:hidden}
   @media (prefers-reduced-motion: no-preference){
     html.shell-on .shell-nav{transition:transform .22s ease}
     html.shell-on.shell-collapsed .shell-nav{transition:transform .22s ease,visibility 0s linear .22s}
@@ -551,8 +552,8 @@
   <a class="skip-link" href="#main">Skip to content</a>
   <div class="shell-bar">
     <div class="shell-bar-in">
-      <a class="shell-brand" href="/">Douglas Cirillo</a>
       <button type="button" class="shell-trigger" id="shell-trigger" aria-label="Menu"></button>
+      <a class="shell-brand" href="/">Douglas Cirillo</a>
     </div>
   </div>
   <nav class="shell-nav" id="shell-nav" aria-label="Primary">
@@ -824,6 +825,8 @@
         <details class="acc"><summary>Nov 17, 2026</summary><div class="acc-body"><ul class="log">
           <li><strong>Navigation moves to the side:</strong> the desktop row is gone; a sidebar docks on wide screens, collapses to a slim bar when asked, and slides over the page on small ones.</li>
           <li><strong>Correction:</strong> the starter questions return with the conversation to the home page; after the first question asked from home, they had stopped appearing there.</li>
+          <li><strong>Correction:</strong> on small screens the menu button now leads the top bar, ahead of the name.</li>
+          <li><strong>Correction:</strong> with the menu open on a small screen, the panel now holds still: scrolling no longer shifts its spacing or moves the page behind it.</li>
         </ul></div></details>
         <details class="acc"><summary>Nov 16, 2026</summary><div class="acc-body"><ul class="log">
           <li><strong>Event names, in plain words.</strong> Every measurement event on the site now follows one naming rule: the object and the action, in title case, the way a person would say it. Outbound Link Click was already there; the rest of the events traded their machine-style names for plain ones. The properties keep their machine names, which is what properties are for.</li>
@@ -868,7 +871,7 @@
   </footer>
 
 </div>
-<script src="/assets/surface.js?v=20261117-9"></script>
+<script src="/assets/surface.js?v=20261117-10"></script>
 <script src="/assets/ledger.js?v=20261116-6"></script>
 <script src="/assets/ask.js?v=20261116-11"></script>
 <script src="/assets/compose.js?v=20261117-16" defer></script>
