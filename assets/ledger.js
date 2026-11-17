@@ -1,23 +1,23 @@
-/* Increment 3: the on-device mirror (ledger.js).
+/* The on-device mirror (ledger.js).
    A small ledger kept only in this browser, keyed by the Amplitude
    device ID as a namespace (not authentication). It holds IDs and
    counts only: pages and records opened, records Ask returned, the
    kinds of answers Ask gave, intents picked, views built (specs as
    block ID lists) and views looked at, each with a count and dates.
-   No raw prompt or question text is ever written to it. It shapes a
-   returning visit entirely on the device: arrival weighting sends
-   nothing, and nothing in it is added to any event or request.
-   Design: site-generative/increment3-mirror-design.md; build sheet:
-   site-generative/increment3-build-staging.md (P-1116-15 edits
-   applied). The emphasis model carries the Reading B amendment
-   (site-generative/increment3-emphasis-amendment.md, P-1116-17):
-   the assignment echo, the practice-page route, and same-kind
-   displacement, with Douglas's three rulings of Nov 16, 2026
-   (self-visits excluded from the echo; the echo differentiated
-   at 0.25 to concept/principle blocks and 0.5 to practice
-   blocks; same-kind displacement). Entries stop counting after 90 days and are pruned on
-   read and on write. Inspect-and-clear lives in the panel this file
-   renders (doors: the receipt and the colophon).
+   No raw prompt or question text is ever written to it. What it
+   feeds is the conversation's opening state: on a page load, the
+   history categories it reports (the categories holding entries
+   from earlier visits) preload the stream's opening state and are
+   named in its opening receipt. No scores are computed from it, no
+   view is weighted or re-ordered by it, nothing in it is added to
+   any event or request, and no page element reads it.
+   Design: site-generative/increment3-mirror-design.md; the
+   decommission sheet (site-generative/decommission-build-sheet.md,
+   section 6) records the removal of the emphasis model that once
+   weighted arrivals and turns from these scores. Entries stop
+   counting after 90 days and are pruned on read and on write.
+   Inspect-and-clear lives in the panel this file renders (doors:
+   the receipt and the colophon).
    Measurement never breaks the page: every storage, network and
    Amplitude call here is wrapped, and any internal failure leaves
    window.DCLedger as the inert stub below (fail closed). */
@@ -63,12 +63,10 @@
       ready: function () { return resolvedPromise(); },
       recordIntent: function () {},
       recordComposition: function () {},
-      recordSpec: function () {},
       recordAskOutcome: function () {},
       recordAskRecords: function () {},
       recordRecordOpened: function () {},
-      weightArrival: function () { return null; },
-      weightTurn: function () { return null; },
+      historyCategories: function () { return null; },
       freshStart: function () { return false; },
       categoriesLabel: categoriesLabel,
       openPanel: function () {}
@@ -93,10 +91,6 @@
   var COUNT_MAX = 25;
   var MAP_MAX = 50;
   var SPECS_MAX = 5;
-  var PROMOTION_FLOOR = 2.0;
-  var ECHO_CAP = 3.0;
-  var ECHO_CONCEPT_RATE = 0.25;
-  var ECHO_PRACTICE_RATE = 0.5;
 
   var INTENT_IDS = ["search_decline", "cdp", "replatform", "team",
     "speaking", "coherence", "measurement"];
@@ -719,324 +713,6 @@
     } catch (e) { return false; }
   }
 
-  /* ---------- emphasis (build sheet section 4) ---------- */
-
-  function ageFactor(l, now) {
-    var age = now - l;
-    if (age <= 7 * DAY_SEC) return 1.0;
-    if (age <= 30 * DAY_SEC) return 0.6;
-    return 0.3;
-  }
-
-  function countFactor(c) {
-    var m = Math.min(c || 1, 8);
-    if (m <= 1) return 1.0;
-    return 1 + (Math.log(m) / Math.log(2)) / 3;
-  }
-
-  // cutoffSec: when set, entries with last-seen at or after it are
-  // ignored (arrival weighting runs against the ledger as it stood
-  // when this page began loading). trace holds, per category, the
-  // blocks scored by prior-visit entries only (last-seen before the
-  // session's dc_visit marker).
-  function computeScores(led, cutoffSec, currentPageKey) {
-    var now = nowSec();
-    var scores = {}, trace = {};
-    function add(cat, blockId, contribution, entryL) {
-      if (!blockId) return;
-      scores[blockId] = (scores[blockId] || 0) + contribution;
-      if (visitMarkerSec && entryL < visitMarkerSec) {
-        if (!trace[cat]) trace[cat] = {};
-        trace[cat][blockId] = true;
-      }
-    }
-    function live(e) { return !cutoffSec || e.l < cutoffSec; }
-    // The affinity channel (amendment sections 2.2 and 2.3). A
-    // browsing contribution routed to a page's proof block also
-    // echoes to that page's assigned theme blocks: the
-    // concept/principle block at 0.25x and the practice block at
-    // 0.5x, accumulated per (block, category) and clipped
-    // proportionally at the 3.0 echo cap before joining the
-    // score map, so every traced category stays a genuine
-    // contributor. Entries sourced from the current page itself
-    // never echo into it (Douglas's ruling, Nov 16, 2026); the
-    // page's own direct scoring above is unchanged. A page with
-    // no proof block but a practice block of its own (a practice
-    // page) routes its entries to that practice block at the
-    // category's own base, in place of the proof route, and
-    // echoes nothing onward.
-    var echoAcc = {};
-    function accumulateEcho(cat, blockId, amount, entryL) {
-      if (!blockId || !(amount > 0)) return;
-      var per = echoAcc[blockId];
-      if (!per) { per = {}; echoAcc[blockId] = per; }
-      var cell = per[cat];
-      if (!cell) { cell = { amt: 0, minL: entryL }; per[cat] = cell; }
-      cell.amt += amount;
-      if (entryL < cell.minL) cell.minL = entryL;
-    }
-    function routeBrowsing(cat, sourcePage, contribution, entryL) {
-      if (!sourcePage) return;
-      var proofId = manifest.proofByPage[sourcePage];
-      if (proofId) {
-        add(cat, proofId, contribution, entryL);
-        if (sourcePage !== currentPageKey) {
-          var theme = manifest.pageThemes[sourcePage];
-          if (theme) {
-            accumulateEcho(cat, theme.c,
-              ECHO_CONCEPT_RATE * contribution, entryL);
-            accumulateEcho(cat, theme.p,
-              ECHO_PRACTICE_RATE * contribution, entryL);
-          }
-        }
-        return;
-      }
-      var practiceId = manifest.practiceByPage[sourcePage];
-      if (practiceId) add(cat, practiceId, contribution, entryL);
-    }
-    function flushEchoes() {
-      Object.keys(echoAcc).forEach(function (bid) {
-        var per = echoAcc[bid], total = 0, cat;
-        for (cat in per) {
-          if (Object.prototype.hasOwnProperty.call(per, cat)) {
-            total += per[cat].amt;
-          }
-        }
-        var f = total > ECHO_CAP ? ECHO_CAP / total : 1;
-        for (cat in per) {
-          if (Object.prototype.hasOwnProperty.call(per, cat)) {
-            add(cat, bid, per[cat].amt * f, per[cat].minL);
-          }
-        }
-      });
-    }
-    var key, e;
-    for (key in led.pages) {
-      if (!Object.prototype.hasOwnProperty.call(led.pages, key)) continue;
-      e = led.pages[key]; if (!live(e)) continue;
-      var pc = 1 * ageFactor(e.l, now) * countFactor(e.c);
-      routeBrowsing("pages", key, pc, e.l);
-      if (key === currentPageKey) {
-        add("pages", manifest.pageAnchors[key], pc, e.l);
-      }
-    }
-    for (key in led.records) {
-      if (!Object.prototype.hasOwnProperty.call(led.records, key)) continue;
-      e = led.records[key]; if (!live(e)) continue;
-      routeBrowsing("records", manifest.recordPages[key],
-        2 * ageFactor(e.l, now) * countFactor(e.c), e.l);
-    }
-    for (key in led.ask_records) {
-      if (!Object.prototype.hasOwnProperty.call(led.ask_records, key)) continue;
-      e = led.ask_records[key]; if (!live(e)) continue;
-      routeBrowsing("ask_records", manifest.recordPages[key],
-        3 * ageFactor(e.l, now) * countFactor(e.c), e.l);
-    }
-    for (key in led.intents) {
-      if (!Object.prototype.hasOwnProperty.call(led.intents, key)) continue;
-      e = led.intents[key]; if (!live(e)) continue;
-      add("intents", "intent-frame-" + key.replace(/_/g, "-"),
-        5 * ageFactor(e.l, now) * countFactor(e.c), e.l);
-    }
-    for (key in led.compositions) {
-      if (!Object.prototype.hasOwnProperty.call(led.compositions, key)) continue;
-      e = led.compositions[key]; if (!live(e)) continue;
-      routeBrowsing("compositions", key,
-        3 * ageFactor(e.l, now) * countFactor(e.c), e.l);
-    }
-    flushEchoes();
-    // Specs: tier 1, count factor fixed at 1.0, deduped per block
-    // across specs (the most recent spec naming a block sets its age).
-    var specLatest = {};
-    (led.specs || []).forEach(function (s) {
-      if (cutoffSec && s.t >= cutoffSec) return;
-      s.blocks.forEach(function (bid) {
-        if (!specLatest[bid] || s.t > specLatest[bid]) specLatest[bid] = s.t;
-      });
-    });
-    Object.keys(specLatest).forEach(function (bid) {
-      add("specs", bid, 5 * ageFactor(specLatest[bid], now) * 1.0,
-        specLatest[bid]);
-    });
-    // ask_outcomes carry no emphasis in v1.
-    return { scores: scores, trace: trace };
-  }
-
-  function categoriesFromTrace(trace, finalIds, changed) {
-    if (!changed) return [];
-    var set = {};
-    finalIds.forEach(function (id) { set[id] = true; });
-    var out = [];
-    TRACE_ORDER.forEach(function (cat) {
-      var scored = trace[cat];
-      if (!scored) return;
-      for (var bid in scored) {
-        if (Object.prototype.hasOwnProperty.call(scored, bid) && set[bid]) {
-          out.push(cat); return;
-        }
-      }
-    });
-    return out;
-  }
-
-  function itemId(item) {
-    if (typeof item === "string") return item;
-    return item && item.id ? item.id : null;
-  }
-
-  function blockKind(id) {
-    return manifest && manifest.blocks[id] ? manifest.blocks[id].kind : "";
-  }
-
-  // Kind class for same-kind displacement: concept and principle
-  // are one class (the theme map's C slot); every other kind is
-  // its own class.
-  function kindClass(id) {
-    var k = blockKind(id);
-    return (k === "concept" || k === "principle") ? "concept" : k;
-  }
-
-  function sortByScore(items, scores) {
-    var decorated = items.map(function (item, idx) {
-      return { item: item, idx: idx, score: scores[itemId(item)] || 0 };
-    });
-    decorated.sort(function (a, b) {
-      if (b.score !== a.score) return b.score - a.score;
-      return a.idx - b.idx; // stable on ties: original order kept
-    });
-    return decorated.map(function (d) { return d.item; });
-  }
-
-  function sameIdOrder(a, b) {
-    if (a.length !== b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (itemId(a[i]) !== itemId(b[i])) return false;
-    }
-    return true;
-  }
-
-  function makeBlockItem(templateItem, blockId) {
-    if (typeof templateItem === "string") return blockId;
-    var info = manifest.blocks[blockId];
-    var lengths = info && info.lengths ? info.lengths : [];
-    var len = lengths.indexOf("full") !== -1 ? "full" :
-      (lengths.length ? lengths[0] : "full");
-    return { id: blockId, length: len };
-  }
-
-  function weightArrival(spec, pageKey) {
-    try {
-      if (!canUse() || !manifest || manifestFailed) return null;
-      if (!spec || !Array.isArray(spec.blocks) || !spec.blocks.length) {
-        return null;
-      }
-      if (typeof pageKey !== "string" || !pageKey) return null;
-      var led = readLedgerInternal();
-      if (!led) return null;
-      var computed = computeScores(led, INIT_SEC, pageKey);
-      var scores = computed.scores;
-      if (!Object.keys(scores).length) return null;
-      var blocks = spec.blocks.slice();
-      var head = [], tail = [], movable = blocks.slice();
-      if (movable.length) {
-        var firstKind = blockKind(itemId(movable[0]));
-        var firstId = itemId(movable[0]);
-        if (firstKind === "page_anchor" || firstKind === "intro" ||
-            firstKind === "intent_frame" || firstKind === "contact" ||
-            (manifest.pageAnchors[pageKey] &&
-             manifest.pageAnchors[pageKey] === firstId)) {
-          head = [movable.shift()];
-        }
-      }
-      if (movable.length &&
-          blockKind(itemId(movable[movable.length - 1])) === "contact") {
-        tail = [movable.pop()];
-      }
-      var sorted = sortByScore(movable, scores);
-      var promoted = false;
-      var slice = manifest.slices[pageKey];
-      if (slice && sorted.length) {
-        var inSpec = {};
-        blocks.forEach(function (b) { inSpec[itemId(b)] = true; });
-        var anchorId = manifest.pageAnchors[pageKey];
-        var best = null, bestScore = 0;
-        slice.ids.forEach(function (cid) {
-          if (inSpec[cid] || cid === anchorId) return;
-          if (blockKind(cid) === "page_anchor") return;
-          var s = scores[cid] || 0;
-          if (s > bestScore) { best = cid; bestScore = s; }
-        });
-        var dispIdx = sorted.length - 1;
-        var displaced = sorted[dispIdx];
-        var displacedScore = scores[itemId(displaced)] || 0;
-        if (best) {
-          // Same-kind displacement (Douglas's ruling, Nov 16,
-          // 2026): a promoted block preferentially displaces a
-          // block of its own kind class, so a view keeps its
-          // one-concept/one-practice shape. The shipped
-          // lowest-score rule above is the fallback, used only
-          // when no same-kind block is displaceable.
-          var bestClass = kindClass(best);
-          for (var di = sorted.length - 1; di >= 0; di--) {
-            if (kindClass(itemId(sorted[di])) !== bestClass) continue;
-            var ds = scores[itemId(sorted[di])] || 0;
-            if (bestScore > ds) {
-              dispIdx = di;
-              displaced = sorted[di];
-              displacedScore = ds;
-            }
-            break; // the last same-kind block is its lowest-scored
-          }
-        }
-        if (best && bestScore >= PROMOTION_FLOOR &&
-            bestScore > displacedScore) {
-          sorted[dispIdx] = makeBlockItem(displaced, best);
-          promoted = true;
-        }
-      }
-      var finalBlocks = head.concat(sorted).concat(tail);
-      var changed = promoted || !sameIdOrder(finalBlocks, blocks);
-      if (!changed) return null;
-      var finalIds = finalBlocks.map(itemId);
-      var newSpec = {};
-      Object.keys(spec).forEach(function (k) { newSpec[k] = spec[k]; });
-      newSpec.blocks = finalBlocks;
-      return {
-        spec: newSpec,
-        categories: categoriesFromTrace(computed.trace, finalIds, true)
-      };
-    } catch (e) { return null; }
-  }
-
-  function weightTurn(blocksInput) {
-    try {
-      if (!canUse() || !manifest || manifestFailed) return null;
-      var isSpecObj = !Array.isArray(blocksInput) && blocksInput &&
-        Array.isArray(blocksInput.blocks);
-      var blocks = isSpecObj ? blocksInput.blocks.slice() :
-        (Array.isArray(blocksInput) ? blocksInput.slice() : null);
-      if (!blocks || blocks.length < 2) return null;
-      var led = readLedgerInternal();
-      if (!led) return null;
-      var computed = computeScores(led, null, currentPath());
-      var scores = computed.scores;
-      if (!Object.keys(scores).length) return null;
-      var head = [blocks[0]], tail = [], movable = blocks.slice(1);
-      if (movable.length &&
-          blockKind(itemId(movable[movable.length - 1])) === "contact") {
-        tail = [movable.pop()];
-      }
-      var sorted = sortByScore(movable, scores);
-      var finalBlocks = head.concat(sorted).concat(tail);
-      if (sameIdOrder(finalBlocks, blocks)) return null;
-      var finalIds = finalBlocks.map(itemId);
-      return {
-        blocks: finalBlocks,
-        categories: categoriesFromTrace(computed.trace, finalIds, true)
-      };
-    } catch (e) { return null; }
-  }
-
   function freshStart(text) {
     if (typeof text !== "string") return false;
     var t = text.toLowerCase().replace(/\u2019/g, "'").trim();
@@ -1045,6 +721,45 @@
       if (t.indexOf(FRESH_PHRASES[i]) !== -1) return true;
     }
     return false;
+  }
+
+  // The categories the ledger reports for the conversation's
+  // opening state (decommission sheet, section 6.2): the
+  // categories holding at least one entry last seen before
+  // this visit began, in the settled report order. No scores
+  // are computed; this read feeds the stream's opening
+  // receipt alone, and nothing else in the experience reads
+  // the ledger.
+  function historyCategories() {
+    try {
+      if (!canUse()) return null;
+      var led = readLedgerInternal();
+      if (!led) return null;
+      var out = [];
+      TRACE_ORDER.forEach(function (cat) {
+        var entries = led[cat];
+        if (!entries) return;
+        var prior = false;
+        if (Array.isArray(entries)) {
+          prior = entries.some(function (e) {
+            return e && e.t && e.t < visitMarkerSec;
+          });
+        } else {
+          for (var key in entries) {
+            if (!Object.prototype.hasOwnProperty.call(entries, key)) {
+              continue;
+            }
+            var e = entries[key];
+            if (e && e.l && e.l < visitMarkerSec) {
+              prior = true;
+              break;
+            }
+          }
+        }
+        if (prior) out.push(cat);
+      });
+      return out.length ? out : null;
+    } catch (e) { return null; }
   }
 
   /* ---------- writers (public record* methods) ---------- */
@@ -1081,62 +796,6 @@
       tries++;
       var done = false;
       try { done = !canUse() || recordComposition(pageKey); }
-      catch (e) { done = true; }
-      if (done || tries >= 12) {
-        try { clearInterval(timer); } catch (e) {}
-      }
-    }, 250);
-  }
-
-  // Returns true when the write landed. It returns false when
-  // there is no writable namespace yet, which recordSpecWithRetry
-  // retries on a bounded schedule; validation drops also return
-  // false and simply never land.
-  function recordSpec(specInfo) {
-    try {
-      if (!canUse() || !specInfo) return false;
-      if (!Array.isArray(specInfo.blocks) || !specInfo.blocks.length) return false;
-      if (typeof specInfo.page !== "string" || !specInfo.page) return false;
-      if (specInfo.scope !== "page" && specInfo.scope !== "released") return false;
-      var ids = [];
-      for (var i = 0; i < specInfo.blocks.length; i++) {
-        var b = specInfo.blocks[i];
-        var id = typeof b === "string" ? b : (b && b.id ? b.id : null);
-        if (!id) return false;
-        ids.push(id);
-      }
-      if (manifest) {
-        if (!manifest.pages[specInfo.page]) return false;
-        for (var j = 0; j < ids.length; j++) {
-          if (!manifest.blocks[ids[j]]) return false;
-        }
-      }
-      var page = specInfo.page, scope = specInfo.scope;
-      return mutateLedger(function (led) {
-        led.specs.push({ blocks: ids, page: page, scope: scope, t: nowSec() });
-        led.specs = led.specs.slice(-SPECS_MAX);
-      });
-    } catch (e) { return false; }
-  }
-
-  // The spec write races the same async Amplitude SDK load as
-  // the composition-view write: compose.js records a served
-  // turn's spec exactly once, and on the first page after a
-  // ledger clear the namespace is usually not resolvable yet
-  // at that moment, so the strongest signal in the ledger (a
-  // validated spec, tier 1) was silently dropped while the
-  // writes beside it landed through their retries. Retry on
-  // the same bounded schedule as recordCompositionWithRetry
-  // until the write lands, exactly once (a landed attempt
-  // returns true and stops the schedule, so the spec is never
-  // pushed twice).
-  function recordSpecWithRetry(specInfo) {
-    if (recordSpec(specInfo)) return;
-    var tries = 0;
-    var timer = setInterval(function () {
-      tries++;
-      var done = false;
-      try { done = !canUse() || recordSpec(specInfo); }
       catch (e) { done = true; }
       if (done || tries >= 12) {
         try { clearInterval(timer); } catch (e) {}
@@ -1519,9 +1178,6 @@
     recordComposition: function (pageKey) {
       try { recordCompositionWithRetry(pageKey); } catch (e) {}
     },
-    recordSpec: function (info) {
-      try { recordSpecWithRetry(info); } catch (e) {}
-    },
     recordAskOutcome: function (cls) {
       try { recordAskOutcome(cls); } catch (e) {}
     },
@@ -1531,8 +1187,9 @@
     recordRecordOpened: function (id) {
       try { recordRecordOpened(id); } catch (e) {}
     },
-    weightArrival: weightArrival,
-    weightTurn: weightTurn,
+    historyCategories: function () {
+      try { return historyCategories(); } catch (e) { return null; }
+    },
     freshStart: freshStart,
     categoriesLabel: categoriesLabel,
     openPanel: openPanel
