@@ -607,11 +607,28 @@
       .then(function (r) { return r.json(); })
       .then(function (data) {
         answerBox.innerHTML = "";
-        if (data.type === "answer" && data.items && data.items.length) {
-          track("Ask Answered", { page: page, records: data.items.length, generated: !!data.generated });
-          ledgerAskOutcome(data.generated ? "answer_prose" : "answer");
+        if (data.type === "answer" && data.items && (data.items.length || data.gen)) {
+          track("Ask Answered", { page: page, records: data.items.length, generated: !!data.generated, twin: !!data.gen });
+          ledgerAskOutcome(data.gen ? "answer_gen" : (data.generated ? "answer_prose" : "answer"));
           ledgerAskRecords(data.items);
-          if (data.generated && data.prose) {
+          if (data.gen && data.gen.paragraphs) {
+            /* Twin generation (stage G1): the conversational
+               answer first, the transparency label under it,
+               then the verbatim claim cards it cites (there may
+               be none, on a conversational answer). Label copy
+               is the E6 draft, pending the flip batch's copy
+               approval. */
+            data.gen.paragraphs.forEach(function (para) {
+              var gp = document.createElement("p");
+              gp.className = "ask-prose";
+              gp.textContent = para.text;
+              answerBox.appendChild(gp);
+            });
+            var gtag = document.createElement("p");
+            gtag.className = "ask-gen-tag";
+            gtag.textContent = "Answered by Douglas's digital twin. Career facts are cited to the published record; the claims themselves are below, word for word.";
+            answerBox.appendChild(gtag);
+          } else if (data.generated && data.prose) {
             var lead = document.createElement("p");
             lead.className = "ask-prose";
             lead.textContent = data.prose;
