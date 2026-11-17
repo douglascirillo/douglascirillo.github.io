@@ -1917,6 +1917,7 @@
     track("Conversation Exited", { page: ctx.page });
     streamSF().registerControls(streamExitedControlsModel(ctx));
     streamSF().setScope(null);
+    streamExitedStarters(ctx);
     /* Suggested-search fix (sheet section 5.1): the arrival
        receipt is no longer registered with the dock on exit
        either — the receipt lives on the opening turn alone. */
@@ -1974,6 +1975,7 @@
     if (store && store.engaged && store.exited) {
       seedStreamSeg(ctx, store);
       streamSF().registerControls(streamExitedControlsModel(ctx));
+      streamExitedStarters(ctx);
       return;
     }
     maybeStreamDockStarters(ctx);
@@ -2016,6 +2018,39 @@
       if (!m || ctx.streamEl) return;
       var st = streamReadStore();
       if (st && st.engaged) return;
+      var set = m[ctx.page];
+      if (set && set.length) {
+        streamSF().registerStarters({
+          starters: set,
+          onTap: function (s) { streamStarterTap(ctx, s); }
+        });
+      }
+    });
+  }
+
+  /* An exited stand still offers the page's starters
+     (fix round, Nov 17, 2026; the sidebar build's gate
+     item 9, ruled by Douglas: starters are offered on
+     focus when the conversation is exited). An arrival
+     whose store stands exited, and an exit in place, both
+     leave the visitor standing on the published page with
+     the conversation kept but not presented; neither path
+     registered a set there — maybeStreamStarters needs
+     an opening turn, which the exited state never
+     builds, and maybeStreamDockStarters refuses an
+     engaged store — so focus opened an empty panel. The
+     exited stand registers the page's current set, as
+     the not-engaged dock registration does: the arrival
+     is the new stand. A submit or a starter tap retires
+     the set on the existing triggers and re-enters
+     through the submit path (Flag C); the resolution
+     re-checks the stand, so a re-entry or a clear that
+     lands first is never overridden. */
+  function streamExitedStarters(ctx) {
+    loadStarters().then(function (m) {
+      if (!m || ctx.streamEl) return;
+      var st = streamReadStore();
+      if (!st || !st.engaged || !st.exited) return;
       var set = m[ctx.page];
       if (set && set.length) {
         streamSF().registerStarters({
