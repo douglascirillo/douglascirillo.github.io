@@ -331,6 +331,7 @@
         if (!data || !data.records || !data.records.length) return null;
         var map = {};
         var ambiguous = {};
+        var anchors = {};
         data.records.forEach(function (rec) {
           if (!rec || rec.status !== "approved" || !rec.id ||
               typeof rec.claim !== "string" ||
@@ -342,11 +343,22 @@
           } else {
             map[key] = rec.id;
           }
+          /* Fix batch (Nov 16, 2026): the record's section
+             anchor rides the same registry, so a context
+             link can carry its fragment. Restricted records
+             resolve through the same match below when the
+             endpoint serves them: their ids are absent here
+             (status filter), so their links keep the bare
+             source — the pre-fix behavior. */
+          if (typeof rec.anchor === "string" && rec.anchor) {
+            anchors[rec.id] = rec.anchor;
+          }
         });
         Object.keys(ambiguous).forEach(function (key) {
           delete map[key];
         });
-        _registryMap = { map: map, ambiguous: ambiguous };
+        _registryMap = { map: map, ambiguous: ambiguous,
+          anchors: anchors };
         return _registryMap;
       })
       .catch(function () { return null; });
@@ -359,6 +371,33 @@
     var key = it.claim + "\n" + it.source;
     if (_registryMap.ambiguous[key]) return null;
     return _registryMap.map[key] || null;
+  }
+
+  function registryAnchorForItem(it) {
+    var id = registryIdForItem(it);
+    if (!id || !_registryMap || !_registryMap.anchors) return null;
+    return _registryMap.anchors[id] || null;
+  }
+
+  /* A context navigation leaves any standing conversation
+     (fix batch, Nov 16, 2026): the stream's store is
+     compose.js's, but the exit write is the same one the
+     Exit control makes — the visit's turns are kept, the
+     presentation ends, and the arrival renders the
+     published page. On this layered path no stream stands;
+     the write is a no-op then. Guarded like every other
+     cross-layer touch in this file. */
+  function markStreamExitedForContext() {
+    try {
+      var raw = window.sessionStorage.getItem("dc_stream_v1");
+      if (!raw) return;
+      var store = JSON.parse(raw);
+      if (store && store.engaged && !store.exited) {
+        store.exited = true;
+        window.sessionStorage.setItem("dc_stream_v1",
+          JSON.stringify(store));
+      }
+    } catch (e) { /* a failed write changes nothing */ }
   }
 
   function ledgerAskRecords(items) {
@@ -595,7 +634,16 @@
             div.className = "ask-item";
             var p = document.createElement("p"); p.textContent = it.claim;
             var a = document.createElement("a"); a.href = it.source; a.textContent = "Read it in context"; extAttrs(a);
-            a.addEventListener("click", function () { track("Ask Next Click", { page: page, kind: "source" }); ledgerRecordOpened(it); });
+            a.addEventListener("click", function () { track("Ask Next Click", { page: page, kind: "source" }); ledgerRecordOpened(it); markStreamExitedForContext(); });
+            /* The fragment lands when the registry resolves;
+               the render never waits on it (the same bargain
+               as the ledger writes above). */
+            ensureRegistry().then(function () {
+              var an = registryAnchorForItem(it);
+              if (an && a.href.indexOf("#") === -1) {
+                a.href = it.source + "#" + an;
+              }
+            });
             div.appendChild(p); div.appendChild(a);
             answerBox.appendChild(div);
           });
