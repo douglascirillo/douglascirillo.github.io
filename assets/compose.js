@@ -2038,7 +2038,25 @@
      dismiss). */
   function maybeStreamStarters(ctx) {
     if (!ctx.openingArticle || !ctx.store) return;
-    var hasTurns = ctx.store.turns.some(function (p) {
+    /* Retirement counts from this arrival's opening turn:
+       the starters retire on the first submit from this
+       page in this stand on it. Turns from an earlier
+       stand on the same page in the same visit do not
+       retire them — each return appends a fresh opening
+       turn, and the starters belong to it (sidebar build,
+       the home-starters fix: the layer-3 gate's item 11
+       found a first submit from home suppressed home's
+       starters for the rest of the visit). */
+    var turns = ctx.store.turns;
+    var openIdx = -1;
+    for (var i = turns.length - 1; i >= 0; i--) {
+      if (turns[i].kind === "opening" &&
+          turns[i].page === ctx.page) {
+        openIdx = i;
+        break;
+      }
+    }
+    var hasTurns = turns.slice(openIdx + 1).some(function (p) {
       return p.page === ctx.page && p.kind !== "opening";
     });
     if (hasTurns) return;
