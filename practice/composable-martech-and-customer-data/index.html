@@ -288,15 +288,14 @@
   @media (max-width:640px){.cp-has-fold>.cp-thread{display:none}.cp-thread-fold{display:block;margin-top:6px}.cp-thread-fold-h{font-size:13.5px;color:var(--muted);margin:0 0 4px}}
   @media print{.cp-dock{display:none}body{padding-bottom:0 !important}}
   .cp-stream{overflow-anchor:none}
-  .cp-lane{display:grid;margin:0 0 6px}
+  .cp-lane{margin:0 0 6px}
   .cp-lane[hidden]{display:none}
-  .cp-lane>*{grid-area:1/1;min-width:0;visibility:hidden;pointer-events:none}
-  .cp-lane>.cp-lane-on{visibility:visible;pointer-events:auto}
   .cp-lane .cp-controls{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px 16px;margin:0;align-items:center;padding-bottom:2px}
   .cp-control,.stream-expand{font:inherit;font-size:13.5px;background:none;border:none;padding:0;color:var(--accent);cursor:pointer;text-decoration:underline}
-  .cp-lane .cp-starters{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:8px;margin:0;padding-bottom:2px}
-  .cp-starter{font:inherit;font-size:14px;background:var(--surface);border:1px solid var(--line-strong);border-radius:999px;padding:10px 14px;color:var(--ink-2);cursor:pointer}
   .cp-live-region{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .cp-transient{position:absolute;bottom:calc(100% + 6px);left:max(24px,calc(50% - 356px));right:max(24px,calc(50% - 356px));z-index:60;font-size:13.5px;color:var(--muted)}
+  .cp-transient[hidden]{display:none}
+  @media (min-width:860px){.cp-transient{left:max(32px,calc(50% - 358px));right:max(32px,calc(50% - 358px))}}
   .stream-marker,.stream-dropped{font-size:13.5px;color:var(--muted);margin:0 0 8px}
   .stream-card-head{margin:0 0 10px}
   .stream-card-title{margin:0 0 4px}
@@ -310,7 +309,6 @@
   .stream-release .prompt-actions button{font:inherit;font-size:14.5px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--ink);cursor:pointer}
   .stream-response:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
   .stream-receipt{margin:10px 0 0}
-  .stream-starters{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
   @media (max-width:640px){body.cp-engaged header nav{display:none}}
   /* /control-plane */
 </style>
@@ -536,9 +534,9 @@
   </footer>
 
 </div>
-<script src="/assets/surface.js?v=20261116-5"></script>
+<script src="/assets/surface.js?v=20261116-6"></script>
 <script src="/assets/ledger.js?v=20261116-5"></script>
-<script src="/assets/ask.js?v=20261116-7"></script>
-<script src="/assets/compose.js?v=20261116-11" defer></script>
+<script src="/assets/ask.js?v=20261116-8"></script>
+<script src="/assets/compose.js?v=20261116-12" defer></script>
 </body>
 </html>
