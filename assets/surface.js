@@ -895,6 +895,42 @@
       } catch (e) { /* the visit state stands */ }
     }
 
+    /* Scroll lock for the slide-over (Nov 17, 2026 fix):
+       inert stills the page's controls, not its scroll.
+       Left unlocked, a scroll gesture moves the page
+       behind the panel, the browser chrome resizes the
+       viewport the panel is stretched against, and the
+       panel's free space (the foot's auto margin) shifts
+       mid-gesture. The body is held at the offset it
+       stands at; closing hands the offset back. The
+       open state's overflow rule in the shell CSS is
+       the document half of the same lock. */
+    var lockedY = null;
+    function lockScroll() {
+      if (lockedY !== null || !document.body) return;
+      var y = 0;
+      try { y = window.scrollY || window.pageYOffset || 0; }
+      catch (e) { y = 0; }
+      lockedY = y;
+      document.body.style.position = "fixed";
+      document.body.style.top = (-y) + "px";
+      document.body.style.left = "0";
+      document.body.style.right = "0";
+    }
+
+    function unlockScroll() {
+      if (lockedY === null) return;
+      var y = lockedY;
+      lockedY = null;
+      if (document.body) {
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.left = "";
+        document.body.style.right = "";
+      }
+      try { window.scrollTo(0, y); } catch (e) { /* best-effort */ }
+    }
+
     function openDrawer() {
       if (open) return;
       open = true;
@@ -902,6 +938,7 @@
       setExp(true);
       if (scrim) scrim.hidden = false;
       setInert(true);
+      lockScroll();
       focusEl(nav.querySelector(".shell-list a"));
     }
 
@@ -912,6 +949,7 @@
       setExp(false);
       if (scrim) scrim.hidden = true;
       setInert(false);
+      unlockScroll();
       if (refocus) focusEl(trigger);
     }
 
