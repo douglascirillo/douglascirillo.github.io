@@ -350,6 +350,7 @@
       st.textContent =
         ".cp-answer{margin:0 0 6px}" +
         ".cp-answer-framing{font-size:16px;line-height:1.55;margin:0 0 10px}" +
+        ".cp-answer-twin-tag{font-size:12.5px;color:var(--muted,#777);margin:0 0 10px}" +
         ".cp-answer-claim{font-size:16px;line-height:1.55;margin:0 0 8px}" +
         ".cp-answer-claim a{font-size:14px;white-space:nowrap}" +
         ".cp-pointer{background:var(--surface);border-radius:10px;padding:10px 14px;margin:0 0 8px}" +
@@ -390,6 +391,22 @@
       .catch(function () { return null; });
   }
 
+  /* Twin generation (stage G1): the generated body rides the
+     answer as {paragraphs: [{text, cites}]}. Cleaned strictly:
+     a malformed body is dropped whole, never partially rendered;
+     the verbatim items beneath it are unaffected. */
+  function cleanGen(raw) {
+    if (!raw || !Array.isArray(raw.paragraphs) ||
+        !raw.paragraphs.length) return null;
+    var paras = [];
+    for (var i = 0; i < raw.paragraphs.length; i++) {
+      var p = raw.paragraphs[i];
+      if (!p || typeof p.text !== "string" || !p.text) return null;
+      paras.push({ text: p.text });
+    }
+    return { paragraphs: paras };
+  }
+
   function cleanAnswer(raw) {
     if (!raw || !Array.isArray(raw.items)) return null;
     var items = [];
@@ -402,11 +419,13 @@
         });
       }
     });
-    if (!items.length) return null;
+    var gen = cleanGen(raw.gen);
+    if (!items.length && !gen) return null;
     return {
       items: items,
       framing: (typeof raw.framing === "string" && raw.framing)
-        ? raw.framing : null
+        ? raw.framing : null,
+      gen: gen
     };
   }
 
@@ -427,7 +446,21 @@
   function answerElementHtml(answer) {
     if (!answer) return "";
     var html = '<div class="cp-answer">';
-    if (answer.framing) {
+    if (answer.gen) {
+      /* Twin generation (stage G1): the conversational answer
+         first, the transparency label under it, then the
+         verbatim claim lines it cites (there may be none).
+         Label copy is the E6 draft, pending the flip batch's
+         copy approval. */
+      answer.gen.paragraphs.forEach(function (para) {
+        html += '<p class="cp-answer-framing">' + esc(para.text) +
+          "</p>";
+      });
+      html += '<p class="cp-answer-twin-tag">Answered by ' +
+        "Douglas&rsquo;s digital twin. Career facts are cited " +
+        "to the published record; the claims themselves are " +
+        "below, word for word.</p>";
+    } else if (answer.framing) {
       html += '<p class="cp-answer-framing">' + esc(answer.framing) +
         "</p>";
     }
@@ -459,7 +492,8 @@
       }
       if (typeof window.DCLedger.recordAskOutcome === "function") {
         window.DCLedger.recordAskOutcome(
-          answer.framing ? "answer_prose" : "answer");
+          answer.gen ? "answer_gen"
+            : (answer.framing ? "answer_prose" : "answer"));
       }
     } catch (e) { /* the ledger never breaks the page */ }
   }
@@ -579,7 +613,8 @@
     var e = merged.entry;
     if (e.outcome === "refused" || e.outcome === "none") {
       showDialogue({ kind: e.outcome, text: e.text,
-                     link: e.link || null });
+                     link: e.link || null,
+                     gen: e.gen || null });
     } else if (e.outcome === "pointer") {
       showDialogue({ kind: "pointer",
                      covering_page: e.covering_page,
@@ -775,6 +810,7 @@
       SF.setReceipt({
         historyLabel: null,
         aiFraming: !!(st.answer && st.answer.framing),
+        aiTwin: !!(st.answer && st.answer.gen),
         expandedHtml:
           '<p class="composition-from-intent">' +
           flatReceiptLine(st) + "</p>",
@@ -994,10 +1030,20 @@
       return;
     }
     if (data.outcome === "none") {
+      /* Stage G1: a generated absence may ride the none outcome;
+         the fixed text and link stay in the body as the fallback
+         and the thread stores the generated text when it served. */
+      var noneGen = cleanGen(data.gen);
+      var noneText = noneGen
+        ? noneGen.paragraphs.map(function (p) { return p.text; })
+            .join("\n\n")
+        : data.text;
       flatDialogue(F,
-        { kind: "none", text: data.text, link: data.link || null },
+        { kind: "none", text: data.text, link: data.link || null,
+          gen: noneGen },
         record ? { prompt: ctx.prompt, outcome: "none",
-                   text: data.text, link: data.link || null } : null);
+                   text: noneText, link: data.link || null,
+                   gen: noneGen } : null);
       return;
     }
     if (data.outcome === "pointer_only") {
@@ -2122,6 +2168,20 @@
   function streamDialogueEl(plan) {
     var d = document.createElement("div");
     d.className = "stream-response stream-dialogue";
+    if (plan.gen) {
+      /* Stage G1: the generated absence renders in place of
+         the fixed text; the case-studies link still follows. */
+      d.innerHTML = plan.gen.paragraphs.map(function (p) {
+        return "<p>" + esc(p.text) + "</p>";
+      }).join("") +
+        '<p class="cp-answer-twin-tag">Answered by ' +
+        "Douglas&rsquo;s digital twin.</p>" +
+        (plan.link
+          ? '<p class="prompt-actions"><a href="' + esc(plan.link) +
+            '">Browse the case studies</a></p>'
+          : "");
+      return d;
+    }
     d.innerHTML = "<p>" + esc(plan.text) + "</p>" +
       (plan.link
         ? '<p class="prompt-actions"><a href="' + esc(plan.link) +
@@ -2271,6 +2331,7 @@
       historyLabel: plan.categories
         ? ledgerCategoriesLabel(plan.categories) : null,
       aiFraming: !!(plan.answer && plan.answer.framing),
+      aiTwin: !!(plan.answer && plan.answer.gen),
       expandedHtml: expanded,
       onRestore: null
     };
@@ -2340,11 +2401,15 @@
   function streamAnnounce(plan) {
     var lead = null;
     if (plan.kind === "dialogue") {
-      lead = firstSentenceOf(plan.text);
+      lead = plan.gen
+        ? firstSentenceOf(plan.gen.paragraphs[0].text)
+        : firstSentenceOf(plan.text);
     } else if (plan.answer) {
-      lead = plan.answer.framing
-        ? firstSentenceOf(plan.answer.framing)
-        : firstSentenceOf(plan.answer.items[0].claim);
+      lead = plan.answer.gen
+        ? firstSentenceOf(plan.answer.gen.paragraphs[0].text)
+        : (plan.answer.framing
+          ? firstSentenceOf(plan.answer.framing)
+          : firstSentenceOf(plan.answer.items[0].claim));
     } else if (plan.specNew || plan.mixture === "intent") {
       lead = streamSpecLead(plan);
     } else if (plan.pointer) {
@@ -2598,7 +2663,10 @@
         kind: "dialogue", page: ctx.page,
         outcome: data.outcome,
         text: data.text || UNIFIED_FAILURE_LINE,
-        link: data.link || null
+        link: data.link || null,
+        /* Stage G1: a generated absence rides the none plan;
+           the fixed text stays as the stored fallback. */
+        gen: data.outcome === "none" ? cleanGen(data.gen) : null
       });
       var del = streamDialogueEl(dplan);
       ctx.streamEl.appendChild(del);
