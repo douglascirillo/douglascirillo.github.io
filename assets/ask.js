@@ -506,15 +506,6 @@
     io.observe(bar);
   }
 
-  /* Nav "Ask" link: focus the one input instead of jumping to a module. */
-  document.querySelectorAll("a[href$=\"#ask-h\"]").forEach(function (a) {
-    a.addEventListener("click", function (ev) {
-      ev.preventDefault();
-      bar.scrollIntoView({ behavior: "smooth", block: "start" });
-      setTimeout(function () { ein.focus({ preventScroll: true }); }, 450);
-    });
-  });
-
   /* ---------- Amplitude <> Algolia pipe ---------- */
   var sessionToken = null;
   try {
