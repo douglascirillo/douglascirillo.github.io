@@ -606,24 +606,14 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
   })();
 </script>
 <style>
-.intents{margin:44px 0 4px;padding:0}
-.intents .explore{max-width:none;margin:0;padding:0}
 .entry-divider{display:flex;align-items:center;gap:12px;margin:18px 0 12px;color:var(--muted);font-size:13px}
-.entry-divider::before,.entry-divider::after{content:"";flex:1;border-top:1px solid var(--line)}.intents h2{font-family:"Newsreader", Georgia, serif;font-weight:500;font-size:28px;letter-spacing:-.01em;margin:0 0 18px}
-.intent-btns{display:flex;flex-wrap:wrap;gap:8px}
-.intent-btn{font:inherit;font-size:14.5px;padding:11px 14px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;text-align:left}
-.intent-btn:hover{background:var(--accent-light)}
-.intent-btn[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
-@media (prefers-color-scheme: dark){.intent-btn[aria-pressed="true"]{color:#101512}}
+.entry-divider::before,.entry-divider::after{content:"";flex:1;border-top:1px solid var(--line)}
 .composition{margin-top:10px;padding:8px 0 0;border:none;border-top:1px solid var(--line);border-radius:0}
 .composition-h{font-family:"Newsreader", Georgia, serif;font-weight:500;font-size:22px;margin:0 0 5px}
 .composition section{margin:0}
 .composition p{margin:0 0 4px;line-height:1.45}
-.composition-note{font-size:13.5px;color:var(--muted)}
 .intent-links{margin:2px 0 4px;font-size:15px}
 .intent-links a{margin-right:16px}
-.intent-reset{margin:6px 0 0}
-.intent-reset button{font:inherit;font-size:13.5px;background:none;border:none;padding:0;color:var(--muted);cursor:pointer;text-decoration:underline}
 .composition-from-intent{font-size:13.5px;color:var(--muted);margin:0 0 8px}
 </style></head>
 <body>
@@ -690,19 +680,6 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
 </header>
 
   <p class="definition">Douglas Cirillo is a digital experience and product leader whose work spans travel, media, live entertainment, and consumer services. He has led digital product, experience, data, and growth initiatives at Vanguard, Lindblad Expeditions, Sotheby&rsquo;s, Madison Square Garden, A Place for Mom, and Gangverk.</p>
-
-  <section class="intents">
-    <div class="intent-btns">
-        <button type="button" class="intent-btn" data-intent="intent_search_decline" aria-pressed="false">Fixing a search or SEO decline</button>
-        <button type="button" class="intent-btn" data-intent="intent_cdp" aria-pressed="false">Standing up a CDP, or fixing customer data</button>
-        <button type="button" class="intent-btn" data-intent="intent_replatform" aria-pressed="false">Replatforming without losing the business</button>
-        <button type="button" class="intent-btn" data-intent="intent_team" aria-pressed="false">Building a digital team or function</button>
-        <button type="button" class="intent-btn" data-intent="intent_speaking" aria-pressed="false">Booking a speaker</button>
-        <button type="button" class="intent-btn" data-intent="intent_coherence" aria-pressed="false">An experience that does not hold together across channels</button>
-        <button type="button" class="intent-btn" data-intent="intent_measurement" aria-pressed="false">Testing plenty, and learning little</button>
-    </div>
-    <section class="composition" id="composition" hidden aria-label="Assembled from the record"></section>
-  </section>
 
   <main id="main">
     <section id="about" aria-labelledby="about-h">
@@ -841,42 +818,9 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
   </footer>
 
 </div>
-<script>
-(function(){
-  var INTENT_EVENT_NAMES={intent_search_decline:'Intent Search Decline',intent_cdp:'Intent CDP',intent_replatform:'Intent Replatform',intent_team:'Intent Team',intent_speaking:'Intent Speaking',intent_coherence:'Intent Coherence',intent_measurement:'Intent Measurement'};
-  function trackId(id){ var n=INTENT_EVENT_NAMES[id]||id; if(window.amplitude&&typeof window.amplitude.track==='function'){ try{window.amplitude.track(n,{});}catch(e){} } }
-  document.querySelectorAll('.intent-btn').forEach(function(b){
-    b.addEventListener('click', function(){
-      var id=b.getAttribute('data-intent');
-      try{ sessionStorage.setItem('dc-intent', id); }catch(e){}
-      trackId(id);
-    });
-  });
-  document.addEventListener('click', function(ev){
-    if(ev.target&&ev.target.id==='intent-reset'){ try{ sessionStorage.removeItem('dc-intent'); }catch(e){} }
-  });
-  document.addEventListener('DOMContentLoaded', function(){
-    var mount=document.querySelector('[data-record-bar-mount]');
-    var bar=document.querySelector('.explore');
-    if(mount&&bar) mount.appendChild(bar);
-    if(bar){
-      var q=bar.querySelector('#explore-q');
-      if(q) q.addEventListener('keydown', function(ev){
-        if(ev.key!=='Enter') return;
-        var c=document.getElementById('composition'); if(c){ c.hidden=true; c.innerHTML=''; } document.dispatchEvent(new CustomEvent('dc:composition-cleared'));
-        document.querySelectorAll('.intent-btn').forEach(function(b){ b.setAttribute('aria-pressed','false'); });
-        try{ sessionStorage.removeItem('dc-intent'); }catch(e){}
-        try{ history.replaceState(null,'',location.pathname); }catch(e){}
-      });
-    }
-    try{ var saved=sessionStorage.getItem('dc-intent');
-      if(saved){ var btn=document.querySelector('.intent-btn[data-intent="'+saved+'"]'); if(btn) btn.click(); }
-    }catch(e){}
-  });
-})();
-</script><script src="/assets/surface.js?v=20261116-7"></script>
-<script src="/assets/ledger.js?v=20261116-5"></script>
-<script src="/assets/ask.js?v=20261116-10"></script>
-<script src="/assets/compose.js?v=20261116-13" defer></script>
+<script src="/assets/surface.js?v=20261116-8"></script>
+<script src="/assets/ledger.js?v=20261116-6"></script>
+<script src="/assets/ask.js?v=20261116-11"></script>
+<script src="/assets/compose.js?v=20261116-14" defer></script>
 </body>
 </html>
