@@ -261,8 +261,9 @@
   .intent-reset{margin:6px 0 0}
   .intent-reset button{font:inherit;font-size:13.5px;background:none;border:none;padding:0;color:var(--muted);cursor:pointer;text-decoration:underline}
 
-  /* shell (layer 2: the frame steps back) */
-  :root{--shell-bar-h:48px}
+  /* shell (sidebar build: one pattern, docked or hidden) */
+  :root{--shell-bar-h:44px;--shell-side-w:280px}
+  @media (min-width:1024px){html.shell-on{--shell-bar-h:0px}html.shell-on.shell-collapsed{--shell-bar-h:44px}}
   #main,#record,#about,#elsewhere,#ask-h,#cp-stream{scroll-margin-top:calc(var(--shell-bar-h) + 8px)}
   main h2[id]{scroll-margin-top:calc(var(--shell-bar-h) + 8px)}
   .shell-bar{position:sticky;top:0;z-index:940;background:var(--bg);border-bottom:1px solid var(--line)}
@@ -273,25 +274,27 @@
   .shell-nav{max-width:760px;margin:0 auto;padding:12px 24px 16px}
   @media (min-width:860px){.shell-nav{max-width:780px;padding-left:32px;padding-right:32px}}
   .shell-head{display:none}
+  .shell-id{margin:0}
+  .shell-id-name{display:block;font-family:"Newsreader", Georgia, serif;font-size:19px;font-weight:600;color:var(--ink);text-decoration:none;white-space:nowrap}
+  .shell-id-role{display:block;font-size:13px;color:var(--muted)}
   .shell-list{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:2px}
   .shell-list a{font-size:14.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:8px 10px;min-height:44px;display:inline-flex;align-items:center;border-radius:6px;white-space:nowrap}
   .shell-list a:hover{background:var(--accent-light);color:var(--ink)}
   .shell-list a[aria-current]{color:var(--ink);font-weight:600}
   .shell-foot{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
-  .shell-id{margin:0 0 8px}
-  .shell-id-name{display:block;font-family:"Newsreader", Georgia, serif;font-size:17px;font-weight:600;color:var(--ink)}
-  .shell-id-role{display:block;font-size:13px;color:var(--muted)}
   .shell-elsewhere{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-wrap:wrap;gap:2px}
   .shell-elsewhere a{font-size:14.5px;font-weight:500;color:var(--muted);text-decoration:none;padding:8px 10px;min-height:44px;display:inline-flex;align-items:center;border-radius:6px}
   .shell-elsewhere a:hover{background:var(--accent-light);color:var(--ink)}
   .shell-colophon{margin:0;font-size:14.5px}
   .shell-scrim{display:none}
-  .shell-close{font:inherit;font-size:20px;line-height:1;background:none;border:none;color:var(--ink-2);cursor:pointer;min-width:44px;min-height:44px;border-radius:6px}
-  html.shell-on .shell-trigger{display:inline-flex;align-items:center;font:inherit;font-size:14px;font-weight:500;color:var(--ink-2);background:none;border:1px solid var(--line-strong);border-radius:999px;padding:0 16px;min-height:44px;cursor:pointer;white-space:nowrap}
-  html.shell-on .shell-trigger:hover{background:var(--accent-light)}
+  .shell-close{font:inherit;font-size:20px;line-height:1;background:none;border:none;color:var(--ink-2);cursor:pointer;min-width:44px;min-height:44px;border-radius:6px;position:relative;flex:none}
+  html.shell-on .shell-trigger{display:inline-flex;align-items:center;justify-content:center;background:none;border:none;color:var(--ink-2);cursor:pointer;min-width:44px;min-height:44px;padding:0;border-radius:6px;position:relative}
+  html.shell-on .shell-trigger::before{content:"";position:absolute;left:12px;right:12px;top:16px;height:12px;border-top:2px solid currentColor;border-bottom:2px solid currentColor}
+  html.shell-on .shell-trigger::after{content:"";position:absolute;left:12px;right:12px;top:22px;border-top:2px solid currentColor}
+  html.shell-on .shell-trigger:focus-visible{outline-offset:-2px}
   @media (max-width:1023.98px){
-    html.shell-on .shell-nav{position:fixed;top:0;left:0;bottom:0;width:min(300px,84vw);max-width:none;margin:0;padding:0;background:var(--surface);z-index:960;transform:translateX(-104%);display:flex;flex-direction:column;overflow-y:auto;box-shadow:0 0 44px rgba(0,0,0,.18)}
-    html.shell-on .shell-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px 10px 20px;border-bottom:1px solid var(--line)}
+    html.shell-on .shell-nav{position:fixed;top:0;left:0;bottom:0;width:min(300px,84vw);max-width:none;margin:0;padding:0;background:var(--surface);z-index:960;transform:translateX(-104%);display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 0 44px rgba(0,0,0,.18)}
+    html.shell-on .shell-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 12px 10px 22px;border-bottom:1px solid var(--line)}
     html.shell-on .shell-list{flex-direction:column;flex-wrap:nowrap;gap:0;padding:10px 12px}
     html.shell-on .shell-list a{display:flex;width:100%;font-size:15.5px;padding:8px 10px}
     html.shell-on .shell-list a[aria-current]{box-shadow:inset 3px 0 0 var(--accent)}
@@ -299,16 +302,32 @@
     html.shell-on .shell-elsewhere{flex-direction:column;flex-wrap:nowrap;gap:0}
     html.shell-on .shell-elsewhere a{display:flex;width:100%;padding:8px 0}
   }
-  @media (min-width:1024px){
-    html.shell-on .shell-nav{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:780px;margin:0;padding:0 32px;height:var(--shell-bar-h);z-index:945;display:flex;align-items:center;justify-content:flex-end;pointer-events:none}
-    html.shell-on .shell-list{flex-wrap:nowrap;pointer-events:auto}
-    html.shell-on .shell-list li[data-shell-secondary]{display:none}
-    html.shell-on .shell-foot{display:none}
+  @media screen and (min-width:1024px){
+    html.shell-on body{margin-left:var(--shell-side-w)}
+    html.shell-on .shell-bar{display:none}
+    html.shell-on .shell-nav{position:fixed;top:0;left:0;bottom:0;width:var(--shell-side-w);max-width:none;margin:0;padding:0;background:var(--surface);z-index:960;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;border-right:1px solid var(--line)}
+    html.shell-on .shell-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 12px 12px 22px;border-bottom:1px solid var(--line)}
+    html.shell-on .shell-list{flex-direction:column;flex-wrap:nowrap;gap:0;padding:10px 12px}
+    html.shell-on .shell-list a{display:flex;width:100%;font-size:15.5px;padding:8px 10px}
+    html.shell-on .shell-list a[aria-current]{box-shadow:inset 3px 0 0 var(--accent)}
+    html.shell-on .shell-foot{margin-top:auto;padding:14px 22px 18px}
+    html.shell-on .shell-elsewhere{flex-direction:column;flex-wrap:nowrap;gap:0}
+    html.shell-on .shell-elsewhere a{display:flex;width:100%;padding:8px 0}
+    html.shell-on .shell-close{font-size:0}
+    html.shell-on .shell-close::before{content:"";position:absolute;left:13px;right:13px;top:13px;bottom:13px;border:2px solid currentColor;border-radius:4px}
+    html.shell-on .shell-close::after{content:"";position:absolute;top:13px;bottom:13px;left:19px;border-left:2px solid currentColor}
+    html.shell-on .cp-dock{left:var(--shell-side-w)}
+    html.shell-on .skip-link:focus-visible{left:calc(var(--shell-side-w) + 16px)}
+    html.shell-on.shell-collapsed body{margin-left:0}
+    html.shell-on.shell-collapsed .shell-bar{display:block}
+    html.shell-on.shell-collapsed .shell-nav{transform:translateX(-104%);visibility:hidden}
+    html.shell-on.shell-collapsed .cp-dock{left:0}
+    html.shell-on.shell-collapsed .skip-link:focus-visible{left:16px}
+    html.shell-on.shell-open .shell-scrim{display:none}
   }
-  html.shell-open .shell-nav{position:fixed;top:0;left:0;bottom:0;width:min(300px,84vw);max-width:none;margin:0;padding:0;background:var(--surface);z-index:960;transform:none;height:auto;display:flex;flex-direction:column;overflow-y:auto;box-shadow:0 0 44px rgba(0,0,0,.18);pointer-events:auto}
-  html.shell-open .shell-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px 10px 20px;border-bottom:1px solid var(--line)}
+  html.shell-open .shell-nav{position:fixed;top:0;left:0;bottom:0;width:min(300px,84vw);max-width:none;margin:0;padding:0;background:var(--surface);z-index:960;transform:none;height:auto;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;box-shadow:0 0 44px rgba(0,0,0,.18);pointer-events:auto}
+  html.shell-open .shell-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 12px 10px 22px;border-bottom:1px solid var(--line)}
   html.shell-open .shell-list{flex-direction:column;flex-wrap:nowrap;gap:0;padding:10px 12px;pointer-events:auto}
-  html.shell-open .shell-list li[data-shell-secondary]{display:list-item}
   html.shell-open .shell-list a{display:flex;width:100%;font-size:15.5px;padding:8px 10px}
   html.shell-open .shell-list a[aria-current]{box-shadow:inset 3px 0 0 var(--accent)}
   html.shell-open .shell-foot{display:block;margin-top:auto;padding:14px 22px 18px}
@@ -317,6 +336,13 @@
   html.shell-open .shell-scrim{display:block;position:fixed;inset:0;background:rgba(20,22,21,.45);z-index:955}
   @media (prefers-reduced-motion: no-preference){
     html.shell-on .shell-nav{transition:transform .22s ease}
+    html.shell-on.shell-collapsed .shell-nav{transition:transform .22s ease,visibility 0s linear .22s}
+  }
+  @media print{
+    html.shell-on body{margin-left:0}
+    html.shell-on .shell-bar{display:block}
+    html.shell-on .shell-nav{position:static;transform:none;visibility:visible}
+    html.shell-on .cp-dock{left:0}
   }
   /* /shell */
   /* control-plane (surface batch) */
@@ -523,12 +549,12 @@
   <div class="shell-bar">
     <div class="shell-bar-in">
       <a class="shell-brand" href="/">Douglas Cirillo</a>
-      <button type="button" class="shell-trigger" id="shell-trigger">Menu</button>
+      <button type="button" class="shell-trigger" id="shell-trigger" aria-label="Menu"></button>
     </div>
   </div>
   <nav class="shell-nav" id="shell-nav" aria-label="Primary">
     <div class="shell-head">
-      <a class="shell-brand" href="/">Douglas Cirillo</a>
+      <p class="shell-id"><a class="shell-id-name" href="/">Douglas Cirillo</a> <span class="shell-id-role">Head of Digital Experience and Growth</span></p>
       <button type="button" class="shell-close" id="shell-close" aria-label="Close menu">&times;</button>
     </div>
     <ul class="shell-list">
@@ -541,7 +567,6 @@
       <li data-shell-secondary><a href="/#elsewhere">Elsewhere</a></li>
     </ul>
     <div class="shell-foot">
-      <p class="shell-id"><span class="shell-id-name">Douglas Cirillo</span> <span class="shell-id-role">Head of Digital Experience and Growth</span></p>
       <ul class="shell-elsewhere">
         <li><a href="https://www.linkedin.com/in/douglascirillo/" data-outbound-link data-link-label="LinkedIn" target="_blank" rel="noopener">LinkedIn <span class="visually-hidden">(opens in new tab)</span></a></li>
         <li><a href="https://douglascirillo.substack.com" data-outbound-link data-link-label="Substack" target="_blank" rel="noopener">Substack <span class="visually-hidden">(opens in new tab)</span></a></li>
@@ -620,9 +645,9 @@
   </footer>
 
 </div>
-<script src="/assets/surface.js?v=20261116-8"></script>
+<script src="/assets/surface.js?v=20261117-9"></script>
 <script src="/assets/ledger.js?v=20261116-6"></script>
 <script src="/assets/ask.js?v=20261116-11"></script>
-<script src="/assets/compose.js?v=20261116-14" defer></script>
+<script src="/assets/compose.js?v=20261117-15" defer></script>
 </body>
 </html>
