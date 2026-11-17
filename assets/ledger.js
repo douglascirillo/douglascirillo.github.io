@@ -127,7 +127,7 @@
     "not delete the measurement events already recorded for statistics.";
 
   var GATE_COPY = "This site can remember what you have opened here, in " +
-    "your own browser, and rebuild its pages around it when you come " +
+    "your own browser, and let it shape the conversation when you come " +
     "back. That memory never leaves this browser. Keep it?";
 
   // Consent detection (build sheet section 5): explicit timezone
