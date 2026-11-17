@@ -66,7 +66,16 @@
    tenant's height in every state. The reservation
    counts the input lane at its grown maximum, so
    typing never moves the page; the dock cap constrains
-   the session band alone. */
+   the session band alone.
+
+   Suggested-search fix batch (Nov 16, 2026;
+   suggested-search-fix-sheet.md): the lane's starter
+   tenant is retired — the lane holds the controls
+   alone, registerStarters is model-only (ask.js reads
+   it through currentStarters() for the overlay's
+   rows), and the lane hides until the controls
+   register. A transient node floats above the dock
+   for the pre-stream lines. */
 (function () {
   "use strict";
 
@@ -349,41 +358,28 @@
 
   /* ---- Engaged-mode plane furniture (sheet sections 6, 7,
      10; context lane per the engaged-UI revision, section
-     3.1) ---- The lane's two tenant containers are built
-     once at dock construction (buildDock); the renders below
-     write into them and toggle visibility, never rebuild or
-     re-insert them. The tenants never coexist: turning one
-     on turns the other off. A tenant that is off keeps its
-     nodes and loses only visibility, so the lane's height
-     is its tallest tenant's height in every state and the
-     swap moves nothing. The lane itself hides only when
-     neither tenant is on. The controls' labels are the
+     3.1; single-tenant lane per the suggested-search fix,
+     sections 3 and 6) ---- The lane's one tenant container
+     (#cp-controls) is built once at dock construction
+     (buildDock); the renders below write into it, never
+     rebuild or re-insert it. The lane hides until the
+     controls model registers (engagement, or the exited
+     state). The starters are a model only: stored, never
+     rendered here. The controls' labels are the
      approved strings. While exited the controls carry
-     Clear alone: Exit hides itself (section 6), and Restore
-     hides too — re-entry happens through the next submit
-     (flagged item C, ruled Nov 16, 2026). */
-  function setLaneTenant(id, on) {
-    var t = $(id);
-    if (!t) return;
-    t.classList.toggle("cp-lane-on", !!on);
-    if (on) {
-      var other = $(id === "cp-starters" ? "cp-controls" :
-                    "cp-starters");
-      if (other) other.classList.remove("cp-lane-on");
-    }
+     Clear alone: Exit hides itself (section 6), and
+     Restore hides too — re-entry happens through the
+     next submit (flagged item C, ruled Nov 16, 2026). */
+  function refreshLane() {
     var lane = $("cp-lane");
-    if (lane) {
-      var s = $("cp-starters"), c = $("cp-controls");
-      lane.hidden = !((s && s.classList.contains("cp-lane-on")) ||
-                      (c && c.classList.contains("cp-lane-on")));
-    }
+    if (lane) lane.hidden = !controlsModel;
   }
 
   function renderControls() {
     var row = $("cp-controls");
     if (!row) return;
     if (!controlsModel) {
-      setLaneTenant("cp-controls", false);
+      refreshLane();
       if (document.body) document.body.classList.remove("cp-engaged");
       refreshBand();
       return;
@@ -404,31 +400,9 @@
       row.appendChild(btn("Exit to the published page", "onExit"));
     }
     row.appendChild(btn("Clear the conversation", "onClear"));
-    setLaneTenant("cp-controls", true);
+    refreshLane();
     if (document.body) document.body.classList.toggle("cp-engaged", !controlsModel.exited);
     refreshBand();
-  }
-
-  function renderStarters() {
-    var row = $("cp-starters");
-    if (!row) return;
-    if (!startersModel || !startersModel.starters ||
-        !startersModel.starters.length) {
-      setLaneTenant("cp-starters", false);
-      return;
-    }
-    row.innerHTML = "";
-    startersModel.starters.forEach(function (s) {
-      var b = document.createElement("button");
-      b.type = "button";
-      b.className = "cp-starter";
-      b.textContent = s.text;
-      b.addEventListener("click", function () {
-        if (startersModel && startersModel.onTap) startersModel.onTap(s);
-      });
-      row.appendChild(b);
-    });
-    setLaneTenant("cp-starters", true);
   }
 
   function announce(text) {
@@ -462,7 +436,22 @@
     active: false,
     engaged: false,
     registerStarters: function (model) {
-      startersModel = model || null; renderStarters();
+      startersModel = model || null;  // model-only (fix sheet 3)
+    },
+    currentStarters: function () { return startersModel; },
+    /* The transient status (fix sheet section 6): the
+       pre-stream lines render here, once; unstored. */
+    showTransientStatus: function (text) {
+      var node = $("cp-transient");
+      if (!node) return;
+      node.textContent = text || "";
+      node.hidden = !text;
+    },
+    clearTransientStatus: function () {
+      var node = $("cp-transient");
+      if (!node) return;
+      node.textContent = "";
+      node.hidden = true;
     },
     registerControls: function (model) {
       controlsModel = model || null; renderControls();
@@ -578,7 +567,6 @@
       renderStates();
       renderReceipt();
       renderThread();
-      renderStarters();
       renderControls();
       var turns = $("cp-turns");
       if (turns) turns.innerHTML = "";
@@ -598,16 +586,24 @@
   if (!isHuman) return;
 
   /* ---- The dock (docked-composer batch, sheet sections 3-7;
-     context lane per the engaged-UI revision, section 3.1) ----
+     context lane per the engaged-UI revision, section 3.1;
+     single-tenant lane and the transient status node per
+     the suggested-search fix, sections 3 and 6) ----
      The static mounts stay in the header, byte-identical; this
      builds one dock element at the end of the body and moves the
      four mount children into it, in one synchronous task, so no
      intermediate state is paintable: the consent mount and the
      session band into the inner stack; into the bar, the context
-     lane first (built here, with its two tenant containers),
-     then the scope label and the composer mount, the scope label
-     above the composer (D8.6). If any mount is missing the
-     document is left untouched and the layer stays off. */
+     lane first (built here, with its one tenant container, the
+     controls), then the scope label and the composer mount, the
+     scope label above the composer (D8.6). The transient status
+     node is the dock's last child, anchored by the CP CSS above
+     the whole dock, in no stack and counted by neither the
+     reservation nor the band's cap; any keydown or pointerdown
+     in the dock clears it, on the way in (capture), so a line
+     set by that same interaction's submit survives it. If any
+     mount is missing the document is left untouched
+     and the layer stays off. */
   function buildDock() {
     var consent = $("cp-consent");
     var session = $("cp-session");
@@ -628,13 +624,9 @@
     lane.className = "cp-lane";
     lane.id = "cp-lane";
     lane.hidden = true;
-    var laneStarters = document.createElement("div");
-    laneStarters.className = "cp-starters";
-    laneStarters.id = "cp-starters";
     var laneControls = document.createElement("div");
     laneControls.className = "cp-controls";
     laneControls.id = "cp-controls";
-    lane.appendChild(laneStarters);
     lane.appendChild(laneControls);
     inner.appendChild(consent);
     inner.appendChild(session);
@@ -643,6 +635,14 @@
     bar.appendChild(composer);
     inner.appendChild(bar);
     dock.appendChild(inner);
+    var transient = document.createElement("div");
+    transient.className = "cp-transient";
+    transient.id = "cp-transient";
+    transient.setAttribute("aria-live", "polite");
+    transient.hidden = true;
+    dock.appendChild(transient);
+    dock.addEventListener("keydown", api.clearTransientStatus, true);
+    dock.addEventListener("pointerdown", api.clearTransientStatus, true);
     document.body.appendChild(dock);
     dockEl = dock;
     return true;
