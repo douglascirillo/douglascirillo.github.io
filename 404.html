@@ -298,6 +298,7 @@
   html.shell-open .shell-elsewhere{flex-direction:column;flex-wrap:nowrap;gap:0}
   html.shell-open .shell-elsewhere a{display:flex;width:100%;padding:8px 0}
   html.shell-open .shell-scrim{display:block;position:fixed;inset:0;background:rgba(20,22,21,.45);z-index:955}
+  html.shell-open{overflow:hidden}
   @media (prefers-reduced-motion: no-preference){
     html.shell-on .shell-nav{transition:transform .22s ease}
     html.shell-on.shell-collapsed .shell-nav{transition:transform .22s ease,visibility 0s linear .22s}
@@ -567,8 +568,8 @@
   <a class="skip-link" href="#main">Skip to content</a>
   <div class="shell-bar">
     <div class="shell-bar-in">
-      <a class="shell-brand" href="/">Douglas Cirillo</a>
       <button type="button" class="shell-trigger" id="shell-trigger" aria-label="Menu"></button>
+      <a class="shell-brand" href="/">Douglas Cirillo</a>
     </div>
   </div>
   <nav class="shell-nav" id="shell-nav" aria-label="Primary">
@@ -630,7 +631,7 @@
     <p>West Chester, Pennsylvania</p>
     <p><a href="/colophon/">How this site runs: the colophon</a></p>
   </footer>
-  <script src="/assets/surface.js?v=20261117-9"></script>
+  <script src="/assets/surface.js?v=20261117-10"></script>
 <script src="/assets/ledger.js?v=20261116-6"></script>
 <script src="/assets/ask.js?v=20261116-11"></script>
 <script src="/assets/compose.js?v=20261117-16" defer></script>
