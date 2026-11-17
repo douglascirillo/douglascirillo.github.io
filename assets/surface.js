@@ -809,22 +809,23 @@
     });
   }
 
-  /* ---- The shell drawer (layer 2; shell-nav-build-sheet.md
-     sections 4, 5.2, 7; F2 and F8 as ruled) ----
-     The shell's static block ships in every page's HTML;
-     this module enhances the one list into the drawer. It
-     wires the trigger's ARIA, contains Tab in the open
-     panel, inerts the page behind it (F8), and sets the
-     boot class (html.shell-on) LAST — the CSS keys the
-     off-canvas form to that class, so a failure above can
-     strand nothing and the in-flow list stands. The
-     trigger persists at every width (F2); "the trigger
-     again" is not a close route, being under the panel
-     (E7). Same-page-anchor selection closes without
-     reclaiming focus; focus follows the target (E7). The
-     module touches nothing in the stream, the store, or
-     the dock (section 7), and stands down alone under its
-     own try, so it can never take the plane with it. */
+  /* ---- The shell (sidebar build; sidebar-redesign-sheet.md
+     sections 3-5; F1, F2, F8 as ruled Nov 17, 2026) ----
+     The static block ships in every page's HTML; this
+     module enhances the one list into the sidebar. Below
+     1024 the panel is layer 2's slide-over, unchanged.
+     At and above 1024 it is docked layout: the head
+     button collapses it, the bar's toggle expands it,
+     and the choice is remembered in localStorage
+     (dc_shell_v1, F1), applied per section 5.2's
+     crossing rule and never written below 1024.
+     Detection is matchMedia on the CSS's own width
+     condition; storage is wrapped so a throw degrades
+     to expanded and never stands the shell down. The
+     boot class (html.shell-on) is set LAST, in the pass
+     that wires both buttons. The module touches nothing
+     in the stream, the store, or the dock, and stands
+     down alone under its own try. */
   function setupDrawer() {
     var nav = $("shell-nav");
     var trigger = $("shell-trigger");
@@ -833,11 +834,25 @@
     var scrim = $("shell-scrim");
     var root = document.documentElement;
     var open = false;
+    var collapsed = false;
+    var wasDesktop = null;
     var inerted = [];
+    var mq = null;
+    try {
+      mq = typeof window.matchMedia === "function"
+        ? window.matchMedia("(min-width: 1024px)") : null;
+    } catch (e) { mq = null; }
 
-    function focusables() {
-      return Array.prototype.slice.call(
-        nav.querySelectorAll("a[href], button"));
+    function desktop() { return !!(mq && mq.matches); }
+
+    function focusEl(el) {
+      if (!el) return;
+      try { el.focus({ preventScroll: true }); }
+      catch (e) { el.focus(); }
+    }
+
+    function setExp(on) {
+      trigger.setAttribute("aria-expanded", on ? "true" : "false");
     }
 
     function setInert(on) {
@@ -865,43 +880,102 @@
       }
     }
 
+    function readCollapsed() {
+      try {
+        return !!(window.localStorage &&
+          window.localStorage.getItem("dc_shell_v1") === "collapsed");
+      } catch (e) { return false; }
+    }
+
+    function writeCollapsed(on) {
+      try {
+        if (!window.localStorage) return;
+        if (on) window.localStorage.setItem("dc_shell_v1", "collapsed");
+        else window.localStorage.removeItem("dc_shell_v1");
+      } catch (e) { /* the visit state stands */ }
+    }
+
     function openDrawer() {
       if (open) return;
       open = true;
       root.classList.add("shell-open");
-      trigger.setAttribute("aria-expanded", "true");
+      setExp(true);
       if (scrim) scrim.hidden = false;
       setInert(true);
-      var first = nav.querySelector(".shell-list a");
-      if (first) {
-        try { first.focus({ preventScroll: true }); }
-        catch (e) { first.focus(); }
-      }
+      focusEl(nav.querySelector(".shell-list a"));
     }
 
     function closeDrawer(refocus) {
       if (!open) return;
       open = false;
       root.classList.remove("shell-open");
-      trigger.setAttribute("aria-expanded", "false");
+      setExp(false);
       if (scrim) scrim.hidden = true;
       setInert(false);
-      if (refocus) {
-        try { trigger.focus({ preventScroll: true }); }
-        catch (e) { trigger.focus(); }
+      if (refocus) focusEl(trigger);
+    }
+
+    /* The desktop toggle (section 3.2): the choice is
+       written, the reading position is preserved across
+       the bar's 44px, and focus moves to the reversing
+       control. */
+    function setCollapsed(on, user) {
+      if (!desktop() || collapsed === on) return;
+      var y = 0;
+      try { y = window.scrollY || window.pageYOffset || 0; }
+      catch (e) { y = 0; }
+      collapsed = on;
+      root.classList.toggle("shell-collapsed", on);
+      setExp(!on);
+      if (user) {
+        writeCollapsed(on);
+        try { window.scrollTo(0, Math.max(0, y + (on ? 44 : -44))); }
+        catch (e) { /* scroll preservation is best-effort */ }
+        focusEl(on ? trigger : closeBtn);
       }
     }
 
-    trigger.addEventListener("click", function () { openDrawer(); });
+    /* The state rule, resolved at boot and on every
+       crossing of the 1024 line (section 5.2). */
+    function reconcile() {
+      if (closeBtn) {
+        closeBtn.setAttribute("aria-label",
+          desktop() ? "Close sidebar" : "Close menu");
+      }
+      var desk = desktop();
+      if (wasDesktop === desk) return;
+      wasDesktop = desk;
+      if (desk) {
+        /* Crossing up open: teardown without refocus,
+           resolves expanded; closed: the stored choice. */
+        var wasOpen = open;
+        if (wasOpen) closeDrawer(false);
+        collapsed = wasOpen ? false : readCollapsed();
+        root.classList.toggle("shell-collapsed", collapsed);
+        setExp(!collapsed);
+      } else {
+        collapsed = false;
+        root.classList.remove("shell-collapsed");
+        if (!open && document.activeElement &&
+            nav.contains(document.activeElement)) {
+          focusEl(trigger);
+        }
+        setExp(open);
+      }
+    }
+
+    trigger.addEventListener("click", function () {
+      if (desktop()) { if (collapsed) setCollapsed(false, true); }
+      else openDrawer();
+    });
     if (closeBtn) {
       closeBtn.addEventListener("click", function () {
-        closeDrawer(true);
+        if (desktop()) setCollapsed(true, true);
+        else closeDrawer(true);
       });
     }
     if (scrim) {
-      scrim.addEventListener("click", function () {
-        closeDrawer(true);
-      });
+      scrim.addEventListener("click", function () { closeDrawer(true); });
     }
     document.addEventListener("keydown", function (ev) {
       if (!open) return;
@@ -911,7 +985,8 @@
         return;
       }
       if (ev.key !== "Tab") return;
-      var f = focusables();
+      var f = Array.prototype.slice.call(
+        nav.querySelectorAll("a[href], button"));
       if (!f.length) return;
       var active = document.activeElement;
       if (ev.shiftKey) {
@@ -931,31 +1006,35 @@
       if (!a || !nav.contains(a)) return;
       var href = a.getAttribute("href") || "";
       if (href.charAt(0) === "#") {
-        /* Same-page anchor (E7): the drawer closes, the
-           browser's own fragment jump scrolls, and focus
-           follows the target instead of returning to a
-           trigger the visitor has navigated away from. */
+        /* Same-page anchor (E7): the drawer closes and
+           focus follows the target. */
         var target = document.getElementById(href.slice(1));
         closeDrawer(false);
         if (target) {
           if (!target.hasAttribute("tabindex")) {
             target.setAttribute("tabindex", "-1");
           }
-          try { target.focus({ preventScroll: true }); }
-          catch (e) { target.focus(); }
+          focusEl(target);
         }
       } else {
-        /* Any other item: navigation proceeds (or the page
-           reloads on its own item); the drawer closes
-           behind it and focus is not reclaimed. */
+        /* Any other item: navigation proceeds and focus
+           is not reclaimed. */
         closeDrawer(false);
       }
     });
 
-    trigger.setAttribute("aria-expanded", "false");
+    setExp(false);
     trigger.setAttribute("aria-controls", "shell-nav");
+    reconcile();
+    if (mq) {
+      try {
+        if (mq.addEventListener) mq.addEventListener("change", reconcile);
+        else if (mq.addListener) mq.addListener(reconcile);
+      } catch (e) { /* the boot state stands */ }
+    }
     root.classList.add("shell-on");
   }
+
 
   try {
     if (!buildDock()) return;
