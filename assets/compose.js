@@ -1000,6 +1000,21 @@
   function renderFragmentHtml(spec, payload, page) {
     var byId = {};
     payload.blocks.forEach(function (b) { byId[b.id] = b; });
+    /* The catalog is the payload's full block set, mirroring
+       validateSpec: blocks.json carries its page anchors and
+       page blocks in their own arrays, and a spec validated
+       on its own page (whose slice folds them into blocks)
+       must still resolve when it re-renders against the
+       shared payload — a case-study turn replayed on home
+       threw here before the fix batch (Nov 16, 2026).
+       Selection policy stays in validateSpec; the renderer
+       only resolves what a validated spec names. */
+    (payload.page_anchors || []).forEach(function (b) {
+      byId[b.id] = b;
+    });
+    (payload.page_blocks || []).forEach(function (b) {
+      byId[b.id] = b;
+    });
     var here = page || location.pathname;
     return spec.blocks.map(function (item) {
       var block = byId[item.id];
@@ -2126,7 +2141,7 @@
     }
     answer.items.forEach(function (it) {
       html += '<p class="cp-answer-claim">' + esc(it.claim) +
-        ' <a href="' + esc(it.source) +
+        ' <a href="' + esc(contextHref(it)) +
         '">Read it in context</a></p>';
     });
     return html + "</div>";
@@ -3640,6 +3655,56 @@
     return sliceLoading;
   }
 
+  /* ---- Context anchors (fix batch, Nov 16, 2026) ----
+     Each record in /record.json may carry an additive
+     "anchor": the id of the section heading on its source
+     page where the claim lives. The Lambda serves items
+     with the bare source (its own registry copy is
+     unchanged), so the fragment is resolved here, from the
+     published registry: by record id when the item carries
+     one, else by the deterministic {claim, source} match
+     ask.js's ledger writes already use. The map loads once,
+     alongside the stream payloads, and never blocks a
+     render: an unresolved item links to the bare source,
+     exactly as before. */
+  var recordAnchors = null, recordAnchorsLoading = null;
+  function loadRecordAnchors() {
+    if (recordAnchors) return Promise.resolve(recordAnchors);
+    if (recordAnchorsLoading) return recordAnchorsLoading;
+    recordAnchorsLoading = fetch("/record.json")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !Array.isArray(d.records)) return null;
+        var byId = {}, byKey = {};
+        d.records.forEach(function (rec) {
+          if (!rec || typeof rec.anchor !== "string" ||
+              !rec.anchor) return;
+          if (typeof rec.id === "string") byId[rec.id] = rec.anchor;
+          if (typeof rec.claim === "string" &&
+              typeof rec.source === "string") {
+            byKey[rec.claim + "\n" + rec.source] = rec.anchor;
+          }
+        });
+        recordAnchors = { byId: byId, byKey: byKey };
+        return recordAnchors;
+      })
+      .catch(function () { recordAnchors = null; return null; });
+    return recordAnchorsLoading;
+  }
+
+  function contextHref(it) {
+    if (!it || typeof it.source !== "string") return "";
+    if (!recordAnchors) return it.source;
+    var anchor = null;
+    if (typeof it.id === "string" && recordAnchors.byId[it.id]) {
+      anchor = recordAnchors.byId[it.id];
+    } else if (typeof it.claim === "string") {
+      anchor = recordAnchors.byKey[it.claim + "\n" + it.source] ||
+        null;
+    }
+    return anchor ? it.source + "#" + anchor : it.source;
+  }
+
   /* ---- Segment runtime: the page's chain within the visit ---- */
 
   function seedStreamSeg(ctx, store) {
@@ -3960,6 +4025,18 @@
       }
     });
     ctx.streamEl = section;
+    /* Context links (fix batch, Nov 16, 2026): a "Read it in
+       context" click leaves the conversation for the
+       published page, at the claim's section. Delegated on
+       the section so turns appended later are covered; the
+       claim paragraph is the link's identifying home. */
+    section.addEventListener("click", function (ev) {
+      var t = ev.target;
+      var a = t && t.closest ? t.closest("a") : null;
+      if (!a) return;
+      if (!a.closest || !a.closest(".cp-answer-claim")) return;
+      streamContextClick(ctx, a, ev);
+    });
     ctx.adoptedRun = run;
     var hasContent = store.turns.slice(adoptedIdx + 1).some(
       function (p) { return p.kind === "response"; });
@@ -3987,7 +4064,7 @@
       });
       store.engagedFired = true;
     }
-    var jobs = [loadBlocks(), loadSlice()];
+    var jobs = [loadBlocks(), loadSlice(), loadRecordAnchors()];
     if (store.turns.some(function (p) {
       return p.mixture === "intent";
     })) {
@@ -4029,6 +4106,42 @@
         ctx.openingArticle.scrollIntoView({ block: "start" });
       }
     } catch (e) { /* scroll is best-effort */ }
+  }
+
+  /* A context navigation (fix batch, Nov 16, 2026): the
+     visitor is leaving the conversation to read the claim
+     where it lives, so the exit is written first and the
+     arrival — this page restored, or the target page fresh —
+     renders the published page, never the restored stream
+     (the E9.4 split: exit keeps the visit's turns; only the
+     presentation ends). Same page: exit in place and land
+     on the anchor (the headings carry the shell's
+     scroll-margin, so the sticky bar does not cover them).
+     Other page: the default navigation proceeds with the
+     exited store already saved. */
+  function streamContextClick(ctx, a, ev) {
+    var url;
+    try { url = new URL(a.getAttribute("href"), location.href); }
+    catch (e) { return; }
+    if (url.origin !== location.origin) return;
+    var store = ctx.store || streamReadStore();
+    if (!store || !store.engaged || store.exited) return;
+    if (url.pathname === location.pathname) {
+      ev.preventDefault();
+      streamExit(ctx);
+      var id = url.hash ? url.hash.slice(1) : "";
+      var target = id ? document.getElementById(id) : null;
+      if (target && target.scrollIntoView) {
+        try { history.pushState(null, "", url.hash); }
+        catch (e) { /* the URL update is cosmetic */ }
+        try { target.scrollIntoView({ block: "start" }); }
+        catch (e) { /* landing is best-effort */ }
+      }
+    } else {
+      store.exited = true;
+      streamSaveStore(store, ctx.page);
+      track("Conversation Exited", { page: ctx.page });
+    }
   }
 
   function streamExit(ctx) {
@@ -4509,7 +4622,13 @@
           streamAnnounce(rdplan);
           streamScrollTurn(rdel);
         } else {
-          SF.showDialogue("status", { text: REPEAT_LINE });
+          /* Fix batch (Nov 16, 2026): the repeat line joins
+             the failure and cap lines in the transient dock
+             status — the last pre-stream showDialogue write,
+             re-routed per Douglas's ruling on the
+             suggested-search sheet's deviation 3. Shown once,
+             cleared on the next interaction, never stored. */
+          SF.showTransientStatus(REPEAT_LINE);
         }
         return;
       }
