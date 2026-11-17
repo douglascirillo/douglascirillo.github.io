@@ -188,9 +188,11 @@
         " you opened here on earlier visits";
     }
     var collapsed = '<p class="cp-receipt-line">' + line +
-      (model.aiFraming
-        ? '<span aria-hidden="true"> \u00B7 </span>Framing written by AI'
-        : "") +
+      (model.aiTwin
+        ? '<span aria-hidden="true"> \u00B7 </span>Answered by his digital twin'
+        : (model.aiFraming
+          ? '<span aria-hidden="true"> \u00B7 </span>Framing written by AI'
+          : "")) +
       (model.historyLabel
         ? '<span aria-hidden="true"> \u00B7 </span>' + DOOR_BUTTON
         : "") +
@@ -530,8 +532,22 @@
         area.innerHTML = '<p class="composition-from-intent ' +
           'prompt-status">' + esc(payload.text || "") + "</p>";
       } else if (kind === "none") {
-        area.innerHTML = '<p class="composition-from-intent ' +
-          'prompt-status">' + esc(payload.text || "") + "</p>" +
+        /* Stage G1: a generated absence (payload.gen) renders in
+           place of the fixed text, with a twin label line; the
+           fixed text remains the fallback, the link follows both. */
+        var noneHtml;
+        if (payload.gen && payload.gen.paragraphs) {
+          noneHtml = payload.gen.paragraphs.map(function (p) {
+            return '<p class="composition-from-intent ' +
+              'prompt-status">' + esc(p.text) + "</p>";
+          }).join("") + '<p class="composition-from-intent ' +
+            'prompt-status">Answered by Douglas&rsquo;s digital ' +
+            "twin.</p>";
+        } else {
+          noneHtml = '<p class="composition-from-intent ' +
+            'prompt-status">' + esc(payload.text || "") + "</p>";
+        }
+        area.innerHTML = noneHtml +
           (payload.link
             ? '<p class="prompt-actions"><a href="' +
               esc(payload.link) + '">Browse the case studies</a></p>'
