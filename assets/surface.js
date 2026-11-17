@@ -184,7 +184,7 @@
   function receiptHtml(model, fold) {
     var line = "Built from the published record";
     if (model.historyLabel) {
-      line += ", weighted by " + esc(model.historyLabel) +
+      line += ", noting " + esc(model.historyLabel) +
         " you opened here on earlier visits";
     }
     var collapsed = '<p class="cp-receipt-line">' + line +
