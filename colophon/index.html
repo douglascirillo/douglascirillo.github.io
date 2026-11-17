@@ -629,15 +629,9 @@
         <p>The same input searches the site. It runs on Algolia, the on-site search and recommendations tool from my Sotheby&rsquo;s stack, over a public index built from the published pages: titles, fixed summaries, headings. Nothing else. Restricted records never enter it, and results show the fixed summary rather than a raw snippet, so a figure cannot be separated from its scope. The index rebuilds on every publish, into a temporary index that swaps in only on success, so the site and the index never disagree.</p>
         <p>Type a few words, get pages. Ask a full question, and the input routes to Ask My Record instead. Results lean toward the kind of page you are already on.</p>
         <p>The writing list on the home page and the related essays under each article are served from the same index. Publish a new essay and the index rebuilds itself, so the lists update on their own. Lists show the three most relevant items, with a link through to the full list.</p>
-        <p>The one-line introductions above the writing lists are AI-generated. Each is written ahead of time from the listed essays&rsquo; own summaries, checked against them before use, and labeled. If a check fails, the list appears without one.</p>
         <p>Search queries are measured by length and result count, never stored as text. Result clicks are sent to Algolia under the same anonymous ID that Amplitude uses, so I can read search behavior and site behavior together. No names, no emails, nothing that identifies a person.</p>
       </section>
 
-      <section aria-labelledby="keypoints-h">
-        <h2 id="keypoints-h">How do the key points work?</h2>
-        <p>Most articles and case studies on this site open with a Key points box. It is the second generated surface here, after the one-line introductions above the writing lists, and the first one built to be quoted: each set is written ahead of time from the page&rsquo;s own text and nothing else, so an answer engine citing a line is citing the page itself.</p>
-        <p>Two checks run before any set is used. A mechanical check rejects a set when a number, a name, or a capitalized phrase in it does not appear in the page. A second model then reads for the drift a mechanical check cannot see: a figure detached from its scope, a role upgraded beyond what the page says, a cause the page never claimed, the author&rsquo;s name repeated until a summary reads like a bio. A set that fails either check is discarded, and a page with no passing set carries no box. All twenty articles and case studies carry one today. The boxes are labeled AI-generated, and they are part of the indexable page on purpose.</p>
-      </section>
       <section aria-labelledby="writing-h">
         <h2 id="writing-h">How does the writing work?</h2>
         <p>Essays publish first on Substack, where the discussion lives. Each one also gets a redrafted edition here under Writing: a new framing against the record, question-shaped headings, and links into the case studies and practice pages. Never a verbatim copy. The site edition is the version built to be found. Substack keeps the conversation.</p>
@@ -652,22 +646,10 @@
 
       <section aria-labelledby="compose-h">
         <h2 id="compose-h">How do compositions work?</h2>
-        <p>Pick a problem on the home page and the site assembles the full picture for it on the spot: the intent frame, the proof, and the practice behind it, drawn from the same approved blocks as the record pages. Every assembly is checked by a validator before it can serve. A link can carry a composition, the address ends in a short code, but it cannot invent one: an unrecognized code serves the ordinary page. Nothing is written at visit time, and switching compositions off changes nothing underneath.</p>
         <p>When no record answers a question directly, the same words are read as the problem they describe: a classifier matches them to the closest of the seven intents or, when no single intent fits, assembles a new combination from the same block library. A new combination passes the same validator before it serves, carries no share code, and lives only for that visit. The view is labeled as assembled for the problem stated. A description outside the site&rsquo;s perimeter receives the same plain no-match as any other, so the boundary cannot be mapped by asking, and a description with no assembly to offer leaves the standard page in place.</p>
       </section>
 
-      <section aria-labelledby="landing-h">
-        <h2 id="landing-h">Starting where you land</h2>
-        <p>The home page is no longer the only place a view gets assembled. Land on a case study and the page builds a starting view around itself, out of what the page is not: one line that places the page in the arc of the record, the sibling case study that shares its thread, the principle the work runs on, the practice behind it, and the way to continue the conversation. The page&rsquo;s own proof is deliberately absent. The page is its own proof, and it stands complete underneath; &lsquo;View this page as published&rsquo; puts the published page back exactly as it was. Nothing is written for the occasion: the assembly is five published blocks, chosen in advance, in a fixed order.</p>
-        <p>Each page may draw only its own slice of the library: its anchor, its paired sibling&rsquo;s proof, one principle, the practice blocks, and the contact block. Essays stay out, and so does every other case study. The principle blocks live outside the home library entirely: a view assembled on the home page can never select one, so a principle never renders twice, and the site&rsquo;s own publishing rule stays here in the colophon, where it belongs. An assembly never links to the page it renders on: the validators reject a starting view that carries such a block, and the renderer strips the link if one ever slips through, leaving the text standing. The rules travel too: the same validators that check a free-form view check these, including the anchor rule, now generalized so a page&rsquo;s own anchor block counts as the anchor when it leads.</p>
-        <p>An assembled view can be shared. Its address carries the block list itself, and the page re-checks that list against its slice before rendering anything, so a tampered or stale address yields a valid rearrangement of published blocks or the plain page. A default view writes no code to the address; only an assembly that differs from the starting view earns one. Fragments that are not codes, the section links a page already carries, are left alone.</p>
-        <p>Off switch: one flag per page type (COMPOSE_PAGES) returns every page of that type to exactly its published form.</p>
-      </section>
 
-      <section aria-labelledby="prompt-h">
-        <h2 id="prompt-h">The page rebuilds itself</h2>
-        <p>The prompt field. A starting view is an invitation, not a destination: on the Lindblad Expeditions case study, a field under the assembly lets a visitor describe the view they need, and the page recomposes around it from the same published blocks, under the same validators. Every turn is validated whole before it renders. The history is a row of chips holding validated views, never the words that produced them, and the first chip is always the page as published. A prompt about another case study earns a pointer to that page. A prompt beyond any one page earns an offer, and the view widens only when the visitor confirms it. Ten prompts per session. The server keeps no session: the context travels with each request as validated specs, and the question log records outcomes, never a session.</p>
-      </section>
 
       <section aria-labelledby="mirror-h">
         <h2 id="mirror-h">Starting where you land, with what you have already read</h2>
@@ -783,7 +765,6 @@
           <li><strong>The first generated text.</strong> One-line introductions above the related writing lists, AI-generated ahead of time from the essays&rsquo; own summaries, checked before use, and labeled.</li>
           <li><strong>Compositions.</strong> The home page intent paths now assemble the full picture for each problem from the approved block library, checked in advance, shareable by link.</li>
           <li><strong>The roadmap and the architecture.</strong> This page gains a diagram of how the layers fit together, and a public roadmap to sit alongside the change log.</li>
-          <li><strong>Key points.</strong> Articles and case studies open with an AI-generated key points box, written ahead of time from the page&rsquo;s own text and checked against it twice. All twenty carry one; the three personal essays joined once their voice rule was settled.</li>
           <li><strong>The change log, reorganized.</strong> Entries now group by day, one bullet per release, so a heavy day reads as one list.</li>
           <li><strong>Audit fixes.</strong> A branded 404 page, a refreshed llms.txt, live regions and working pressed states for the interactive surfaces, a contrast adjustment, deeper links to the record and the scorecard, and the A Place for Mom metadata brought back to the settled diagnosis.</li>
           <li><strong>The A Place for Mom headline.</strong> The case study&rsquo;s H1 now carries the settled diagnosis, equal parts content and architecture, instead of the platform shorthand.</li>
@@ -853,9 +834,9 @@
   </footer>
 
 </div>
-<script src="/assets/surface.js?v=20261116-7"></script>
-<script src="/assets/ledger.js?v=20261116-5"></script>
-<script src="/assets/ask.js?v=20261116-10"></script>
-<script src="/assets/compose.js?v=20261116-13" defer></script>
+<script src="/assets/surface.js?v=20261116-8"></script>
+<script src="/assets/ledger.js?v=20261116-6"></script>
+<script src="/assets/ask.js?v=20261116-11"></script>
+<script src="/assets/compose.js?v=20261116-14" defer></script>
 </body>
 </html>
