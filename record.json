@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-11-15",
+  "generated": "2026-11-17",
   "owner": "Douglas Cirillo",
   "purpose": "Evidence registry for douglascirillo.com. The only grounding source for dynamic features. Every factual statement in any assembled or generated output must resolve to a record with status approved (or restricted, within its constraint). Numbers are inserted from this file by reference and are never model-written.",
   "records": [
@@ -425,15 +425,16 @@
       "verified": "2026-11-14"
     },
     {
-      "id": "excluded-tripadvisor",
-      "claim": "Withheld from the public record.",
-      "class": "excluded",
-      "source": "https://douglascirillo.com/",
-      "evidence": "Not published.",
-      "context": "Career history",
-      "attribution": "n/a",
-      "status": "excluded",
-      "verified": "2026-11-14"
+      "id": "tripadvisor-engagement",
+      "claim": "Consulting work included a Segment-sponsored engagement with TripAdvisor on customer data platform adoption.",
+      "class": "fact",
+      "source": "https://douglascirillo.com/case-studies/gangverk/",
+      "evidence": "Verbatim on the live Gangverk case study, repeated on the composable-martech practice page; the home page carries a shortened form.",
+      "context": "Gangverk, Head of Marketing and Product Strategy, 2022-2025",
+      "attribution": "Consulting work",
+      "status": "restricted",
+      "verified": "2026-11-17",
+      "constraint": "This published sentence is the entire record. Nothing beyond it about the engagement may be stated, summarized, or implied."
     },
     {
       "id": "stack-cdp-definition",
