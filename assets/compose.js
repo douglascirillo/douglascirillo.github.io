@@ -3477,7 +3477,7 @@
       inFlight: false, pendingRelease: null, triggerNext: null,
       store: null, streamEl: null, openingArticle: null,
       openingBody: null, adoptedRun: null, collapsed: false,
-      startersEl: null, pendingEls: null, failureEls: null
+      pendingEls: null, failureEls: null
     };
   }
 
@@ -4016,7 +4016,6 @@
     ctx.openingBody = null;
     ctx.adoptedRun = null;
     ctx.collapsed = false;
-    ctx.startersEl = null;
     ctx.releaseEl = null;
   }
 
@@ -4042,9 +4041,9 @@
     track("Conversation Exited", { page: ctx.page });
     streamSF().registerControls(streamExitedControlsModel(ctx));
     streamSF().setScope(null);
-    if (ctx.arrivalReceiptModel && !ctx.arrivalDismissed) {
-      streamSF().setReceipt(ctx.arrivalReceiptModel);
-    }
+    /* Suggested-search fix (sheet section 5.1): the arrival
+       receipt is no longer registered with the dock on exit
+       either — the receipt lives on the opening turn alone. */
   }
 
   function streamClear(ctx) {
@@ -4073,9 +4072,6 @@
     streamSF().registerControls(null);
     streamSF().setScope(null);
     streamSF().registerStarters(null);
-    if (ctx.arrivalReceiptModel && !ctx.arrivalDismissed) {
-      streamSF().setReceipt(ctx.arrivalReceiptModel);
-    }
     track("Conversation Cleared", { page: ctx.page });
     maybeStreamDockStarters(ctx);
   }
@@ -4154,10 +4150,16 @@
     });
   }
 
-  /* A page reached mid-visit carries its starters at the foot
-     of its opening turn until the first submit from that page
-     (E9.3). Rendered only for an opening appended at engaged
-     boot, never for the arrival page's own engagement. */
+  /* A page reached mid-visit registers its starters with the
+     surface, as the arrival page's dock set does, until the
+     first submit from that page (E9.3); the registration is
+     the page's current set, which the overlay offers while
+     the visit stands on this page. Since the suggested-search
+     fix (sheet section 5.4) the registration is model-only:
+     nothing renders in the opening turn, and retirement is
+     the registration's release, on the same triggers as
+     before (the page's first submit, restore, clear, exit,
+     dismiss). */
   function maybeStreamStarters(ctx) {
     if (!ctx.openingArticle || !ctx.store) return;
     var hasTurns = ctx.store.turns.some(function (p) {
@@ -4168,28 +4170,15 @@
       if (!m || !ctx.openingArticle) return;
       var set = m[ctx.page];
       if (!set || !set.length) return;
-      var div = document.createElement("div");
-      div.className = "stream-starters";
-      set.forEach(function (s) {
-        var b = document.createElement("button");
-        b.type = "button";
-        b.className = "cp-starter stream-starter";
-        b.textContent = s.text;
-        b.addEventListener("click", function () {
-          streamStarterTap(ctx, s);
-        });
-        div.appendChild(b);
+      streamSF().registerStarters({
+        starters: set,
+        onTap: function (s) { streamStarterTap(ctx, s); }
       });
-      ctx.openingArticle.appendChild(div);
-      ctx.startersEl = div;
     });
   }
 
   function retireStreamStarters(ctx) {
-    if (ctx.startersEl && ctx.startersEl.parentNode) {
-      ctx.startersEl.parentNode.removeChild(ctx.startersEl);
-    }
-    ctx.startersEl = null;
+    streamSF().registerStarters(null);
   }
 
   /* ---- Turn rendering (sheet sections 3, 9, 10) ---- */
@@ -4466,8 +4455,9 @@
      as dialogue turns on the engaged path, stored like a
      refusal — they are part of the conversation's history.
      When no stream stands (a cap met before the stream
-     builds), the dock's turns area carries the line, as the
-     fallback's does (F4). */
+     builds), the line renders in the transient dock status
+     (suggested-search fix, sheet section 5.2): shown once,
+     cleared on the next interaction, never stored. */
   function streamCapDialogue(ctx, text) {
     if (ctx.streamEl && ctx.store) {
       var plan = streamAppendPlan(ctx, ctx.store, {
@@ -4479,7 +4469,7 @@
       streamAnnounce(plan);
       streamScrollTurn(el);
     } else {
-      streamSF().showDialogue("status", { text: text });
+      streamSF().showTransientStatus(text);
     }
   }
 
@@ -4586,10 +4576,19 @@
         } catch (e) { /* scroll is best-effort */ }
         return true;
       });
+    function failTransient() {
+      /* Suggested-search fix (sheet sections 5.2 and 6): a
+         failure before the stream stands renders the line
+         in the transient dock status, and the prompt text
+         returns to the composer, as Flag B rules. */
+      SF.showTransientStatus(UNIFIED_FAILURE_LINE);
+      var ein = document.getElementById("explore-q");
+      if (ein) ein.value = text;
+    }
     Promise.all([domPromise, dataPromise]).then(function (res) {
       ctx.inFlight = false;
       if (!res[0]) {
-        SF.showDialogue("status", { text: UNIFIED_FAILURE_LINE });
+        failTransient();
         return;
       }
       handleStreamResponse(ctx, res[1], {
@@ -4600,7 +4599,7 @@
       });
     }).catch(function () {
       ctx.inFlight = false;
-      SF.showDialogue("status", { text: UNIFIED_FAILURE_LINE });
+      failTransient();
     });
   }
 
@@ -4617,7 +4616,11 @@
        failure the failure line anchors in-stream under the
        prompt, nothing is stored (not even the prompt turn),
        and the prompt text returns to the composer. The two
-       transient nodes clear on the next submit. */
+       transient nodes clear on the next submit. With no
+       prompt element to anchor under (a first submit whose
+       stream DOM never built), the line renders in the
+       transient dock status instead (suggested-search fix,
+       sheet section 5.2). */
     function failFlagB() {
       dropSkeleton();
       if (els.promptPlan && ctx.store) {
@@ -4636,7 +4639,7 @@
           els.promptEl.nextSibling);
         ctx.failureEls = [els.promptEl, f];
       } else {
-        SF.showDialogue("status", { text: UNIFIED_FAILURE_LINE });
+        SF.showTransientStatus(UNIFIED_FAILURE_LINE);
       }
       var ein = document.getElementById("explore-q");
       if (ein) ein.value = rctx.prompt;
@@ -4979,12 +4982,15 @@
       onRestore: function () { streamDismissArrival(ctx); }
     };
     ctx.arrivalDismissed = false;
+    /* Suggested-search fix (sheet section 5.1): pre-engagement
+       the arrival receipt is not registered with the dock in
+       any state — it attaches to the opening turn at
+       engagement (attachStreamArrivalReceipt), and nowhere
+       else. The model is still built here for that attach. */
     if (ctx.streamEl && ctx.openingArticle) {
       var rc = ctx.openingArticle.querySelector(
         ".stream-arrival-receipt");
       if (rc) streamSF().setReceiptIn(rc, ctx.arrivalReceiptModel);
-    } else {
-      streamSF().setReceipt(ctx.arrivalReceiptModel);
     }
     track("Page Composition Rendered", {
       page: page, page_type: entry.type, source: source,
@@ -5014,15 +5020,16 @@
       var rc = ctx.openingArticle.querySelector(
         ".stream-arrival-receipt");
       if (rc) streamSF().setReceiptIn(rc, null);
-    } else {
-      streamSF().setReceipt(null);
     }
   }
 
   /* Home's shared-composition arrival in default mode: the
      composition renders plainly in the slot (it is part of the
-     canvas the opening turn will adopt), accounted by its
-     receipt in the dock. */
+     canvas the opening turn will adopt). Per the
+     suggested-search fix (sheet section 5.1), its receipt
+     model is built but not registered with the dock; the
+     model's onRestore (streamClearHomeShare) still clears
+     the dock receipt, as a clear is not a registration. */
   function streamHomeShare(ctx, sig) {
     load().then(function () {
       var entry = bySig && bySig[sig];
@@ -5042,7 +5049,6 @@
         expandedHtml: "",
         onRestore: function () { streamClearHomeShare(ctx); }
       };
-      streamSF().setReceipt(ctx.arrivalReceiptModel);
       track("Composition Rendered", { intent: entry.intent });
       ledgerRecordIntent(entry.intent);
       ledgerRecordComposition("/");
