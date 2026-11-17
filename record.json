@@ -42,7 +42,7 @@
     },
     {
       "id": "lindblad-bookings",
-      "claim": "Within eight months of the Lindblad Expeditions replatform, bookings rose 30%.",
+      "claim": "Within eight months of the replatform at Lindblad Expeditions - National Geographic, bookings rose 30%.",
       "class": "fact",
       "source": "https://douglascirillo.com/case-studies/lindblad-expeditions/",
       "anchor": "results-h",
@@ -54,7 +54,7 @@
     },
     {
       "id": "lindblad-funnel",
-      "claim": "The Lindblad booking funnel improvement came from the composable replatform Douglas Cirillo led: data foundation first, CDP and CRM data flows integrated, the UX overhauled, and a modern lead capture system introduced. Booking funnel completion rose 82% within eight months of the replatform, measured from booking start to completed booking, before and after the replatform.",
+      "claim": "The booking funnel improvement at Lindblad Expeditions - National Geographic came from the composable replatform Douglas Cirillo led: data foundation first, CDP and CRM data flows integrated, the UX overhauled, and a modern lead capture system introduced. Booking funnel completion rose 82% within eight months of the replatform, measured from booking start to completed booking, before and after the replatform.",
       "class": "fact",
       "source": "https://douglascirillo.com/case-studies/lindblad-expeditions/",
       "anchor": "results-h",
@@ -66,7 +66,7 @@
     },
     {
       "id": "lindblad-leads",
-      "claim": "Qualified leads at Lindblad Expeditions rose 40% within eight months of the replatform.",
+      "claim": "Qualified leads at Lindblad Expeditions - National Geographic rose 40% within eight months of the replatform.",
       "class": "fact",
       "source": "https://douglascirillo.com/case-studies/lindblad-expeditions/",
       "anchor": "results-h",
@@ -78,7 +78,7 @@
     },
     {
       "id": "lindblad-scope",
-      "claim": "At Lindblad Expeditions, Douglas Cirillo led a team of 10 and a $5M portfolio across product, analytics, design, and partners.",
+      "claim": "At Lindblad Expeditions - National Geographic, Douglas Cirillo led a team of 10 and a $5M portfolio across product, analytics, design, and partners.",
       "class": "fact",
       "source": "https://douglascirillo.com/case-studies/lindblad-expeditions/",
       "evidence": "He led a team of 10 and a $5M portfolio. Corroborated: the Apr 1, 2025 Webby post describes the composable stack (front-end hosting, CDP, CMS, DAM, analytics) migrated from legacy systems (T1-K07, twin cycle 1, 2026-11-17).",
@@ -89,7 +89,7 @@
     },
     {
       "id": "lindblad-webby",
-      "claim": "The Lindblad Expeditions digital work was a Webby Honoree in the 29th Annual Webby Awards, in the Websites and Mobile Sites - Travel & Lifestyle category, ranking in the top 25% of 13,000+ entries from 70+ countries.",
+      "claim": "The Lindblad Expeditions - National Geographic digital work was a Webby Honoree in the 29th Annual Webby Awards, in the Websites and Mobile Sites - Travel & Lifestyle category, ranking in the top 25% of 13,000+ entries from 70+ countries.",
       "class": "fact",
       "source": "https://douglascirillo.com/case-studies/lindblad-expeditions/",
       "anchor": "gangverk-h",
@@ -158,6 +158,39 @@
       "attribution": "Directed the implementation",
       "status": "approved",
       "verified": "2026-11-14"
+    },
+    {
+      "id": "sothebys-twilio-email-spend",
+      "claim": "Sotheby's email registrants accounted for over $1 billion in annual spending.",
+      "class": "fact",
+      "source": "https://customers.twilio.com/en-us/sothebys",
+      "evidence": "Twilio Segment customer story on Sotheby's: 'Registrants via email were found to contribute over $1 billion in annual spending' (story metrics panel: '$1B+ E-mail registrants spend one billion annually'). Held at T1 as candidate T1-K15 and admitted by Douglas's ruling, Nov 17, 2026.",
+      "context": "Sotheby's, 2017-2020",
+      "attribution": "Directed the implementation",
+      "status": "approved",
+      "verified": "2026-11-17"
+    },
+    {
+      "id": "sothebys-twilio-social-growth",
+      "claim": "From 2017, Sotheby's social media following grew 69%, reaching over 2.8 million followers.",
+      "class": "fact",
+      "source": "https://customers.twilio.com/en-us/sothebys",
+      "evidence": "Twilio Segment customer story on Sotheby's: '2.8M + Followers across social platforms. Social audience is up 69% from 2017.' Held at T1 as candidate T1-K15 and admitted by Douglas's ruling, Nov 17, 2026.",
+      "context": "Sotheby's, 2017-2020",
+      "attribution": "Directed",
+      "status": "approved",
+      "verified": "2026-11-17"
+    },
+    {
+      "id": "sothebys-twilio-onsite-registrations",
+      "claim": "At Sotheby's, the share of onsite registrations from people engaging with editorial content rose from 33% in 2017 to 48%.",
+      "class": "fact",
+      "source": "https://customers.twilio.com/en-us/sothebys",
+      "evidence": "Twilio Segment customer story on Sotheby's: '48% Onsite registrations people who engage with editorial content. Up from 33% in 2017' (the held +15% figure is the 15-point rise, 33% to 48%). Held at T1 as candidate T1-K15 and admitted by Douglas's ruling, Nov 17, 2026.",
+      "context": "Sotheby's, 2017-2020",
+      "attribution": "Directed",
+      "status": "approved",
+      "verified": "2026-11-17"
     },
     {
       "id": "sothebys-cdp-contribution",
@@ -355,7 +388,7 @@
     },
     {
       "id": "stack-cdp-experience",
-      "claim": "Douglas Cirillo has implemented customer data platforms, packaged and warehouse-native, at Sotheby's, Lindblad, A+E and A Place for Mom.",
+      "claim": "Douglas Cirillo has implemented customer data platforms, packaged and warehouse-native, at Sotheby's, Lindblad Expeditions - National Geographic, A+E and A Place for Mom.",
       "class": "fact",
       "source": "https://douglascirillo.com/practice/composable-martech-and-customer-data/",
       "anchor": "run-h",
@@ -538,7 +571,7 @@
     },
     {
       "id": "experimentation-optimizely",
-      "claim": "Optimizely ran experimentation at Sotheby's, Lindblad, and A Place for Mom.",
+      "claim": "Optimizely ran experimentation at Sotheby's, Lindblad Expeditions - National Geographic, and A Place for Mom.",
       "class": "fact",
       "source": "https://douglascirillo.com/case-studies/sothebys/",
       "evidence": "Optimizely named as the experimentation platform across the Sotheby's, Lindblad, and APFM case studies.",
@@ -549,7 +582,7 @@
     },
     {
       "id": "stack-durability",
-      "claim": "The models and stacks Douglas Cirillo built at Sotheby's, A Place for Mom, and Lindblad still stand and have evolved since he left.",
+      "claim": "The models and stacks Douglas Cirillo built at Sotheby's, A Place for Mom, and Lindblad Expeditions - National Geographic still stand and have evolved since he left.",
       "class": "fact",
       "source": "https://douglascirillo.com/case-studies/sothebys/",
       "evidence": "Durability claim stated across the case studies: the models and stacks still stand and have evolved.",
@@ -560,7 +593,7 @@
     },
     {
       "id": "recruited-back-three-times",
-      "claim": "Former leaders have recruited Douglas Cirillo back three times: he was recruited to Sotheby's by a former MSG technology leader, and to Lindblad by former MSG and Sotheby's leaders.",
+      "claim": "Former leaders have recruited Douglas Cirillo back three times: he was recruited to Sotheby's by a former MSG technology leader, and to Lindblad Expeditions - National Geographic by former MSG and Sotheby's leaders.",
       "class": "fact",
       "source": "https://douglascirillo.com/",
       "evidence": "'Former leaders have recruited me back three times' (home, speaking bio, DX practice page); chain detailed on the pages.",
@@ -582,7 +615,7 @@
     },
     {
       "id": "lindblad-transformation-scope",
-      "claim": "The Lindblad transformation Douglas Cirillo led ran multi-phase across CMS, CDP, DAM, and analytics, with Conductor on organic search intelligence, Optimizely on experimentation, and real-time performance tracking.",
+      "claim": "The transformation Douglas Cirillo led at Lindblad Expeditions - National Geographic ran multi-phase across CMS, CDP, DAM, and analytics, with Conductor on organic search intelligence, Optimizely on experimentation, and real-time performance tracking.",
       "class": "fact",
       "source": "https://douglascirillo.com/case-studies/lindblad-expeditions/",
       "evidence": "Multi-phase scope across CMS, CDP, DAM, analytics; Conductor on organic search intelligence; Optimizely on experimentation; real-time performance tracking.",
@@ -593,7 +626,7 @@
     },
     {
       "id": "lindblad-seaware-migration",
-      "claim": "The move of Lindblad's reservation core off the 30-year AS400 estate to Versonix SeaWare began while Douglas Cirillo was at Lindblad on the client side and was tested and delivered to production while he was at Gangverk.",
+      "claim": "The move of the reservation core at Lindblad Expeditions - National Geographic off the 30-year AS400 estate to Versonix SeaWare began while Douglas Cirillo was at Lindblad on the client side and was tested and delivered to production while he was at Gangverk.",
       "class": "fact",
       "source": "https://douglascirillo.com/case-studies/lindblad-expeditions/",
       "evidence": "Reservation core moved off a 30-year legacy AS400 estate to Versonix SeaWare. Era framing as redrafted and ruled by Douglas Cirillo, Nov 17, 2026: began at Lindblad client-side; tested and delivered to production at Gangverk.",
@@ -604,7 +637,7 @@
     },
     {
       "id": "lindblad-seaware-api",
-      "claim": "At Lindblad, Douglas Cirillo's team built a replica of the SeaWare database with an API layer so Segment and Salesforce data could join reservation data, validated against historical AS400 records before cutover.",
+      "claim": "At Lindblad Expeditions - National Geographic, Douglas Cirillo's team built a replica of the SeaWare database with an API layer so Segment and Salesforce data could join reservation data, validated against historical AS400 records before cutover.",
       "class": "fact",
       "source": "https://douglascirillo.com/case-studies/lindblad-expeditions/",
       "evidence": "Replica of the SeaWare database with an API layer; Segment and Salesforce data joined to reservation data; validated against historical AS400 records before cutover.",
@@ -615,7 +648,7 @@
     },
     {
       "id": "lindblad-algolia-seaware",
-      "claim": "Algolia search runs over the SeaWare API at Lindblad.",
+      "claim": "Algolia search runs over the SeaWare API at Lindblad Expeditions - National Geographic.",
       "class": "fact",
       "source": "https://douglascirillo.com/case-studies/lindblad-expeditions/",
       "evidence": "Algolia search runs over the SeaWare API.",
@@ -626,7 +659,7 @@
     },
     {
       "id": "lindblad-dates-and-rates",
-      "claim": "A 'dates and rates' path connects expedition content to live reservations at Lindblad.",
+      "claim": "A 'dates and rates' path connects expedition content to live reservations at Lindblad Expeditions - National Geographic.",
       "class": "fact",
       "source": "https://douglascirillo.com/case-studies/lindblad-expeditions/",
       "evidence": "'Dates and rates' path connects expedition content to live reservations.",
@@ -637,7 +670,7 @@
     },
     {
       "id": "lindblad-online-booking",
-      "claim": "After the Lindblad rebuild, customers and travel advisors could complete bookings online without the sales team as a required step.",
+      "claim": "After the rebuild at Lindblad Expeditions - National Geographic, customers and travel advisors could complete bookings online without the sales team as a required step.",
       "class": "fact",
       "source": "https://douglascirillo.com/case-studies/lindblad-expeditions/",
       "evidence": "Customers and travel advisors could complete bookings online without the sales team as a required step.",
@@ -760,7 +793,7 @@
     },
     {
       "id": "gangverk-move-2022",
-      "claim": "In 2021, Douglas Cirillo was Director of Digital Product and Growth Stack at Lindblad; he joined Gangverk in 2022 and kept supporting Lindblad from there.",
+      "claim": "In 2021, Douglas Cirillo was Director of Digital Product and Growth Stack at Lindblad Expeditions - National Geographic; he joined Gangverk in 2022 and kept supporting Lindblad from there.",
       "class": "fact",
       "source": "https://www.linkedin.com/feed/update/urn:li:activity:7312940193206984705/",
       "evidence": "'In 2021, as Director of Digital Product and Growth Stack at Lindblad, I owned the web product vision and direction... After joining Gangverk in 2022, a partner from the start, I kept supporting as a consultant.' Corroborated: the Apr 1, 2025 Webby post calls Gangverk 'a partner from the start' of the Lindblad work (T1-K09, twin cycle 1, 2026-11-17).",
