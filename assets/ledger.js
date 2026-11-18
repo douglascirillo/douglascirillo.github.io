@@ -124,8 +124,9 @@
     "do not use my history", "without my history"];
 
   var HONEST_CLEAR_SENTENCE = "Clearing this list does not change the " +
-    "anonymous device ID this browser uses for measurement, and it does " +
-    "not delete the measurement events already recorded for statistics.";
+    "device ID, assigned at random, that this browser uses for " +
+    "measurement, and it does not delete the measurement events " +
+    "already recorded for statistics.";
 
   // One prompt, one choice (amplitude-consent-gate build): the
   // choice governs this ledger and Amplitude measurement alike,
