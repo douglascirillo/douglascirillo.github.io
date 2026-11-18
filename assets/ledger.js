@@ -127,9 +127,16 @@
     "anonymous device ID this browser uses for measurement, and it does " +
     "not delete the measurement events already recorded for statistics.";
 
+  // One prompt, one choice (amplitude-consent-gate build): the
+  // choice governs this ledger and Amplitude measurement alike,
+  // so the copy names both. DRAFT wording, staged Nov 18, 2026,
+  // pending Douglas's exact-text approval.
   var GATE_COPY = "This site can remember what you have opened here, in " +
     "your own browser, and let it shape the conversation when you come " +
-    "back. That memory never leaves this browser. Keep it?";
+    "back. That memory never leaves this browser. It can also measure " +
+    "the visit with Amplitude: the pages you view, and the session " +
+    "recorded as a replay, under a device ID assigned at random, with " +
+    "no name or email attached. Both stay off until you answer. Keep it?";
 
   // Consent detection (build sheet section 5): explicit timezone
   // allowlist, no prefix matching.
@@ -372,6 +379,16 @@
 
   function canUse() {
     return isHuman && !isPaused() && !consentBlocked();
+  }
+
+  // True when the head snippet's consent gate is holding
+  // measurement for an answer (see the re-ask in init).
+  function ampGatePending() {
+    try {
+      return !!(window.DCAmplitude &&
+                typeof window.DCAmplitude.gate === "function" &&
+                window.DCAmplitude.gate() === "pending");
+    } catch (e) { return false; }
   }
 
   /* ---------- the manifest (validation) ---------- */
@@ -915,12 +932,56 @@
     consentRecord = { state: state, t: nowSec() };
     gatePending = false;
     try { writeConsentRecord(state); } catch (e) {}
+    // The same choice governs Amplitude (amplitude-consent-gate
+    // build): the head snippet exposes DCAmplitude, and this answer
+    // is what releases or holds it. Absent DCAmplitude (a cached
+    // pre-gate snippet), behavior is exactly the pre-gate one.
+    var amp = null;
+    try {
+      amp = (window.DCAmplitude &&
+             typeof window.DCAmplitude.grant === "function") ?
+        window.DCAmplitude : null;
+    } catch (e) { amp = null; }
     if (state === "granted") {
-      track("Ledger Consent Granted", { page: eventPage() });
+      if (amp) {
+        var wasHeld = false;
+        try {
+          wasHeld = amp.gate() !== "granted" && !amp.isReady();
+        } catch (e) { wasHeld = false; }
+        try { amp.grant(); } catch (e) {}
+        if (wasHeld) {
+          // Measurement starts with this answer, so the grant
+          // event and the ledger's first page view wait for the
+          // SDK to be ready: both then describe a measured visit,
+          // and the page view finds the device ID it keys on.
+          try {
+            amp.whenReady(function () {
+              track("Ledger Consent Granted", { page: eventPage() });
+              if (canUse()) recordPageViewWithRetry();
+            });
+          } catch (e) {}
+        } else {
+          track("Ledger Consent Granted", { page: eventPage() });
+          if (canUse()) recordPageView();
+        }
+      } else {
+        track("Ledger Consent Granted", { page: eventPage() });
+        if (canUse()) recordPageView();
+      }
       removeGate();
-      if (canUse()) recordPageView();
     } else {
-      track("Ledger Consent Declined", { page: eventPage() });
+      // A decline fires nothing. Reporting it to the measurement
+      // system would spend the very consent just withheld, so the
+      // pre-gate Ledger Consent Declined event is retired: the
+      // stored record is the only trace of a no. A change of mind
+      // after a grant (the panel's revoke) instead opts the live
+      // SDK out, which stops event sending and shuts replay down.
+      if (amp) {
+        try {
+          if (amp.gate() === "granted" || amp.isReady()) amp.revoke();
+          else amp.decline();
+        } catch (e) {}
+      }
       removeGate();
     }
   }
@@ -938,7 +999,7 @@
       gateEl = document.createElement("div");
       gateEl.className = "dc-ledger-gate";
       gateEl.setAttribute("role", "region");
-      gateEl.setAttribute("aria-label", "Remembering what you open here");
+      gateEl.setAttribute("aria-label", "What this site remembers and measures");
       var text = document.createElement("p");
       text.textContent = GATE_COPY;
       gateEl.appendChild(text);
@@ -1102,10 +1163,25 @@
     if (!any) {
       html += "<p>Nothing is remembered here yet.</p>";
     }
-    if (consentRecord && consentRecord.state === "declined" && detected) {
-      html += "<p>You said no to keeping this ledger. You can change " +
+    // A stored decline holds both the ledger and measurement off
+    // wherever the visitor now is (the snippet reads the record
+    // before detection), so the way back is offered whenever the
+    // record exists, not only under today's detection.
+    if (consentRecord && consentRecord.state === "declined") {
+      html += "<p>You said no to keeping this ledger and to " +
+        "measurement. Both stay off in this browser. You can change " +
         'that here. <button type="button" class="dc-ledger-btn" ' +
         'data-dc-grant="1">Yes, keep it</button></p>';
+    }
+    // The revoke is offered wherever a granted record exists:
+    // the record, not today's detection, is what measurement
+    // runs under, so the way to withdraw it cannot depend on
+    // where the visitor happens to be now.
+    if (consentRecord && consentRecord.state === "granted") {
+      html += "<p>You said yes to keeping this ledger. Measurement, " +
+        "session replay included, runs under the same choice. You " +
+        'can stop both here. <button type="button" ' +
+        'class="dc-ledger-btn" data-dc-revoke="1">Stop both</button></p>';
     }
     html += '<div class="dc-ledger-actions">' +
       '<button type="button" class="dc-ledger-btn" data-dc-clear="all">' +
@@ -1149,6 +1225,14 @@
       function (btn) {
         btn.addEventListener("click", function () {
           applyConsent("granted");
+          renderPanelContents();
+        });
+      });
+    Array.prototype.forEach.call(
+      body.querySelectorAll("[data-dc-revoke]"),
+      function (btn) {
+        btn.addEventListener("click", function () {
+          applyConsent("declined");
           renderPanelContents();
         });
       });
@@ -1246,8 +1330,18 @@
       if (detected && !consentRecord) {
         gatePending = true;
         renderGate();
-      } else if (canUse()) {
-        recordPageViewWithRetry();
+      } else {
+        // A grant recorded under the pre-gate prompt covered this
+        // ledger only. When the snippet's gate still reads
+        // pending under a granted record, the measurement
+        // question has not been answered yet, so ask it. The
+        // ledger itself keeps working under the grant already
+        // given; measurement waits for the fresh answer.
+        if (consentRecord && consentRecord.state === "granted" &&
+            ampGatePending()) {
+          renderGate();
+        }
+        if (canUse()) recordPageViewWithRetry();
       }
     }
   } catch (e) { /* the stub discipline: the page never breaks */ }
