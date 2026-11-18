@@ -82,6 +82,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://douglascirillo.com/data/</loc>
+    <lastmod>2026-11-18</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://douglascirillo.com/scorecard/</loc>
     <lastmod>2026-11-15</lastmod>
     <changefreq>monthly</changefreq>
