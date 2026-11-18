@@ -1952,6 +1952,7 @@
   }
 
   function streamExit(ctx) {
+    revealCancel(ctx);
     var store = ctx.store;
     if (store) {
       store.exited = true;
@@ -1968,6 +1969,7 @@
   }
 
   function streamClear(ctx) {
+    revealCancel(ctx);
     var store = ctx.store || streamReadStore();
     if (ctx.streamEl) restoreStreamDom(ctx);
     var remainder = {
@@ -2428,6 +2430,676 @@
     } catch (e) { /* scroll is best-effort */ }
   }
 
+  /* ============================================================
+     Progressive reveal (Nov 17, 2026; the progressive-reveal
+     build sheet as approved by Douglas, with Claude's
+     P-1117-15 edits E1 to E7 folded in as rules).
+
+     A turn that lands in the stream is built whole by the
+     existing builders, exactly as before. When its computed
+     duration clears the threshold it is then PRESENTED
+     progressively: the composing indicator is replaced by the
+     turn in the same task, the first step is inserted in that
+     task, and the remaining steps follow an elapsed-time
+     schedule. The store always holds the complete turn from
+     plan return; reveal state is ephemeral, lives only on the
+     ctx, and is never persisted. Any user input snaps the
+     turn complete; the receipt, the opening collapse, and the
+     announcement land at completion or snap, never during.
+     The constants are Claude's E3 numbers, fixed: 15 ms per
+     prose word, 150 ms per registered element, a 500 ms
+     whole-render threshold, a 2000 ms duration cap, and a
+     hard deadline at duration + 500 ms. Changing any of them
+     is a sheet change for Douglas, not a build-time tweak.
+     ============================================================ */
+
+  var REVEAL_MS_PER_WORD = 15;
+  var REVEAL_MS_PER_ELEMENT = 150;
+  var REVEAL_WHOLE_MS = 500;
+  var REVEAL_MAX_MS = 2000;
+  var REVEAL_DEADLINE_PAD_MS = 500;
+  var REVEAL_MIN_INTERVAL_MS = 50;
+  var REVEAL_MQ_TEXT = "(prefers-reduced-motion: reduce)";
+
+  /* The scheduler's clock, exposed on DCCompose.reveal so the
+     test pins can drive it; production reads performance.now. */
+  var revealClock = { now: function () {
+    try {
+      if (window.performance && window.performance.now) {
+        return window.performance.now();
+      }
+    } catch (e) { /* fall through to Date */ }
+    return Date.now();
+  } };
+
+  function revealReducedMotion() {
+    try {
+      return !!(window.matchMedia &&
+        window.matchMedia(REVEAL_MQ_TEXT).matches);
+    } catch (e) { return false; }
+  }
+
+  function revealMq() {
+    try {
+      return window.matchMedia
+        ? window.matchMedia(REVEAL_MQ_TEXT) : null;
+    } catch (e) { return null; }
+  }
+
+  (function injectRevealCss() {
+    try {
+      if (document.getElementById("cp-reveal-css")) return;
+      var st = document.createElement("style");
+      st.id = "cp-reveal-css";
+      st.textContent =
+        ".cp-dots{display:inline-block;padding:5px 0 3px}" +
+        ".cp-dots i{display:inline-block;width:7px;height:7px;" +
+        "margin-right:6px;border-radius:50%;" +
+        "background:var(--muted,#777);opacity:.35;" +
+        "animation:cp-dots-pulse 1.1s ease-in-out infinite}" +
+        ".cp-dots i:last-child{margin-right:0}" +
+        ".cp-dots i:nth-child(2){animation-delay:.18s}" +
+        ".cp-dots i:nth-child(3){animation-delay:.36s}" +
+        "@keyframes cp-dots-pulse{0%,100%{opacity:.3}" +
+        "50%{opacity:1}}" +
+        "@media (prefers-reduced-motion: reduce)" +
+        "{.cp-dots i{animation-name:none}}";
+      document.head.appendChild(st);
+    } catch (e) { /* styles are best-effort */ }
+  })();
+
+  /* The three-dot composing indicator (sheet step 3, Claude
+     E2): it stands where the response turn will land, is
+     aria-hidden, sits in no live region, and is never stored.
+     Under reduced motion each dot also carries
+     animation-name:none inline, so the computed value is none
+     in every engine, the injected sheet's media rule aside. */
+  function streamIndicatorEl() {
+    var d = document.createElement("div");
+    d.className = "stream-response stream-pending";
+    d.setAttribute("aria-hidden", "true");
+    var dots = document.createElement("span");
+    dots.className = "cp-dots";
+    var rm = revealReducedMotion();
+    for (var i = 0; i < 3; i++) {
+      var dot = document.createElement("i");
+      if (rm) dot.style.animationName = "none";
+      dots.appendChild(dot);
+    }
+    d.appendChild(dots);
+    return d;
+  }
+
+  /* ---- The chunker (Claude E3) ----
+     A prose block's content becomes a word stream: text
+     entries (one word each, carrying its exact source
+     substring, whitespace included) and inline-element atoms,
+     which are never split. Chunks are cut at phrase
+     boundaries: one of . , ; : ! ? followed by whitespace. A
+     decimal point or a thousands separator is never followed
+     by whitespace inside the figure, so figures never split.
+     Chunks under three words merge forward; a trailing short
+     chunk merges back. Chunks over twelve words split at the
+     word boundary nearest the midpoint. An inline atom longer
+     than twelve words cannot split and stands as its own
+     chunk: atomicity outranks the size rule. */
+
+  function revealWordCount(text) {
+    var t = String(text || "").trim();
+    return t ? t.split(/\s+/).length : 0;
+  }
+
+  function revealWordStream(blockEl) {
+    var stream = [];
+    function pushText(str) {
+      var re = /(\s*)(\S+)(\s*)/g, m;
+      while ((m = re.exec(str)) !== null) {
+        stream.push({
+          text: m[1] + m[2] + m[3], el: null,
+          boundary: /[.,;:!?]$/.test(m[2])
+        });
+      }
+    }
+    Array.prototype.slice.call(blockEl.childNodes).forEach(
+      function (node) {
+        if (node.nodeType === 3) pushText(node.nodeValue);
+        else if (node.nodeType === 1) {
+          stream.push({ text: null, el: node, boundary: false,
+            words: revealWordCount(node.textContent) });
+        }
+      });
+    return stream;
+  }
+
+  function revealStreamWords(entries) {
+    var n = 0;
+    entries.forEach(function (e) {
+      n += e.el ? (e.words || 0) : 1;
+    });
+    return n;
+  }
+
+  function revealChunkStream(stream) {
+    var chunks = [], cur = [];
+    stream.forEach(function (e) {
+      cur.push(e);
+      if (e.boundary) { chunks.push(cur); cur = []; }
+    });
+    if (cur.length) chunks.push(cur);
+    var merged = true;
+    while (merged) {
+      merged = false;
+      for (var i = 0; i < chunks.length; i++) {
+        if (revealStreamWords(chunks[i]) >= 3) continue;
+        if (i + 1 < chunks.length) {
+          chunks[i + 1] = chunks[i].concat(chunks[i + 1]);
+          chunks.splice(i, 1);
+        } else if (i > 0) {
+          chunks[i - 1] = chunks[i - 1].concat(chunks[i]);
+          chunks.splice(i, 1);
+        } else { break; }
+        merged = true;
+        break;
+      }
+    }
+    var out = [];
+    chunks.forEach(function (chunk) {
+      var rest = chunk;
+      while (revealStreamWords(rest) > 12 && rest.length > 1) {
+        var total = revealStreamWords(rest);
+        var half = total / 2, acc = 0, cut = -1, best = Infinity;
+        for (var j = 0; j + 1 < rest.length; j++) {
+          acc += rest[j].el ? (rest[j].words || 0) : 1;
+          var d = Math.abs(acc - half);
+          if (d < best) { best = d; cut = j; }
+        }
+        if (cut < 0) break;
+        out.push(rest.slice(0, cut + 1));
+        rest = rest.slice(cut + 1);
+      }
+      out.push(rest);
+    });
+    return out;
+  }
+
+  function revealChunkBlock(blockEl) {
+    return revealChunkStream(revealWordStream(blockEl));
+  }
+
+  function revealChunkText(text) {
+    var p = document.createElement("p");
+    p.textContent = text;
+    return revealChunkBlock(p).map(function (chunk) {
+      return chunk.map(function (e) {
+        return e.text || "";
+      }).join("");
+    });
+  }
+
+  function revealPlan(words, elements) {
+    var tRaw = REVEAL_MS_PER_WORD * words +
+      REVEAL_MS_PER_ELEMENT * elements;
+    return {
+      tRaw: tRaw,
+      duration: Math.min(tRaw, REVEAL_MAX_MS),
+      reveal: tRaw >= REVEAL_WHOLE_MS
+    };
+  }
+
+  /* Node classification for the walk: a claim line, the twin
+     label, a links row, and the pointer card are registered
+     elements and insert whole (records are never typed out);
+     a plain paragraph is a prose block and chunks; a wrapper
+     (the answer box, a spec section) is a frame that opens
+     when its first child lands; the receipt is held back to
+     completion; a bare text node is a stray, carried with the
+     step that follows it so the finished turn's markup is the
+     builder's own, whitespace included. */
+  function revealClassify(node) {
+    if (node.nodeType !== 1) return "stray";
+    var cl = node.classList;
+    if (cl && cl.contains("stream-receipt")) return "receipt";
+    if (node.tagName === "P") {
+      if (cl && (cl.contains("cp-answer-claim") ||
+                 cl.contains("cp-answer-twin-tag") ||
+                 cl.contains("intent-links") ||
+                 cl.contains("prompt-actions"))) {
+        return "element";
+      }
+      return "prose";
+    }
+    if (cl && cl.contains("cp-pointer")) return "element";
+    if (node.children && node.children.length) return "frame";
+    return "element";
+  }
+
+  /* Read-only measure: the prose words and registered
+     elements a built turn carries, counted with the same
+     classification the prepare walk uses. */
+  function revealMeasure(el) {
+    var words = 0, elements = 0;
+    (function walk(node) {
+      Array.prototype.slice.call(node.childNodes).forEach(
+        function (child) {
+          var kind = revealClassify(child);
+          if (kind === "prose") {
+            words += revealStreamWords(revealWordStream(child));
+          } else if (kind === "element") {
+            elements += 1;
+          } else if (kind === "frame") {
+            walk(child);
+          }
+        });
+    })(el);
+    return { words: words, elements: elements };
+  }
+
+  /* Prepare a built turn for progressive presentation. The
+     walk empties the source element into holding fragments
+     and returns the step list: prose chunks and registered
+     elements in turn order. Nothing is cloned except inline
+     atoms inside prose clones, and every prose clone is
+     replaced by its original block when the block completes,
+     so the finished turn is the builder's own nodes. */
+  function revealPrepare(el) {
+    var P = {
+      steps: [], blocks: [], frames: [], endStrays: [],
+      receipt: null, proseWords: 0, elements: 0, duration: 0
+    };
+    function walk(container, liveParent, frames, frameState) {
+      var strays = [];
+      function flushStrays() {
+        var out = strays.map(function (n) {
+          return { type: "stray", node: n, parent: liveParent,
+                   frames: frames };
+        });
+        strays = [];
+        return out;
+      }
+      Array.prototype.slice.call(container.childNodes).forEach(
+        function (node) {
+          var kind = revealClassify(node);
+          if (kind === "stray") { strays.push(node); return; }
+          if (kind === "receipt") { P.receipt = node; return; }
+          if (kind === "frame") {
+            var FS = { node: node, parent: liveParent,
+                       frames: frames, live: false,
+                       prefix: strays, endStrays: [] };
+            strays = [];
+            P.frames.push(FS);
+            var hold = document.createDocumentFragment();
+            while (node.firstChild) {
+              hold.appendChild(node.firstChild);
+            }
+            walk(hold, node, frames.concat([FS]), FS);
+            return;
+          }
+          if (kind === "element") {
+            P.elements += 1;
+            P.steps.push({
+              chunkOnly: false, blockHits: [],
+              entries: flushStrays().concat([{
+                type: "element", node: node, parent: liveParent,
+                frames: frames }])
+            });
+            return;
+          }
+          var chunks = revealChunkBlock(node);
+          if (!chunks.length) {
+            // A prose block with no words (an empty paragraph
+            // from a payload's blank line) moves whole, as a
+            // unit step that carries no timing weight.
+            P.steps.push({
+              chunkOnly: false, blockHits: [],
+              entries: flushStrays().concat([{
+                type: "element", node: node, parent: liveParent,
+                frames: frames }])
+            });
+            return;
+          }
+          var BS = { node: node, parent: liveParent,
+                     frames: frames, clone: null,
+                     remaining: chunks.length };
+          P.blocks.push(BS);
+          chunks.forEach(function (entries, ci) {
+            P.proseWords += revealStreamWords(entries);
+            var es = entries.map(function (e) {
+              return e.el
+                ? { type: "atom", block: BS, el: e.el }
+                : { type: "text", block: BS, text: e.text };
+            });
+            if (ci === 0) es = flushStrays().concat(es);
+            P.steps.push({
+              chunkOnly: es.every(function (e) {
+                return e.type === "text" || e.type === "atom";
+              }),
+              blockHits: [{ bs: BS, n: 1 }],
+              entries: es
+            });
+          });
+        });
+      var left = flushStrays();
+      if (frameState) {
+        frameState.endStrays =
+          frameState.endStrays.concat(left);
+      } else {
+        P.endStrays = P.endStrays.concat(left);
+      }
+    }
+    var hold = document.createDocumentFragment();
+    while (el.firstChild) hold.appendChild(el.firstChild);
+    walk(hold, el, [], null);
+    return P;
+  }
+
+  /* Merge adjacent prose-chunk steps until the step interval
+     reaches the 50 ms floor (Claude E3). Registered elements
+     are never merged away; they keep their own steps. */
+  function revealMergeSteps(steps, duration) {
+    var guard = 0;
+    while (steps.length > 1 &&
+           duration / steps.length < REVEAL_MIN_INTERVAL_MS &&
+           guard++ < 1000) {
+      var merged = false;
+      for (var i = 0; i + 1 < steps.length; i++) {
+        if (steps[i].chunkOnly && steps[i + 1].chunkOnly) {
+          steps[i].entries =
+            steps[i].entries.concat(steps[i + 1].entries);
+          steps[i].blockHits =
+            steps[i].blockHits.concat(steps[i + 1].blockHits);
+          steps.splice(i + 1, 1);
+          merged = true;
+          break;
+        }
+      }
+      if (!merged) break;
+    }
+    return steps;
+  }
+
+  function revealOpenFrame(FS) {
+    if (FS.live) return;
+    FS.live = true;
+    FS.prefix.forEach(function (n) { FS.parent.appendChild(n); });
+    FS.parent.appendChild(FS.node);
+  }
+
+  function revealEnsureFrames(frames) {
+    frames.forEach(revealOpenFrame);
+  }
+
+  function revealInsertEntry(entry) {
+    if (entry.type === "stray" || entry.type === "element") {
+      revealEnsureFrames(entry.frames);
+      entry.parent.appendChild(entry.node);
+      return;
+    }
+    var BS = entry.block;
+    revealEnsureFrames(BS.frames);
+    if (!BS.clone) {
+      BS.clone = BS.node.cloneNode(false);
+      BS.parent.appendChild(BS.clone);
+    }
+    if (entry.type === "text") {
+      BS.clone.appendChild(document.createTextNode(entry.text));
+    } else {
+      BS.clone.appendChild(entry.el.cloneNode(true));
+    }
+  }
+
+  function revealBlockDone(BS) {
+    if (BS.clone && BS.clone.parentNode) {
+      BS.clone.parentNode.replaceChild(BS.node, BS.clone);
+    } else if (BS.node.parentNode !== BS.parent) {
+      BS.parent.appendChild(BS.node);
+    }
+    BS.clone = null;
+  }
+
+  function revealInsertStep(step) {
+    step.entries.forEach(revealInsertEntry);
+    step.blockHits.forEach(function (hit) {
+      hit.bs.remaining -= hit.n;
+      if (hit.bs.remaining <= 0) revealBlockDone(hit.bs);
+    });
+  }
+
+  function revealTeardown(R) {
+    if (R.raf) {
+      try { cancelAnimationFrame(R.raf); } catch (e) {}
+      R.raf = 0;
+    }
+    document.removeEventListener("pointerdown", R.onSnap, true);
+    document.removeEventListener("wheel", R.onSnap, true);
+    document.removeEventListener("touchstart", R.onSnap, true);
+    document.removeEventListener("keydown", R.onSnap, true);
+    document.removeEventListener("visibilitychange",
+      R.onVis, false);
+    document.removeEventListener("scroll", R.onScroll, true);
+    window.removeEventListener("pagehide", R.onHide, false);
+    if (R.mq && R.onMq) {
+      try {
+        if (R.mq.removeEventListener) {
+          R.mq.removeEventListener("change", R.onMq);
+        } else if (R.mq.removeListener) {
+          R.mq.removeListener(R.onMq);
+        }
+      } catch (e) { /* the listener is best-effort */ }
+    }
+  }
+
+  /* Finish a reveal: every remaining step lands at once, the
+     held-back pieces (frame strays, the receipt) take their
+     places, the listeners come off, and the caller's
+     completion runs — receipt-side UI, the opening collapse,
+     the announcement, in the caller's order. A finish never
+     scrolls: following resumes at the next natural landing. */
+  function revealFinish(R) {
+    if (R.done) return;
+    R.done = true;
+    var steps = R.prep.steps;
+    while (R.idx < steps.length) {
+      revealInsertStep(steps[R.idx]);
+      R.idx += 1;
+    }
+    R.prep.frames.forEach(function (FS) {
+      if (!FS.live) {
+        revealEnsureFrames(FS.frames);
+        revealOpenFrame(FS);
+      }
+      FS.endStrays.forEach(function (s) {
+        FS.node.appendChild(s.node);
+      });
+    });
+    R.prep.endStrays.forEach(function (s) {
+      R.el.appendChild(s.node);
+    });
+    if (R.prep.receipt) R.el.appendChild(R.prep.receipt);
+    R.el.classList.remove("stream-revealing");
+    revealTeardown(R);
+    if (R.ctx.reveal === R) R.ctx.reveal = null;
+    R.completion();
+  }
+
+  function revealFollow(R) {
+    if (!R.follow) return;
+    try {
+      if (R.el.scrollIntoView) {
+        R.el.scrollIntoView({ block: "nearest" });
+      }
+    } catch (e) { /* scroll is best-effort */ }
+  }
+
+  function revealTick(R) {
+    if (R.done) return;
+    R.raf = 0;
+    var elapsed = revealClock.now() - R.start;
+    if (elapsed >= R.duration + REVEAL_DEADLINE_PAD_MS) {
+      revealFinish(R);
+      return;
+    }
+    var steps = R.prep.steps;
+    var owed = Math.min(steps.length,
+      Math.floor(elapsed * steps.length / R.duration) + 1);
+    while (R.idx < owed) {
+      revealInsertStep(steps[R.idx]);
+      R.idx += 1;
+    }
+    if (R.idx >= steps.length) { revealFinish(R); return; }
+    revealFollow(R);
+    R.raf = requestAnimationFrame(function () { revealTick(R); });
+  }
+
+  function revealStart(ctx, el, prep, skeletonEl, completion) {
+    var R = {
+      ctx: ctx, el: el, prep: prep, completion: completion,
+      idx: 0, done: false, raf: 0, start: 0,
+      duration: prep.duration, follow: false, mq: null,
+      onSnap: null, onVis: null, onHide: null, onScroll: null,
+      onMq: null
+    };
+    /* At the tail: measured on the indicator, which stands
+       where the turn lands; a scrolled-up visitor gets no
+       scroll changes for the whole reveal (Claude E4, pin
+       16's rule). */
+    var atTail = true, probed = false;
+    try {
+      if (skeletonEl && skeletonEl.parentNode) {
+        var pr = skeletonEl.getBoundingClientRect();
+        if (pr) {
+          atTail = pr.bottom <= (window.innerHeight || 0) + 1;
+          probed = true;
+        }
+      }
+    } catch (e) { /* the tail is assumed */ }
+    if (skeletonEl && skeletonEl.parentNode) {
+      skeletonEl.parentNode.replaceChild(el, skeletonEl);
+    } else {
+      ctx.streamEl.appendChild(el);
+    }
+    if (!probed) {
+      try {
+        var er = el.getBoundingClientRect();
+        if (er) {
+          atTail = er.bottom <= (window.innerHeight || 0) + 1;
+        }
+      } catch (e) { /* the tail is assumed */ }
+    }
+    R.follow = atTail;
+    el.classList.add("stream-revealing");
+    ctx.reveal = R;
+    R.onSnap = function () { revealFinish(R); };
+    R.onVis = function () {
+      if (document.hidden) revealFinish(R);
+    };
+    R.onHide = function () { revealFinish(R); };
+    R.onScroll = function () {
+      /* Our own follow scrolls leave the turn's end in view;
+         a visitor scroll that takes it out of view ends the
+         following for this reveal. The scroll event itself
+         never snaps (Claude E4). */
+      try {
+        var r = el.getBoundingClientRect();
+        if (r && r.bottom > (window.innerHeight || 0) + 1) {
+          R.follow = false;
+        }
+      } catch (e) { /* following is best-effort */ }
+    };
+    document.addEventListener("pointerdown", R.onSnap,
+      { capture: true, passive: true });
+    document.addEventListener("wheel", R.onSnap,
+      { capture: true, passive: true });
+    document.addEventListener("touchstart", R.onSnap,
+      { capture: true, passive: true });
+    document.addEventListener("keydown", R.onSnap,
+      { capture: true, passive: true });
+    document.addEventListener("visibilitychange", R.onVis, false);
+    document.addEventListener("scroll", R.onScroll,
+      { capture: true, passive: true });
+    window.addEventListener("pagehide", R.onHide, false);
+    var mq = revealMq();
+    if (mq) {
+      R.mq = mq;
+      R.onMq = function (ev) {
+        if ((ev && ev.matches) || revealReducedMotion()) {
+          revealFinish(R);
+        }
+      };
+      try {
+        if (mq.addEventListener) {
+          mq.addEventListener("change", R.onMq);
+        } else if (mq.addListener) {
+          mq.addListener(R.onMq);
+        }
+      } catch (e) { /* the listener is best-effort */ }
+    }
+    R.start = revealClock.now();
+    if (prep.steps.length) {
+      revealInsertStep(prep.steps[0]);
+      R.idx = 1;
+    }
+    if (R.idx >= prep.steps.length) { revealFinish(R); return; }
+    if (R.follow) streamScrollTurn(el);
+    R.raf = requestAnimationFrame(function () { revealTick(R); });
+  }
+
+  /* Snap the ctx's active reveal, if any (a new submit, or
+     any of the E4 input triggers routed through the reveal's
+     own listeners). */
+  function revealSnap(ctx) {
+    if (ctx.reveal) revealFinish(ctx.reveal);
+  }
+
+  /* Cancel the ctx's active reveal without completing it:
+     exit and clear tear the stream down around it, and the
+     store already holds the whole turn (Claude E4 teardown:
+     no pending frames, no listeners left behind). */
+  function revealCancel(ctx) {
+    var R = ctx.reveal;
+    if (!R) return;
+    R.done = true;
+    ctx.reveal = null;
+    R.el.classList.remove("stream-revealing");
+    revealTeardown(R);
+  }
+
+  /* Land a freshly built stream turn. Short turns, reduced
+     motion, and a hidden tab render whole, exactly as before
+     this batch. A longer turn's indicator is replaced by the
+     turn and its first step in this same task (Claude E1),
+     the rest follows the schedule, and the completion
+     callback (the receipt-side UI, the opening collapse, the
+     announcement) runs at completion or snap. */
+  function streamRevealLand(ctx, el, skeletonEl, completion) {
+    var stream = ctx.streamEl;
+    if (!stream) {
+      /* A plan returning after exit or clear finds no stream:
+         the same failure the bare append threw before this
+         batch (Claude E2: no reveal starts, no scheduler is
+         created, nothing is inserted). */
+      throw new Error("streamRevealLand: no stream");
+    }
+    var metrics = { reveal: false };
+    try {
+      var m = revealMeasure(el);
+      metrics = revealPlan(m.words, m.elements);
+    } catch (e) { metrics = { reveal: false }; }
+    if (!metrics.reveal || revealReducedMotion() ||
+        document.hidden) {
+      if (skeletonEl && skeletonEl.parentNode) {
+        skeletonEl.parentNode.removeChild(skeletonEl);
+      }
+      stream.appendChild(el);
+      completion();
+      streamScrollTurn(el);
+      return;
+    }
+    var prep = revealPrepare(el);
+    prep.duration = metrics.duration;
+    prep.steps = revealMergeSteps(prep.steps, metrics.duration);
+    revealStart(ctx, el, prep, skeletonEl, completion);
+  }
+
   function clearStreamFailure(ctx) {
     if (ctx.failureEls) {
       ctx.failureEls.forEach(function (n) {
@@ -2452,9 +3124,9 @@
         outcome: "cap", text: text, link: null
       });
       var el = streamDialogueEl(plan);
-      ctx.streamEl.appendChild(el);
-      streamAnnounce(plan);
-      streamScrollTurn(el);
+      streamRevealLand(ctx, el, null, function () {
+        streamAnnounce(plan);
+      });
     } else {
       streamSF().showTransientStatus(text);
     }
@@ -2465,6 +3137,11 @@
   function streamSubmitText(ctx, text, opts) {
     opts = opts || {};
     if (ctx.inFlight) return;
+    /* A submit during a reveal snaps the active turn first
+       (Claude E4): the turn completes, receipt and all, before
+       the new submit proceeds, which is what keeps at most
+       one scheduler running at any time. */
+    revealSnap(ctx);
     var SF = streamSF();
     clearStreamFailure(ctx);
     /* A new submit retires an unanswered release offer, as
@@ -2492,9 +3169,9 @@
             outcome: "repeat", text: REPEAT_LINE, link: null
           });
           var rdel = streamDialogueEl(rdplan);
-          ctx.streamEl.appendChild(rdel);
-          streamAnnounce(rdplan);
-          streamScrollTurn(rdel);
+          streamRevealLand(ctx, rdel, null, function () {
+            streamAnnounce(rdplan);
+          });
         } else {
           /* Fix batch (Nov 16, 2026): the repeat line joins
              the failure and cap lines in the transient dock
@@ -2553,11 +3230,7 @@
           promptEl = streamPromptEl(promptPlan);
           ctx.streamEl.appendChild(promptEl);
         }
-        var skeletonEl = document.createElement("div");
-        skeletonEl.className = "stream-response stream-pending";
-        skeletonEl.innerHTML =
-          '<p class="composition-from-intent prompt-status">' +
-          UNIFIED_PENDING_LINE + "</p>";
+        var skeletonEl = streamIndicatorEl();
         ctx.streamEl.appendChild(skeletonEl);
         ctx.pendingEls = { promptPlan: promptPlan,
                            promptEl: promptEl,
@@ -2640,7 +3313,6 @@
     rctx.fail = failFlagB;
     if (!data) { failFlagB(); return; }
     if (data.outcome === "disabled") {
-      dropSkeleton();
       /* Section 5.4: the disabled line renders in-stream as
          a dialogue turn; the prompt turn stays stored, as
          with a refusal. */
@@ -2650,13 +3322,12 @@
         link: null
       });
       var disel = streamDialogueEl(displan);
-      ctx.streamEl.appendChild(disel);
-      streamAnnounce(displan);
-      streamScrollTurn(disel);
+      streamRevealLand(ctx, disel, els.skeletonEl, function () {
+        streamAnnounce(displan);
+      });
       return;
     }
     if (data.outcome === "refused" || data.outcome === "none") {
-      dropSkeleton();
       var dplan = streamAppendPlan(ctx, ctx.store, {
         kind: "dialogue", page: ctx.page,
         outcome: data.outcome,
@@ -2667,15 +3338,14 @@
         gen: data.outcome === "none" ? cleanGen(data.gen) : null
       });
       var del = streamDialogueEl(dplan);
-      ctx.streamEl.appendChild(del);
-      streamAnnounce(dplan);
-      streamScrollTurn(del);
+      streamRevealLand(ctx, del, els.skeletonEl, function () {
+        streamAnnounce(dplan);
+      });
       return;
     }
     if (data.outcome === "pointer_only") {
       var p = cleanPointer(data.pointer);
       if (!p) { failFlagB(); return; }
-      dropSkeleton();
       var pplan = streamAppendPlan(ctx, ctx.store, {
         kind: "response", page: ctx.page, mixture: "pointer",
         scope: rctx.scope, answer: null, spec: null,
@@ -2683,14 +3353,14 @@
         categories: null, freshStart: false
       });
       var pel = streamResponseEl(ctx, pplan);
-      ctx.streamEl.appendChild(pel);
-      collapseStreamOpeningAfterTurn(ctx);
+      streamRevealLand(ctx, pel, els.skeletonEl, function () {
+        collapseStreamOpeningAfterTurn(ctx);
+        streamAnnounce(pplan);
+      });
       track("Prompt Pointer Shown", {
         page: ctx.page, covering_page: p.covering_page,
         placement: "stream", request_id: rctx.requestId
       });
-      streamAnnounce(pplan);
-      streamScrollTurn(pel);
       return;
     }
     if (data.outcome === "release_offer") {
@@ -2826,12 +3496,17 @@
       ctx.segSig = plan.sig;
       ctx.segLastPrompt = rctx.prompt;
       ctx.segContentTurns += 1;
-      if (els.skeletonEl && els.skeletonEl.parentNode) {
-        els.skeletonEl.parentNode.removeChild(els.skeletonEl);
-      }
       var el = streamResponseEl(ctx, plan);
-      ctx.streamEl.appendChild(el);
-      collapseStreamOpeningAfterTurn(ctx);
+      /* The landing (progressive-reveal batch): the indicator
+         comes out and the turn goes in, in this task; the
+         opening collapse and the announcement run at whole
+         landing or at reveal completion, in today's order.
+         The events below keep their plan-return timing
+         (Claude E6): they fire in this task either way. */
+      streamRevealLand(ctx, el, els.skeletonEl, function () {
+        collapseStreamOpeningAfterTurn(ctx);
+        streamAnnounce(plan);
+      });
       updateStreamScope(ctx);
       track("Prompt Turn Rendered", {
         page: ctx.page, turn_number: rctx.turn,
@@ -2847,8 +3522,6 @@
         });
       }
       if (answer) ledgerRecordAnswer(answer);
-      streamAnnounce(plan);
-      streamScrollTurn(el);
     };
     if ((scope === "released" || ctx.kind === "home") &&
         !blocksPayload) {
@@ -2974,7 +3647,24 @@
   // last callers with the in-page layers and are removed;
   // decommission sheet section 4.4.)
   window.DCCompose = {
-    validateSpec: validateSpec
+    validateSpec: validateSpec,
+    /* The reveal's pure pieces, exposed for the streamtest
+       pins the way validateSpec is exposed for the eval
+       harness: the chunker, the duration plan, and the
+       scheduler's clock (the pins drive the clock; production
+       reads performance.now). */
+    reveal: {
+      chunkText: revealChunkText,
+      chunkBlock: function (el) {
+        return revealChunkBlock(el).map(function (chunk) {
+          return chunk.map(function (e) {
+            return e.el ? { el: e.el } : { text: e.text };
+          });
+        });
+      },
+      plan: function (m) { return revealPlan(m.words, m.elements); },
+      clock: revealClock
+    }
   };
 
   if (document.readyState === "loading") {
