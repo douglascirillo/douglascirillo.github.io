@@ -170,7 +170,8 @@
   /* Audit #3 follow-ups (D2, D3): a built external anchor gets the
      same treatment as a static one: the pages' delegated handler keys
      on data-outbound-link and reads data-link-label to fire
-     "Outbound Link Click", and a visually hidden "(opens in new tab)"
+     "Link Clicked" (renamed from "Outbound Link Click" on
+     Nov 18, 2026), and a visually hidden "(opens in new tab)"
      hint is announced to screen readers. Internal hrefs get neither. */
   function trackAttr(href, label) {
     return extAttr(href)
@@ -2278,7 +2279,9 @@
      scorecard entry, so the two stay distinguishable
      although both point at /scorecard/. This supersedes
      the build's first design (link_source carried on the
-     pages' "Outbound Link Click"), which never shipped.
+     pages' outbound event), which never shipped. The
+     pages' event was itself renamed from "Outbound Link
+     Click" to "Link Clicked" on Nov 18, 2026.
      "Scorecard Promotion Viewed" still carries no
      properties, and the reason codes still go to logs
      only, never Amplitude. */
@@ -2506,13 +2509,14 @@
   }
 
   /* Click attribution for the two scorecard links (the
-     design above): the new "Link Clicked" event with
+     design above): the "Link Clicked" event with
      is_internal, link_url, and link_source. The pages'
-     own "Outbound Link Click" tracking is NOT renamed
-     here: the site-wide rename to this same design is a
-     companion change recorded for the deploy packet (see
-     the build record), and historical data stays under
-     the old event name. The pages' delegated handler keys
+     own outbound tracking fires the same event name
+     since the site-wide rename of Nov 18, 2026 (it was
+     "Outbound Link Click"; historical data stays under
+     the old name), with its own long-standing payload
+     (destination, destination_host, link_label). The
+     pages' delegated handler keys
      on a[data-outbound-link], which neither scorecard
      anchor carries, so nothing double-fires. */
   document.addEventListener("click", function (ev) {
