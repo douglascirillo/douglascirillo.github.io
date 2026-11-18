@@ -801,7 +801,7 @@
         <p>Amplitude measures visits: the pages you view, the session itself, clicks on links that leave the site, and how the conversation and the scorecard are used. Events carry a device ID assigned at random to this browser, and a bot classification. No name and no email is attached. This site never asks for either. For visitors in the European Union, the European Economic Area, or the United Kingdom, measurement does not start until they answer the prompt described under your choices below. Everywhere else, it starts with the visit.</p>
         <p>For a visit the page classifies as human, Amplitude also records the session as a replay: the page as you saw it, clicks and scrolling, console output and failed requests included, so a visit that goes wrong can be watched instead of reconstructed from its events. A failed request is recorded as its address and status only, never its contents. Text typed into a field is masked while it sits in the field. Once a question or an answer is on the page, a replay can show it, the way it shows any other text here. Sessions classified as bots or scanners are never recorded. Where the prompt described below applies, the replay waits for the same yes as the rest of measurement.</p>
         <p>Ask the chat a question and it goes to a server to be answered. A Claude model at Anthropic picks the published records that answer it and drafts the answer from them, checked in code against those records before it can serve. A log keeps the day, the page you asked from, your question, the answer it got, and which records were used. Email addresses and phone numbers are stripped automatically before anything is stored. Names and other details are not stripped, so leave them out. The log holds no IP address and no visitor ID. Each entry expires after 90 days, and the table removes expired entries on its own.</p>
-        <p>Searches run on Algolia. What you type into the search box goes there to be answered. Result clicks go to Algolia under the same device ID Amplitude uses, or a random per-session ID when that is not available, so search behavior and site behavior can be read together. My own measurement records a search&rsquo;s length and result count, never its text. Algolia handles the searches it receives under its own terms.</p>
+        <p>Searches run on Algolia. What you type into the search box goes there to be answered. Result views and clicks go to Algolia under the same device ID Amplitude uses, or a random per-session ID when that is not available, so search behavior and site behavior can be read together. My own measurement records a search&rsquo;s length and result count, never its text. Algolia handles the searches it receives under its own terms.</p>
         <p>The site also keeps a small ledger in your own browser: the pages and records you have opened, the records the chat returned for you, the kinds of answers it gave, the intents you picked, and the views you built or looked at. It shapes the conversation when you come back. It never leaves your browser, and it never holds the words you typed. The conversation itself sits in this tab&rsquo;s session storage and is gone when you close the tab.</p>
       </section>
 
@@ -859,8 +859,8 @@
 
 </div>
 <script src="/assets/surface.js?v=20261117-11"></script>
-<script src="/assets/ledger.js?v=20261118-1"></script>
-<script src="/assets/ask.js?v=20261117-13"></script>
+<script src="/assets/ledger.js?v=20261118-2"></script>
+<script src="/assets/ask.js?v=20261118-1"></script>
 <script src="/assets/compose.js?v=20261118-1" defer></script>
 </body>
 </html>
