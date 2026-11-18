@@ -19,7 +19,7 @@
    so demo traffic stays out of the readout, and it resets the guide
    before showing it, so a walkthrough always starts clean. */
 (function () {
-  var REGISTRY_VERSION = 2;
+  var REGISTRY_VERSION = 3;
   var ASSIGN_KEY = "dc_experience_v1";
   var SHOWN_KEY = "dc_experience_shown_v1";
   var DEMO_KEY = "dc_experience_demo_v1";
@@ -28,14 +28,18 @@
   var GUIDES = {
     "tour": { key: "guide-start-here-tour", surface: "home" },
     "scorecard-checklist": { key: "guide-scorecard-checklist", surface: "scorecard" },
-    "product-tour": { key: "guide-conversation-tour", surface: "home" }
+    "product-tour": { key: "guide-conversation-tour", surface: "home" },
+    "sothebys-hotspot": { key: "guide-sotheby-s-results-ho-2e4", surface: "sothebys" }
   };
-  var VARIANTS = ["control", "tour", "scorecard-checklist", "product-tour"];
+  var VARIANTS = ["control", "tour", "scorecard-checklist", "product-tour", "sothebys-hotspot"];
 
   function surfaceOf(path) {
     if (path === "/" || path === "/index.html") return "home";
     if (path === "/scorecard" || path === "/scorecard/" ||
         path === "/scorecard/index.html") return "scorecard";
+    if (path === "/case-studies/sothebys" ||
+        path === "/case-studies/sothebys/" ||
+        path === "/case-studies/sothebys/index.html") return "sothebys";
     return null;
   }
 
