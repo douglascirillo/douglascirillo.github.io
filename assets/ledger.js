@@ -67,6 +67,7 @@
       recordAskRecords: function () {},
       recordRecordOpened: function () {},
       historyCategories: function () { return null; },
+      pageVisitedThisVisit: function () { return null; },
       freshStart: function () { return false; },
       categoriesLabel: categoriesLabel,
       openPanel: function () {}
@@ -762,6 +763,27 @@
     } catch (e) { return null; }
   }
 
+  // Whether the given page was opened at any point in the
+  // current visit: its pages entry's last-seen at or after
+  // the visit marker. Tri-state by design: true or false
+  // only when the ledger is usable and readable; null when
+  // it cannot say (consent pending or declined, paused,
+  // storage unreadable), so the caller treats unknown as
+  // its own case rather than as "not visited". Read for the
+  // scorecard promotion's suppression (build sheet v2): any
+  // arrival at /scorecard/ this visit, by any path, counts.
+  function pageVisitedThisVisit(path) {
+    try {
+      if (!canUse()) return null;
+      var led = readLedgerInternal();
+      if (!led) return null;
+      var entries = led.pages || {};
+      var e = entries[path];
+      if (!e) return false;
+      return !!(e.l && e.l >= visitMarkerSec);
+    } catch (e) { return null; }
+  }
+
   /* ---------- writers (public record* methods) ---------- */
 
   function recordIntent(intentId) {
@@ -1189,6 +1211,10 @@
     },
     historyCategories: function () {
       try { return historyCategories(); } catch (e) { return null; }
+    },
+    pageVisitedThisVisit: function (path) {
+      try { return pageVisitedThisVisit(path); }
+      catch (e) { return null; }
     },
     freshStart: freshStart,
     categoriesLabel: categoriesLabel,
