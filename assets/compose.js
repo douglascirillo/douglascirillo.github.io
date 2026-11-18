@@ -356,6 +356,10 @@
         ".cp-pointer{background:var(--surface);border-radius:10px;padding:10px 14px;margin:0 0 8px}" +
         ".cp-pointer p{margin:0 0 4px}" +
         ".cp-pointer p:last-child{margin:0}" +
+        ".cp-scorecard-card{background:var(--surface);border:1px solid var(--muted,#777);border-radius:10px;padding:12px 14px;margin:0 0 8px}" +
+        ".cp-scorecard-title{font-family:Newsreader,Georgia,serif;font-size:18px;margin:0 0 4px}" +
+        ".cp-scorecard-line{margin:0 0 6px}" +
+        ".cp-scorecard-action{margin:0}" +
         ".cp-composed{margin:22px 0 4px}" +
         ".cp-composed-h{font-family:Newsreader,Georgia,serif;font-size:21px;margin:0 0 10px}";
       document.head.appendChild(st);
@@ -752,12 +756,35 @@
     return el;
   }
 
-  function intentLinksHtml(intent) {
+  function intentLinksHtml(intent, featured) {
     var links = LINKS[intent] || [];
+    /* Link-set overlap (Douglas's ruling, Nov 17, 2026):
+       on a turn where the scorecard card renders, the link
+       set drops its own "Take the scorecard" entry; the
+       entry stays on every other measurement turn. The
+       switch is this constant; the ruling is recorded in
+       the scorecard build record. */
+    if (featured === "scorecard" &&
+        SCORECARD_CARD_DROPS_LINKSET_ENTRY) {
+      links = links.filter(function (l) {
+        return l.href !== SCORECARD_PATH;
+      });
+    }
     if (!links.length) return "";
     return '<p class="intent-links">' + links.map(function (l) {
-      return '<a href="' + l.href + '"' + extAttr(l.href) +
-        trackAttr(l.href, l.label) + ">" + l.label +
+      var attrs = extAttr(l.href) + trackAttr(l.href, l.label);
+      if (l.href === SCORECARD_PATH) {
+        /* Click attribution (Douglas's design, Nov 17,
+           2026; redesigned Nov 18): the scorecard entry
+           carries the link-set source value for the
+           "Link Clicked" event's link_source property;
+           see the delegated handler in the scorecard
+           block. */
+        attrs += ' data-link-source="' +
+          SCORECARD_LINK_SOURCE_SET +
+          '" data-link-label="Take the scorecard"';
+      }
+      return '<a href="' + l.href + '"' + attrs + ">" + l.label +
         extHint(l.href) + "</a>";
     }).join("") + "</p>";
   }
@@ -1340,6 +1367,12 @@
       d.caps.fired = { pages: {}, visit: false };
     }
     if (!d.caps.fired.pages) d.caps.fired.pages = {};
+    if (typeof d.caps.scorecard !== "boolean") {
+      d.caps.scorecard = false;
+    }
+    if (typeof d.caps.scorecardViewed !== "boolean") {
+      d.caps.scorecardViewed = false;
+    }
     if (typeof d.seq !== "number") d.seq = d.turns.length + 1;
     if (typeof d.dropped !== "number") d.dropped = 0;
     return d;
@@ -1357,7 +1390,8 @@
     return {
       v: 1, engaged: true, exited: false, seq: 1, dropped: 0,
       caps: { pages: {}, visit: 0,
-              fired: { pages: {}, visit: false } },
+              fired: { pages: {}, visit: false },
+              scorecard: false, scorecardViewed: false },
       engagedFired: false, turns: []
     };
   }
@@ -2208,6 +2242,302 @@
      aria-live lead is the first block sentence (section
      5.3). The canvas composition renderers keep their
      heading; this renderer serves stream turns only. */
+  /* ----- Scorecard promotion (build sheet v2) -----
+     The server computes eligibility and stamps a fixed
+     marker ("featured": "scorecard") on the turn's response
+     body; no copy and no decision ride the model passes.
+     The client half of the gate runs once per fresh turn,
+     at the landing's terminal success (P-1117-22 edit 7):
+     applyStreamState carries the marker as a pending flag
+     and defers the gate to the reveal's completion
+     callback, where scorecardCompleteTurn runs it — the
+     per-visit cap on the stream store and the /scorecard/
+     suppression read from the on-device ledger. A stored
+     plan keeps its marker, so a restored transcript
+     re-renders the card with no new showing: no cap read,
+     no event, no log post. The card is the last element of
+     the turn, after the answer and any pointer card,
+     before the receipt. Its copy is fixed by the sheet;
+     its one link is a plain anchor, keyboard reachable,
+     named by its text. */
+  var SCORECARD_PATH = "/scorecard/";
+  /* Douglas's ruling, Nov 17, 2026 (open item 1): drop the
+     link set's "Take the scorecard" entry on card turns
+     only. Applied in intentLinksHtml for stored (restored)
+     card turns, and in scorecardCompleteTurn for fresh
+     ones, whose gate runs only after the links render. */
+  var SCORECARD_CARD_DROPS_LINKSET_ENTRY = true;
+  /* Douglas's instrumentation design (Nov 17, 2026
+     ruling; redesigned Nov 18, 2026): the two scorecard
+     anchors fire a new event, "Link Clicked", with three
+     properties, all snake_case per his analytics
+     convention: is_internal (boolean), link_url (the full
+     URL for external links, the relative path for
+     internal ones), and link_source, "scorecard_card" on
+     the card's link and "link_set" on the link set's
+     scorecard entry, so the two stay distinguishable
+     although both point at /scorecard/. This supersedes
+     the build's first design (link_source carried on the
+     pages' "Outbound Link Click"), which never shipped.
+     "Scorecard Promotion Viewed" still carries no
+     properties, and the reason codes still go to logs
+     only, never Amplitude. */
+  var SCORECARD_LINK_SOURCE_CARD = "scorecard_card";
+  var SCORECARD_LINK_SOURCE_SET = "link_set";
+
+  function scorecardCardHtml() {
+    return '<div class="cp-scorecard-card">' +
+      '<p class="cp-scorecard-title">' +
+      "The Digital Experience Leadership Scorecard</p>" +
+      '<p class="cp-scorecard-line">' +
+      "Twenty statements, five dimensions, scored on what " +
+      "you can prove.</p>" +
+      '<p class="cp-scorecard-action"><a href="' +
+      SCORECARD_PATH + '" data-link-source="' +
+      SCORECARD_LINK_SOURCE_CARD +
+      '" data-link-label="Take the scorecard">' +
+      "Take the scorecard</a></p></div>";
+  }
+
+  /* Reason codes ride the scorecard_log mode to the Lambda
+     log (the build's diagnostic path; see the build record).
+     Fire-and-forget: a failed post changes nothing. */
+  function scorecardLog(ctx, reason, rctx) {
+    try {
+      fetch(ASK_ENDPOINT, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          mode: "scorecard_log", reason: reason,
+          request_id: (rctx && rctx.requestId) || null,
+          page: ctx.page
+        })
+      }).catch(function () {});
+    } catch (e) { /* diagnostics never break the page */ }
+  }
+
+  /* The client half of the eligibility gate. It DECIDES
+     and logs only suppressions (P-1117-24 F3): it never
+     spends the cap and never posts "rendered". On a pass
+     the caller owns the spend, in order: set the cap,
+     stamp the marker, save, insert, remove the duplicate,
+     and only then post "rendered" — so a rendered row
+     always has a persisted card behind it. The gate runs
+     only from scorecardCompleteTurn, at the landing's
+     terminal success, after the turn has fully landed; a
+     card rendered offscreen has still spent the visit's
+     one showing. An unreadable ledger is an unknown state
+     and denies silently: no code in the frozen set
+     describes it; the gap between server rendered
+     determinations and client rows is an upper bound on
+     silent client denials, not a count of them. */
+  function scorecardGate(ctx, rctx) {
+    var caps = ctx.store && ctx.store.caps;
+    if (!caps) return false;
+    if (caps.scorecard) {
+      scorecardLog(ctx, "suppressed_cap", rctx);
+      return false;
+    }
+    var visited = null;
+    try {
+      if (window.DCLedger &&
+          typeof window.DCLedger.pageVisitedThisVisit ===
+            "function") {
+        visited = window.DCLedger.pageVisitedThisVisit(
+          SCORECARD_PATH);
+      }
+    } catch (e) { visited = null; }
+    if (visited === true) {
+      scorecardLog(ctx, "suppressed_visited", rctx);
+      return false;
+    }
+    if (visited !== false) return false;
+    return true;
+  }
+
+  /* Terminal success for a marker-carrying turn (edit 7):
+     called from the reveal completion callback in
+     applyStreamState, which runs at completion or at snap
+     (and, on a whole landing, in the landing task itself).
+     A reveal cancelled by exit or clear never reaches it,
+     so an aborted turn spends no cap, posts nothing, and
+     inserts no card, and its stored plan — saved without
+     the marker — restores without one. The order inside is
+     P-1117-24's: the duplicate is located first, scoped to
+     the link-set container and before any insertion (F2);
+     then the caller sets the cap, stamps the marker, and
+     saves (F3) — a failed save rolls the in-memory spend
+     back and nothing is inserted or posted. Only then is
+     the card inserted as the turn's last element before
+     the receipt (the receipt itself lands at completion,
+     just before this runs), the link set's own scorecard
+     entry comes out (Douglas's link-set ruling — it was
+     rendered before the gate could run, so the drop
+     happens here instead of in intentLinksHtml; a restored
+     card turn still drops it there, from the stored
+     marker), "rendered" is posted, and the Viewed observer
+     attaches to the inserted card. */
+  function scorecardCompleteTurn(ctx, el, plan, rctx) {
+    if (!scorecardGate(ctx, rctx)) return;
+    var caps = ctx.store.caps;
+    /* F2: find the duplicate before inserting the card,
+       inside the link-set container only. The unscoped
+       whole-turn query this replaces could in principle
+       reach the card's own anchor (the spec branch has no
+       link set at all); scoped and pre-insertion, it can
+       only ever name the link set's scorecard entry. */
+    var linkSet = el.querySelector
+      ? el.querySelector(".intent-links") : null;
+    var dup = linkSet && linkSet.querySelector
+      ? linkSet.querySelector('a[data-link-source="' +
+          SCORECARD_LINK_SOURCE_SET + '"]') : null;
+    /* F3: the spend is the caller's, in this order: set
+       the cap, stamp the marker, save. streamSaveStore
+       reports failure as false (and a constrained
+       environment could still throw through it); either
+       way the in-memory spend is rolled back and the turn
+       ends exactly as a denial, minus the log post: no
+       card, no rendered row, no cap consumed. */
+    caps.scorecard = true;
+    plan.featured = "scorecard";
+    var saved = false;
+    try { saved = streamSaveStore(ctx.store, ctx.page); }
+    catch (e) { saved = false; }
+    if (!saved) {
+      caps.scorecard = false;
+      plan.featured = null;
+      return;
+    }
+    var holder = document.createElement("div");
+    holder.innerHTML = scorecardCardHtml();
+    var cardEl = holder.firstElementChild;
+    var receipt = el.querySelector
+      ? el.querySelector(".stream-receipt") : null;
+    if (receipt) el.insertBefore(cardEl, receipt);
+    else el.appendChild(cardEl);
+    if (dup && dup.parentNode) {
+      var row = dup.parentNode;
+      row.removeChild(dup);
+      if (!row.querySelector || !row.querySelector("a")) {
+        if (row.parentNode) row.parentNode.removeChild(row);
+      }
+    }
+    scorecardLog(ctx, "rendered", rctx);
+    scorecardObserveViewed(ctx, el);
+  }
+
+  /* F1 (P-1117-24): no DOM mutation inside a pointer
+     gesture. When the reveal's completion callback arrives
+     from a pointer-initiated snap, the press that snapped
+     the reveal may be on the link set's scorecard entry
+     itself, on a later anchor in the set, or on the
+     receipt's controls; running scorecardCompleteTurn
+     inside the pointerdown dispatch would remove the
+     pressed anchor before pointerup and eat the click.
+     The completion therefore waits out the gesture: a
+     one-shot capture listener on click / pointercancel,
+     then a setTimeout 0. A still-pending run is cancelled
+     by exit or clear (revealCancel calls cancel), so
+     aborted-turn semantics hold. */
+  function scorecardDeferCompleteTurn(ctx, el, plan, rctx) {
+    var pending = { cancelled: false };
+    function disarm() {
+      document.removeEventListener("click", onGestureEnd, true);
+      document.removeEventListener("pointercancel",
+        onGestureEnd, true);
+    }
+    function onGestureEnd() {
+      disarm();
+      setTimeout(function () {
+        /* The registration stays on the ctx until the run
+           itself: the click that ends the gesture can be
+           the exit or clear control when the snap shifted
+           the layout under the press, and its handler runs
+           later in the same dispatch — revealCancel must
+           still find this run there and cancel it. */
+        if (ctx.scorecardDeferred === pending) {
+          ctx.scorecardDeferred = null;
+        }
+        if (!pending.cancelled) {
+          scorecardCompleteTurn(ctx, el, plan, rctx);
+        }
+      }, 0);
+    }
+    pending.cancel = function () {
+      pending.cancelled = true;
+      disarm();
+      if (ctx.scorecardDeferred === pending) {
+        ctx.scorecardDeferred = null;
+      }
+    };
+    ctx.scorecardDeferred = pending;
+    document.addEventListener("click", onGestureEnd, true);
+    document.addEventListener("pointercancel", onGestureEnd, true);
+  }
+
+  /* "Scorecard Promotion Viewed": fires once per visit when
+     at least half the card is in the viewport, with no
+     properties. The viewed flag rides the same store, so a
+     restored card never re-fires it. */
+  function scorecardObserveViewed(ctx, el) {
+    try {
+      var card = el && el.querySelector
+        ? el.querySelector(".cp-scorecard-card") : null;
+      if (!card || typeof IntersectionObserver === "undefined") {
+        return;
+      }
+      var caps = ctx.store.caps;
+      if (caps.scorecardViewed) return;
+      var ob = new IntersectionObserver(function (entries) {
+        for (var i = 0; i < entries.length; i++) {
+          if (entries[i].intersectionRatio >= 0.5) {
+            if (!caps.scorecardViewed) {
+              caps.scorecardViewed = true;
+              streamSaveStore(ctx.store, ctx.page);
+              track("Scorecard Promotion Viewed", {});
+            }
+            try { ob.disconnect(); } catch (e) {}
+            break;
+          }
+        }
+      }, { threshold: [0.5] });
+      ob.observe(card);
+    } catch (e) { /* measurement never breaks the page */ }
+  }
+
+  /* Click attribution for the two scorecard links (the
+     design above): the new "Link Clicked" event with
+     is_internal, link_url, and link_source. The pages'
+     own "Outbound Link Click" tracking is NOT renamed
+     here: the site-wide rename to this same design is a
+     companion change recorded for the deploy packet (see
+     the build record), and historical data stays under
+     the old event name. The pages' delegated handler keys
+     on a[data-outbound-link], which neither scorecard
+     anchor carries, so nothing double-fires. */
+  document.addEventListener("click", function (ev) {
+    try {
+      var t = ev.target;
+      var a = t && t.closest
+        ? t.closest("a[data-link-source]") : null;
+      if (!a) return;
+      var raw = a.getAttribute("href") || "";
+      if (!raw) return;
+      var abs = null;
+      try {
+        abs = new URL(raw, window.location.href);
+      } catch (e) {}
+      var internal = !abs ||
+        abs.hostname.toLowerCase() === "douglascirillo.com";
+      track("Link Clicked", {
+        is_internal: internal,
+        link_url: internal
+          ? (abs ? abs.pathname : raw) : abs.href,
+        link_source: a.getAttribute("data-link-source")
+      });
+    } catch (e) { /* measurement never breaks the page */ }
+  });
+
   function streamResponseHtml(ctx, plan) {
     if (plan.intent && !plan.specNew) {
       // Intent turns were created by the removed home panel;
@@ -2216,9 +2546,11 @@
       // file, whose loader is removed with the panel
       // (decommission sheet sections 4.2 and 7).
       return answerElementHtml(plan.answer) +
-        intentLinksHtml(plan.intent) +
+        intentLinksHtml(plan.intent, plan.featured) +
         (plan.pointer
-          ? streamPointerCardHtml(plan.pointer, false) : "");
+          ? streamPointerCardHtml(plan.pointer, false) : "") +
+        (plan.featured === "scorecard"
+          ? scorecardCardHtml() : "");
     }
     var html = answerElementHtml(plan.answer);
     if (plan.specNew && plan.spec) {
@@ -2229,6 +2561,9 @@
     if (plan.pointer) {
       html += streamPointerCardHtml(plan.pointer,
         plan.mixture === "pointer");
+    }
+    if (plan.featured === "scorecard") {
+      html += scorecardCardHtml();
     }
     return html;
   }
@@ -2918,7 +3253,7 @@
     R.el.classList.remove("stream-revealing");
     revealTeardown(R);
     if (R.ctx.reveal === R) R.ctx.reveal = null;
-    R.completion();
+    R.completion(R.finishReason || "complete");
   }
 
   function revealFollow(R) {
@@ -2955,6 +3290,7 @@
       ctx: ctx, el: el, prep: prep, completion: completion,
       idx: 0, done: false, raf: 0, start: 0,
       duration: prep.duration, follow: false, mq: null,
+      finishReason: null,
       onSnap: null, onVis: null, onHide: null, onScroll: null,
       onMq: null
     };
@@ -2988,11 +3324,35 @@
     R.follow = atTail;
     el.classList.add("stream-revealing");
     ctx.reveal = R;
-    R.onSnap = function () { revealFinish(R); };
-    R.onVis = function () {
-      if (document.hidden) revealFinish(R);
+    /* The finish reason rides to the completion callback
+       (P-1117-24 F1): a pointer-initiated snap (pointerdown
+       or touchstart) means a visitor gesture is still in
+       flight, and a caller with DOM work to do at
+       completion — the scorecard's — must wait for the
+       gesture to end before it mutates anything. Wheel and
+       keydown snaps report "input"; a hidden tab and
+       pagehide report "visibility"; the schedule, the
+       deadline, and a whole landing report "complete"; a
+       programmatic snap reports "snap". */
+    R.onSnap = function (ev) {
+      if (ev && (ev.type === "pointerdown" ||
+                 ev.type === "touchstart")) {
+        R.finishReason = "pointer";
+      } else if (!R.finishReason) {
+        R.finishReason = "input";
+      }
+      revealFinish(R);
     };
-    R.onHide = function () { revealFinish(R); };
+    R.onVis = function () {
+      if (document.hidden) {
+        R.finishReason = "visibility";
+        revealFinish(R);
+      }
+    };
+    R.onHide = function () {
+      R.finishReason = "visibility";
+      revealFinish(R);
+    };
     R.onScroll = function () {
       /* Our own follow scrolls leave the turn's end in view;
          a visitor scroll that takes it out of view ends the
@@ -3047,7 +3407,12 @@
      any of the E4 input triggers routed through the reveal's
      own listeners). */
   function revealSnap(ctx) {
-    if (ctx.reveal) revealFinish(ctx.reveal);
+    if (ctx.reveal) {
+      if (!ctx.reveal.finishReason) {
+        ctx.reveal.finishReason = "snap";
+      }
+      revealFinish(ctx.reveal);
+    }
   }
 
   /* Cancel the ctx's active reveal without completing it:
@@ -3055,6 +3420,12 @@
      store already holds the whole turn (Claude E4 teardown:
      no pending frames, no listeners left behind). */
   function revealCancel(ctx) {
+    /* A scorecard completion deferred under F1 must not
+       survive an exit or clear: cancel it before the
+       reveal check, because the deferral exists exactly
+       when the reveal has already finished by snap and
+       this function would otherwise return early. */
+    if (ctx.scorecardDeferred) ctx.scorecardDeferred.cancel();
     var R = ctx.reveal;
     if (!R) return;
     R.done = true;
@@ -3090,7 +3461,7 @@
         skeletonEl.parentNode.removeChild(skeletonEl);
       }
       stream.appendChild(el);
-      completion();
+      completion("complete");
       streamScrollTurn(el);
       return;
     }
@@ -3460,6 +3831,19 @@
       }
       var mixture = answer && specNew ? "mixed"
         : answer ? "answer" : "composition";
+      /* Scorecard promotion (P-1117-22 edit 7, the rebase
+         condition): the server's marker is carried as a
+         pending flag only, and the plan is stored without
+         the marker. The client half of the gate (cap,
+         ledger suppression) runs at the landing's terminal
+         success, in the reveal completion callback below:
+         card insertion, cap spend, and the rendered post
+         happen only there. A reveal cancelled by exit or
+         clear never reaches the callback, so it spends
+         nothing, posts nothing, and inserts no card, and
+         the stored plan restores without one. Any marker
+         value other than the one fixed string is ignored. */
+      var featuredPending = data.featured === "scorecard";
       var plan = streamAppendPlan(ctx, ctx.store, {
         kind: "response", page: ctx.page, mixture: mixture,
         scope: specNew ? scope : (ctx.segScope || scope),
@@ -3470,6 +3854,7 @@
         intent: specNew ? null : (ctx.segIntent || null),
         sig: specNew ? null : (ctx.segSig || null),
         pointer: pointer, prompt: rctx.prompt,
+        featured: null,
         categories: null, freshStart: !!rctx.freshStart
       });
       /* Cap accounting (sheet section 8): exactly once per
@@ -3503,9 +3888,26 @@
          landing or at reveal completion, in today's order.
          The events below keep their plan-return timing
          (Claude E6): they fire in this task either way. */
-      streamRevealLand(ctx, el, els.skeletonEl, function () {
+      streamRevealLand(ctx, el, els.skeletonEl, function (reason) {
         collapseStreamOpeningAfterTurn(ctx);
         streamAnnounce(plan);
+        /* Scorecard promotion (edit 7): the reveal's
+           terminal success is this callback — it runs at
+           completion or at snap, and on a whole landing in
+           this same task; a cancelled reveal never runs
+           it. The gate, the cap spend, the card insertion,
+           and the rendered post happen only here. When the
+           finish came from a pointer-initiated snap, the
+           scorecard step defers until the gesture ends
+           (P-1117-24 F1: no DOM mutation inside a pointer
+           gesture); every other finish runs it in place. */
+        if (featuredPending) {
+          if (reason === "pointer") {
+            scorecardDeferCompleteTurn(ctx, el, plan, rctx);
+          } else {
+            scorecardCompleteTurn(ctx, el, plan, rctx);
+          }
+        }
       });
       updateStreamScope(ctx);
       track("Prompt Turn Rendered", {
