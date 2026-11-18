@@ -449,9 +449,7 @@
     if (answer.gen) {
       /* Twin generation (stage G1): the conversational answer
          first, the transparency label under it, then the
-         verbatim claim lines it cites (there may be none).
-         Label copy is the E6 draft, pending the flip batch's
-         copy approval. */
+         verbatim claim lines it cites (there may be none). */
       answer.gen.paragraphs.forEach(function (para) {
         html += '<p class="cp-answer-framing">' + esc(para.text) +
           "</p>";
