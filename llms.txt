@@ -1,6 +1,6 @@
 # Douglas Cirillo
 
-> Douglas Cirillo is Head of Digital Experience and Growth at Vanguard (since February 2026), based in West Chester, Pennsylvania. He builds digital and data functions at audience brands: data foundation first, then the experience on top of it. His published record covers Lindblad Expeditions, Sotheby's, Madison Square Garden, A+E Networks, A Place for Mom, and Gangverk. This site is his canonical professional record. Every figure below appears in full context on the linked pages.
+> Douglas Cirillo is Head of Digital Experience and Growth at Vanguard (since February 2026), based in West Chester, Pennsylvania. He builds digital and data functions at audience brands: data foundation first, then the experience on top of it. His published record covers Lindblad Expeditions - National Geographic, Sotheby's, Madison Square Garden, A+E Networks, A Place for Mom, and Gangverk. This site is his canonical professional record. Every figure below appears in full context on the linked pages.
 
 ## Identity
 
@@ -10,7 +10,7 @@
 
 ## Case studies
 
-- [Lindblad Expeditions: rebuilding the booking engine](https://douglascirillo.com/case-studies/lindblad-expeditions/): within eight months of the replatform, bookings up 30%, booking funnel completion up 82%, qualified leads up 40%. Team of 10, $5M portfolio. Webby Honoree.
+- [Lindblad Expeditions - National Geographic: rebuilding the booking engine](https://douglascirillo.com/case-studies/lindblad-expeditions/): within eight months of the replatform, bookings up 30%, booking funnel completion up 82%, qualified leads up 40%. Team of 10, $5M portfolio. Webby Honoree.
 - [Sotheby's: building the growth stack for a 275-year-old auction house](https://douglascirillo.com/case-studies/sothebys/): organic traffic up 167%, search click-through up 48.7%, consignment search placement doubled, consignment ad spend down 50%, sessions up 90%, unique visitors up 119%. Twilio Segment across 23 systems, about 400 million API calls a month. The CDP was an integral contributor to the organic growth; the whole stack had to work together.
 - [A Place for Mom](https://douglascirillo.com/case-studies/a-place-for-mom/): SEO market share from 26% to 68%. Team grown from 3 to more than 20, $6M annual portfolio. The decline was diagnosed as equal parts content problem and architecture problem.
 - [Madison Square Garden: building the digital product function](https://douglascirillo.com/case-studies/madison-square-garden/): one operating model across 29+ websites and 4+ native apps, a $4M replatform. Digital ticket sales for the Rockettes and Radio City Music Hall grew 400% (that scope only). MSG GO was a New York Emmy nominee for Technical Achievement.
