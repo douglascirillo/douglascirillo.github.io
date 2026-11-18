@@ -214,6 +214,10 @@
     font-family:"Newsreader", Georgia, serif;
     font-weight:500; font-size:26px; line-height:1.15; letter-spacing:-.01em; margin:0 0 14px;
   }
+  article h3{
+    font-family:"Newsreader", Georgia, serif;
+    font-weight:500; font-size:20px; line-height:1.2; letter-spacing:-.01em; margin:28px 0 10px;
+  }
   article p{margin:0 0 18px; color:var(--ink-2)}
   article p:last-child{margin-bottom:0}
   .more{
@@ -603,6 +607,99 @@
         <p><strong>Lindblad Expeditions - National Geographic.</strong> We didn&rsquo;t have a full-fledged data engineering team. But we needed to unify how product, marketing, and editorial understood behavior across web, email, mobile, and OTT. Segment let us establish shared schema, normalize identity, and activate audiences across tools, without months of delay. It created alignment, not just data. I led a 10-person team and a $5M portfolio there, and within about eight months bookings rose 30%, booking funnel completion rose 82%, and qualified leads rose 40%. <a href="/case-studies/lindblad-expeditions/">Read the case study</a>.</p>
         <p><strong>A Place for Mom.</strong> Search was the growth engine at A Place for Mom, and it was losing share. I diagnosed the decline as equal parts content problem and architecture problem and led the rebuild: WordPress for content management, Segment for customer data, Databricks for the data foundation, Conductor for organic search intelligence, Algolia for on-site search and recommendations, Optimizely for experimentation, and Amplitude for analytics. SEO market share rose from 26% to 68%, and the model and the stack still stand. <a href="/case-studies/a-place-for-mom/">Read the case study</a>.</p>
         <p>At Gangverk, the practice scaled beyond my own builds. Consulting work included a Segment-sponsored engagement with TripAdvisor on customer data platform adoption. The firm&rsquo;s client base grew from 1 to more than 60 while I carried revenue targets and hiring authority. <a href="/case-studies/gangverk/">Read the case study</a>.</p>
+      </section>
+
+      <section aria-labelledby="platforms-h">
+        <h2 id="platforms-h">Which platforms has the work run on?</h2>
+        <p>A directional subset, not a complete inventory: platforms I ran, with where and what they did.</p>
+
+        <h3>Customer data and activation</h3>
+        <ul>
+          <li>Twilio Segment, <a href="/case-studies/sothebys/">Sotheby&rsquo;s</a>: the customer data platform, configured across 23 systems at about 400 million API calls a month, feeding the BigQuery warehouse the team called Alpine.</li>
+          <li>Twilio Segment, <a href="/case-studies/lindblad-expeditions/">Lindblad Expeditions - National Geographic</a>: shared schema, normalized identity, and audience activation across tools.</li>
+          <li>Twilio Segment, <a href="/case-studies/a-place-for-mom/">A Place for Mom</a>: customer data for the rebuild.</li>
+          <li>Twilio Segment, Play Airlines (Gangverk-era client work): customer data platform.</li>
+          <li>Hightouch, <a href="/case-studies/ae-networks/">A+E Networks</a>: activation of customer data out of the Snowflake warehouse, for History.com.</li>
+          <li>Zaius, <a href="/case-studies/sothebys/">Sotheby&rsquo;s</a>: customer data activation.</li>
+          <li>Salesforce, <a href="/case-studies/lindblad-expeditions/">Lindblad Expeditions - National Geographic</a>: customer data joined to reservation data through the SeaWare API layer.</li>
+        </ul>
+
+        <h3>Data foundation</h3>
+        <ul>
+          <li>Snowflake, <a href="/case-studies/ae-networks/">A+E Networks</a>: the warehouse A+E already ran.</li>
+          <li>Databricks, <a href="/case-studies/a-place-for-mom/">A Place for Mom</a>: the data foundation.</li>
+          <li>Databricks, Play Airlines (Gangverk-era client work): data foundation.</li>
+          <li>BigQuery, <a href="/case-studies/sothebys/">Sotheby&rsquo;s</a>: the warehouse, called Alpine by the team.</li>
+        </ul>
+
+        <h3>Identity</h3>
+        <ul>
+          <li>Janrain, MSG: identity.</li>
+          <li>Auth0, <a href="/case-studies/sothebys/">Sotheby&rsquo;s</a>: identity, feeding Segment as a server-side source.</li>
+          <li>Auth0, <a href="/case-studies/a-place-for-mom/">A Place for Mom</a>: identity.</li>
+          <li>Auth0, <a href="/case-studies/lindblad-expeditions/">Lindblad Expeditions - National Geographic</a>: identity.</li>
+          <li>Gigya, Forbes: social login.</li>
+        </ul>
+        <p>The pattern: Janrain at MSG, then Auth0 at Sotheby&rsquo;s, A Place for Mom, and Lindblad. Forbes was the exception: WordPress-native accounts, Gigya for social login.</p>
+
+        <h3>Analytics and measurement</h3>
+        <ul>
+          <li>Amplitude, <a href="/case-studies/sothebys/">Sotheby&rsquo;s</a>: the analytics layer, trial first, then enterprise.</li>
+          <li>Amplitude, <a href="/case-studies/a-place-for-mom/">A Place for Mom</a>: analytics.</li>
+          <li>Amplitude, <a href="/case-studies/ae-networks/">A+E Networks</a>: the measurement layer for History.com.</li>
+          <li>Mixpanel, Play Airlines (Gangverk-era client work): product analytics.</li>
+        </ul>
+
+        <h3>Experimentation</h3>
+        <ul>
+          <li>Optimizely, <a href="/case-studies/sothebys/">Sotheby&rsquo;s</a>: experimentation.</li>
+          <li>Optimizely, <a href="/case-studies/lindblad-expeditions/">Lindblad Expeditions - National Geographic</a>: experimentation.</li>
+          <li>Optimizely, <a href="/case-studies/a-place-for-mom/">A Place for Mom</a>: experimentation.</li>
+          <li>AB Tasty, Play Airlines (Gangverk-era client work): experimentation.</li>
+        </ul>
+
+        <h3>Organic search intelligence</h3>
+        <ul>
+          <li>Conductor, <a href="/case-studies/sothebys/">Sotheby&rsquo;s</a>: organic search intelligence, alongside the CDP work.</li>
+          <li>Conductor, <a href="/case-studies/a-place-for-mom/">A Place for Mom</a>: organic search intelligence.</li>
+          <li>Conductor, <a href="/case-studies/lindblad-expeditions/">Lindblad Expeditions - National Geographic</a>: organic search intelligence.</li>
+        </ul>
+
+        <h3>On-site search</h3>
+        <ul>
+          <li>Algolia, <a href="/case-studies/sothebys/">Sotheby&rsquo;s</a>: on-site and in-app search and recommendations.</li>
+          <li>Algolia, <a href="/case-studies/a-place-for-mom/">A Place for Mom</a>: on-site search and recommendations.</li>
+          <li>Algolia, <a href="/case-studies/lindblad-expeditions/">Lindblad Expeditions - National Geographic</a>: search running over the SeaWare API.</li>
+          <li>Algolia, <a href="/case-studies/ae-networks/">A+E Networks</a>: on-site search for History.com.</li>
+          <li>Algolia, this site: the search on douglascirillo.com itself.</li>
+        </ul>
+
+        <h3>Customer engagement</h3>
+        <ul>
+          <li>Braze, Play Airlines (Gangverk-era client work): customer engagement.</li>
+        </ul>
+
+        <h3>Content and delivery</h3>
+        <ul>
+          <li>Contentful, <a href="/case-studies/ae-networks/">A+E Networks</a>: content for History.com.</li>
+          <li>Cloudinary, <a href="/case-studies/ae-networks/">A+E Networks</a>: media for History.com.</li>
+          <li>Vercel, <a href="/case-studies/ae-networks/">A+E Networks</a>: delivery for History.com.</li>
+          <li>Brightspot, <a href="/case-studies/sothebys/">Sotheby&rsquo;s</a>: the content platform, replacing Adobe Experience Manager.</li>
+          <li>WordPress, <a href="/case-studies/a-place-for-mom/">A Place for Mom</a>: content management.</li>
+        </ul>
+
+        <h3>Customer service and support</h3>
+        <ul>
+          <li>Freshworks, <a href="/case-studies/sothebys/">Sotheby&rsquo;s</a>: customer service tooling, migrated from Salesforce.</li>
+          <li>Freshworks, Play Airlines (Gangverk-era client work): customer service tooling.</li>
+          <li>Intercom, <a href="/case-studies/sothebys/">Sotheby&rsquo;s</a>: support, integrated into the Segment foundation.</li>
+          <li>Intercom, MSG: support for the WNBA and D-League properties.</li>
+        </ul>
+
+        <h3>Commerce and reservations</h3>
+        <ul>
+          <li>Versonix SeaWare, <a href="/case-studies/lindblad-expeditions/">Lindblad Expeditions - National Geographic</a>: the reservation core that replaced the 30-year AS400 estate; the migration began while I was at Lindblad and was delivered to production from Gangverk.</li>
+        </ul>
       </section>
 
       <section aria-labelledby="point-h">
