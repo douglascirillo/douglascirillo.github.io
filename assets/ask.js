@@ -9,9 +9,10 @@
    Ask No Evidence, Ask Refused, Ask Next Click, Search Query,
    Search Result Click, Explore Focus. Every event carries the page path.
    Amplitude <> Algolia pipe: Algolia Insights events carry the visitor's
-   Amplitude anonymous device ID as the user token when Amplitude is
-   present (PIPE_ENABLED), so search behavior and site behavior join on one
-   anonymous ID in both systems. Otherwise a session-scoped token is used.
+   Amplitude device ID, assigned at random, as the user token when
+   Amplitude is present (PIPE_ENABLED), so search behavior and site
+   behavior join on one device ID in both systems. Otherwise a
+   session-scoped token is used.
 
    Engaged-UI revision (Nov 16, 2026;
    engaged-ui-revision-build-sheet.md, decisions D2, D9): the bar
