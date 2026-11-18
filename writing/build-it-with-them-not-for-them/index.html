@@ -587,6 +587,13 @@
        never recorded. If the SDK bundle already exposes
        window.sessionReplay, the plugin library is not loaded. */
     var SR_PLUGIN_SRC = 'https://cdn.amplitude.com/libs/plugin-session-replay-browser-1.36.7-min.js.gz';
+    /* Guides and Surveys (the engagement SDK), loaded the same
+       way as the replay plugin: fetched only inside this gated
+       boot, for human sessions only, and registered with the
+       Analytics SDK before init so it shares identity and
+       session. With no guide or survey published it renders
+       nothing. */
+    var ENGAGEMENT_SRC = 'https://cdn.amplitude.com/script/' + encodeURIComponent(AMPLITUDE_API_KEY) + '.engagement.js';
 
     var sdk = document.createElement('script');
     sdk.src = 'https://cdn.amplitude.com/script/' + encodeURIComponent(AMPLITUDE_API_KEY) + '.js';
@@ -600,6 +607,9 @@
           if (window.amplitude && typeof window.amplitude.init === 'function') {
             if (!BOT_CLS.is_bot && window.sessionReplay && typeof window.sessionReplay.plugin === 'function' && typeof window.amplitude.add === 'function') {
               try { window.amplitude.add(window.sessionReplay.plugin({ sampleRate: 1 })); } catch (e) { /* Replay must never break analytics. */ }
+            }
+            if (!BOT_CLS.is_bot && window.engagement && typeof window.engagement.plugin === 'function' && typeof window.amplitude.add === 'function') {
+              try { window.amplitude.add(window.engagement.plugin()); } catch (e) { /* Guides and Surveys must never break analytics. */ }
             }
             window.amplitude.init(AMPLITUDE_API_KEY, {
               fetchRemoteConfig: false,
@@ -659,17 +669,43 @@
           }
         } catch (e) { /* Analytics must never break the page. */ }
       };
-      if (BOT_CLS.is_bot || window.sessionReplay || !window.amplitude) {
+      if (BOT_CLS.is_bot || !window.amplitude) {
         start();
       } else {
-        var sr = document.createElement('script');
-        sr.src = SR_PLUGIN_SRC;
-        sr.async = true;
-        sr.onload = function () { start(); };
-        sr.onerror = function () { start(); };
-        document.head.appendChild(sr);
-        /* If the plugin CDN stalls, analytics still starts. */
-        setTimeout(start, 3000);
+        /* Plugin scripts load in parallel; analytics starts when
+           both have settled, or when the stall guard fires,
+           whichever comes first. A plugin that fails to load
+           never blocks the start: start() registers only what
+           arrived. */
+        var pluginsPending = 0;
+        var pluginSettled = function () {
+          pluginsPending--;
+          if (pluginsPending <= 0) start();
+        };
+        if (!window.sessionReplay) {
+          pluginsPending++;
+          var sr = document.createElement('script');
+          sr.src = SR_PLUGIN_SRC;
+          sr.async = true;
+          sr.onload = pluginSettled;
+          sr.onerror = pluginSettled;
+          document.head.appendChild(sr);
+        }
+        if (!window.engagement) {
+          pluginsPending++;
+          var eng = document.createElement('script');
+          eng.src = ENGAGEMENT_SRC;
+          eng.async = true;
+          eng.onload = pluginSettled;
+          eng.onerror = pluginSettled;
+          document.head.appendChild(eng);
+        }
+        if (pluginsPending === 0) {
+          start();
+        } else {
+          /* If a plugin CDN stalls, analytics still starts. */
+          setTimeout(start, 3000);
+        }
       }
     };
     sdk.onerror = function () { /* Fail silently if the CDN is unreachable. */ };
