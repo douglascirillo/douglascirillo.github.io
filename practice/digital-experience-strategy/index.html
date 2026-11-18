@@ -407,12 +407,121 @@
       return { is_bot: isBot, user_agent_type: type };
     })();
     try { document.documentElement.setAttribute("data-botcls", BOT_CLS.user_agent_type); } catch (e) {}
+    /* Consent gate for measurement (amplitude-consent-gate build
+       sheet): one detection, one choice. The stored choice under
+       dc_ledger_consent_v1 governs both the on-device ledger
+       (ledger.js) and Amplitude. Detection mirrors ledger.js
+       exactly (its token lists, verbatim): an explicit EU/EEA/UK
+       timezone allowlist, with a language fallback only when the
+       timezone is missing or generic. Gate states: "open" (not
+       detected, no stored choice: measurement runs, as it always
+       has), "granted" (stored grant: runs), "pending" (detected,
+       no stored choice: held until the prompt is answered),
+       "declined" (stored decline: never runs). While pending or
+       declined, the SDK is never loaded, no event is sent or
+       queued, and Session Replay never starts. ledger.js calls
+       DCAmplitude.grant() when the visitor says yes (prompt or
+       inspect panel) and DCAmplitude.revoke() when a granted
+       visitor changes their mind in the panel; revoke uses the
+       SDK's opt-out, which the pinned replay plugin answers by
+       shutting recording down. */
+
+    /* Grants recorded before this epoch were given under the
+       pre-gate prompt, which covered the on-device ledger only.
+       They do not count as an answer about measurement, so a
+       detected holder of one is asked again: the gate reads as
+       pending, and ledger.js renders the prompt when it sees a
+       pending gate under a granted record. Declines count from
+       any date; a no is a no. STAGED VALUE: the build time. The
+       publisher sets this to the publish time when the gate
+       ships. */
+    var DC_CONSENT_CUTOVER = 1795005959;
+    var AMP_GATE = (function () {
+      var stored = null;
+      try {
+        var rawConsent = window.localStorage.getItem(
+          "dc_ledger_consent_v1");
+        if (rawConsent) {
+          var rec = JSON.parse(rawConsent);
+          if (rec && rec.state === "declined") {
+            stored = "declined";
+          } else if (rec && rec.state === "granted" &&
+                     typeof rec.t === "number" &&
+                     rec.t >= DC_CONSENT_CUTOVER) {
+            stored = "granted";
+          }
+        }
+      } catch (e) { stored = null; }
+      if (stored) return stored;
+      var TZ_SET = {};
+      ("Europe/London Europe/Dublin Europe/Lisbon Europe/Madrid Europe/Paris Europe/Berlin Europe/Busingen Europe/Rome Europe/Amsterdam Europe/Brussels Europe/Luxembourg Europe/Vienna Europe/Warsaw Europe/Prague Europe/Bratislava Europe/Budapest Europe/Ljubljana Europe/Zagreb Europe/Stockholm Europe/Copenhagen Europe/Helsinki Europe/Mariehamn Europe/Tallinn Europe/Riga Europe/Vilnius Europe/Athens Europe/Bucharest Europe/Sofia Europe/Nicosia Europe/Valletta Europe/Oslo Europe/Vaduz Europe/Jersey Europe/Guernsey Europe/Isle_of_Man Europe/Gibraltar Asia/Nicosia Asia/Famagusta Atlantic/Reykjavik Iceland Atlantic/Azores Atlantic/Madeira Atlantic/Canary Atlantic/Faeroe Africa/Ceuta Africa/Melilla America/Guadeloupe America/Martinique America/Cayenne America/Marigot America/St_Barthelemy Indian/Reunion Indian/Mayotte Eire Portugal Poland").split(" ").forEach(function (z) {
+        TZ_SET[z] = true;
+      });
+      var LANG_PRIMARY_SET = {};
+      ("de fr it es pt nl pl sv da fi el cs sk sl hr ro bg hu lt lv et ga mt is lb no nb nn").split(" ").forEach(function (l) {
+        LANG_PRIMARY_SET[l] = true;
+      });
+      var REGION_SET = {};
+      ("GB IE MT CY AT BE BG HR CZ DK EE FI FR DE GR HU IT LV LT LU NL PL PT RO SK SI ES SE NO IS LI").split(" ").forEach(function (r) {
+        REGION_SET[r] = true;
+      });
+      var tz = null;
+      try {
+        tz = Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+      } catch (e) { tz = null; }
+      var detected = false;
+      if (tz && TZ_SET[tz]) {
+        detected = true;
+      } else {
+        var generic = !tz || tz === "UTC" || tz === "GMT" ||
+          tz === "Etc/UTC" || tz === "Etc/GMT" ||
+          tz === "Etc/GMT+0" || tz === "Etc/GMT-0" ||
+          tz === "Etc/Universal" || tz === "Universal";
+        if (generic) {
+          var langs = [];
+          try {
+            if (navigator.languages && navigator.languages.length) {
+              langs = Array.prototype.slice.call(navigator.languages);
+            } else if (navigator.language) {
+              langs = [navigator.language];
+            }
+          } catch (e) { langs = []; }
+          for (var i = 0; i < langs.length && !detected; i++) {
+            var parts = String(langs[i] || "").split("-");
+            if (!parts[0]) continue;
+            var region = null;
+            for (var j = 1; j < parts.length; j++) {
+              if (/^[A-Za-z]{2}$/.test(parts[j])) {
+                region = parts[j].toUpperCase(); break;
+              }
+            }
+            if (region) {
+              if (REGION_SET[region]) detected = true;
+              continue;
+            }
+            if (LANG_PRIMARY_SET[parts[0].toLowerCase()]) {
+              detected = true;
+            }
+          }
+        }
+      }
+      return detected ? "pending" : "open";
+    })();
+    var ampReadyCallbacks = [];
+    function onAmpReady(fn) {
+      if (ready) { try { fn(); } catch (e) {} return; }
+      ampReadyCallbacks.push(fn);
+    }
+
 
     var pending = [];
     var ready = false;
 
     function sendOutbound(properties) {
       if (!isConfigured) return;
+      /* Consent gate: while held or declined, a click is dropped,
+      never queued; it describes activity not agreed to be measured. */
+      if (AMP_GATE === "pending" || AMP_GATE === "declined") return;
       if (ready && window.amplitude && typeof window.amplitude.track === 'function') {
         try { window.amplitude.track('Outbound Link Click', properties); } catch (e) {}
       } else {
@@ -472,6 +581,15 @@
               }
             });
             ready = true;
+          /* If a revoke in an earlier session persisted an
+             opt-out in the SDK's identity store, lift it before
+             anything is identified or sent: this load only
+             happens under a gate that allows measurement. */
+          if (window.amplitude &&
+              typeof window.amplitude.setOptOut === "function") {
+            try { window.amplitude.setOptOut(false); }
+            catch (e) {}
+          }
             try {
               if (typeof window.amplitude.Identify === 'function' && typeof window.amplitude.identify === 'function') {
                 var botId = new window.amplitude.Identify();
@@ -498,6 +616,10 @@
               var queued = pending.shift();
               try { window.amplitude.track('Outbound Link Click', queued); } catch (e) {}
             }
+            while (ampReadyCallbacks.length) {
+              var readyFn = ampReadyCallbacks.shift();
+              try { readyFn(); } catch (e) {}
+            }
           }
         } catch (e) { /* Analytics must never break the page. */ }
       };
@@ -515,7 +637,73 @@
       }
     };
     sdk.onerror = function () { /* Fail silently if the CDN is unreachable. */ };
-    document.head.appendChild(sdk);
+
+    /* Consent gate: the SDK script joins the page only when the
+       gate allows measurement. grant() is the prompt's and the
+       panel's yes (it also lifts an opt-out after a revoke);
+       revoke() is the panel's change of mind after a grant (the
+       SDK opt-out stops event sending, and the replay plugin
+       shuts recording down on the same signal); decline() is a
+       no with nothing live to stop. Queues are cleared on every
+       transition away from granted, so nothing gathered before
+       an answer can flush after one. */
+    var sdkAppended = false;
+    function appendSdk() {
+      if (sdkAppended) return;
+      sdkAppended = true;
+      document.head.appendChild(sdk);
+    }
+    function clearQueues() {
+      pending.length = 0;
+      if (typeof pendingEvents !== "undefined") {
+        pendingEvents.length = 0;
+      }
+    }
+    window.DCAmplitude = {
+      gate: function () { return AMP_GATE; },
+      isReady: function () { return ready; },
+      whenReady: onAmpReady,
+      grant: function () {
+        var liftOptOut = AMP_GATE === "declined";
+        AMP_GATE = "granted";
+        clearQueues();
+        if (liftOptOut && window.amplitude &&
+            typeof window.amplitude.setOptOut === "function") {
+          try { window.amplitude.setOptOut(false); } catch (e) {}
+        }
+        appendSdk();
+      },
+      revoke: function () {
+        AMP_GATE = "declined";
+        clearQueues();
+        if (window.amplitude &&
+            typeof window.amplitude.setOptOut === "function") {
+          try { window.amplitude.setOptOut(true); } catch (e) {}
+        }
+      },
+      decline: function () {
+        AMP_GATE = "declined";
+        clearQueues();
+      }
+    };
+    /* One choice, every tab: when the stored record changes in
+       another tab, this tab follows it, so a revoke stops
+       measurement here too and a grant starts it. */
+    try {
+      window.addEventListener("storage", function (ev) {
+        if (!ev || ev.key !== "dc_ledger_consent_v1" ||
+            !ev.newValue) return;
+        var rec2 = null;
+        try { rec2 = JSON.parse(ev.newValue); } catch (e) {}
+        if (!rec2) return;
+        if (rec2.state === "declined") {
+          window.DCAmplitude.revoke();
+        } else if (rec2.state === "granted") {
+          window.DCAmplitude.grant();
+        }
+      });
+    } catch (e) {}
+    if (AMP_GATE === "open" || AMP_GATE === "granted") appendSdk();
   })();
 </script>
 </head>
@@ -549,6 +737,7 @@
         <li><a href="mailto:douglas.cirillo@gmail.com" data-outbound-link data-link-label="Email">Email</a></li>
       </ul>
       <p class="shell-colophon"><a href="/colophon/">How this site runs: the colophon</a></p>
+      <p class="shell-colophon"><a href="/data/">Your data on this site</a></p>
     </div>
   </nav>
   <div class="shell-scrim" id="shell-scrim" hidden></div>
@@ -623,7 +812,7 @@
 
 </div>
 <script src="/assets/surface.js?v=20261117-11"></script>
-<script src="/assets/ledger.js?v=20261117-2"></script>
+<script src="/assets/ledger.js?v=20261118-1"></script>
 <script src="/assets/ask.js?v=20261117-13"></script>
 <script src="/assets/compose.js?v=20261117-21" defer></script>
 </body>
