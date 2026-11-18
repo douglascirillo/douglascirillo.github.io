@@ -804,7 +804,7 @@
   <main id="main">
     <article><p class="kicker">Self-Diagnostic</p>
 <h1 class="fade">The Digital Experience Leadership Scorecard</h1>
-<p class="summary">The Digital Experience Leadership Scorecard is Douglas Cirillo&rsquo;s self-diagnostic for whoever owns a brand&rsquo;s digital experience: the leader running it, or the executive deciding whether it is being run well. Twenty statements, five dimensions, scored on what you can prove. It runs in your browser. Nothing you enter is stored or sent anywhere.</p>
+<p class="summary">The Digital Experience Leadership Scorecard is Douglas Cirillo&rsquo;s self-diagnostic for whoever owns a brand&rsquo;s digital experience: the leader running it, or the executive deciding whether it is being run well. Twenty statements, five dimensions, scored on what you can prove. It runs in your browser. Your individual answers never leave it. When measurement is on, finishing a section is counted, and so are your final band and total.</p>
 <section aria-labelledby="how-h"><h2 id="how-h">How to score it</h2><p>Score what you can prove, not what you believe. A statement earns a 2 only if you could show the evidence to a skeptic in the room. If you have to explain why it is basically true, it is a 1. If it is not true yet, it is a 0, and a 0 is useful. It tells you where the sequence starts.</p><p>The scorecard follows the order I work in and have written about as Builder OS: people and data first, AI second, score kept in business currency. Each statement is 0 (not true), 1 (partly true), or 2 (true and provable). Each dimension totals 8. The full scorecard totals 40.</p></section>
 <section class="sc-dim" data-dim="1" aria-labelledby="dim1-h">
 <h2 id="dim1-h">1. Data foundation</h2>
@@ -870,12 +870,15 @@
 <script>
 (function(){
   var BANDS=[{"name": "Foundation missing", "text": "The score is not an indictment. It is a sequence. Do not start with AI or a replatform. Start with people and definitions: name who will run this function, agree on what a customer is, and write the core metrics down. That work is unglamorous and everything else depends on it."}, {"name": "Building", "text": "The pieces exist but they do not compound yet. Finish the foundation before adding surface: resolve identity, govern one schema, and put the platform on a product footing with an owner and a roadmap. Then aim the first tests at objectives the business already counts."}, {"name": "Operating", "text": "The function runs and produces results people trust. The next work is discipline at scale: gates on every automated system before production, re-testing whenever the stack changes, and dashboards open to anyone in the business, so the numbers can settle arguments without you in the room."}, {"name": "Compounding", "text": "The loop runs, and each pass leaves the foundation stronger than the last. The frontier moves outward: answer engines and agents are now an audience too, so measure how they represent you and keep the stable facts current. Keep score in business currency, and keep looping."}], ROUTES=[{"name": "Data foundation", "purl": "/practice/composable-martech-and-customer-data/", "pname": "Composable martech and customer data", "curl": "/case-studies/sothebys/", "cname": "the Sotheby&rsquo;s case study"}, {"name": "Experimentation and measurement", "purl": "/practice/experimentation-and-measurement/", "pname": "Experimentation and measurement", "curl": "/case-studies/lindblad-expeditions/", "cname": "the Lindblad case study"}, {"name": "AI readiness and answer discoverability", "purl": "/practice/ai-readiness-and-answer-discoverability/", "pname": "AI readiness and answer discoverability", "curl": "/case-studies/sothebys/", "cname": "the Sotheby&rsquo;s case study"}, {"name": "Team and operating model", "purl": "/practice/digital-experience-strategy/", "pname": "Digital experience strategy", "curl": "/case-studies/madison-square-garden/", "cname": "the Madison Square Garden case study"}, {"name": "Experience coherence", "purl": "/practice/digital-experience-strategy/", "pname": "Digital experience strategy", "curl": "/case-studies/lindblad-expeditions/", "cname": "the Lindblad case study"}];
-  var answers={}, started=false, completed=false;
+  var answers={}, started=false, completed=false, dimFired={};
   function track(n,p){ if(window.amplitude&&typeof window.amplitude.track==='function'){ try{window.amplitude.track(n,p||{});}catch(e){} } }
   function refresh(){
     var subs=[0,0,0,0,0], total=0, count=0;
     Object.keys(answers).forEach(function(k){ var d=+k.split('-')[0]; subs[d-1]+=answers[k]; total+=answers[k]; count++; });
     subs.forEach(function(s,i){ var el=document.getElementById('sub-'+(i+1)); if(el) el.textContent=s; });
+    var counts=[0,0,0,0,0];
+    Object.keys(answers).forEach(function(k){ counts[+k.split('-')[0]-1]++; });
+    counts.forEach(function(c,i){ if(c===4&&!dimFired[i]&&ROUTES[i]){ dimFired[i]=true; track('Scorecard Dimension Completed', {dimension: ROUTES[i].name}); } });
     if(count===20){
       var band = total<=10?0 : total<=20?1 : total<=30?2 : 3;
       var wi=0; subs.forEach(function(s,i){ if(s<subs[wi]) wi=i; });
