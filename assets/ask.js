@@ -615,9 +615,7 @@
             /* Twin generation (stage G1): the conversational
                answer first, the transparency label under it,
                then the verbatim claim cards it cites (there may
-               be none, on a conversational answer). Label copy
-               is the E6 draft, pending the flip batch's copy
-               approval. */
+               be none, on a conversational answer). */
             data.gen.paragraphs.forEach(function (para) {
               var gp = document.createElement("p");
               gp.className = "ask-prose";
