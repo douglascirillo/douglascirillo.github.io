@@ -251,6 +251,23 @@
       "lengths": {
         "full": "Douglas Cirillo and Richard McGovern presented the Sotheby's data transformation story live at Synapse 2019, Segment's user conference; the full talk and transcript are published on the speaking page."
       }
+    },
+    {
+      "id": "speaking-determination",
+      "kind": "speaking",
+      "description": "Speaking proof: the Determination podcast episode with Brian Sheehy, on telling your story simply.",
+      "link": "/speaking/determination/",
+      "scope_required": [],
+      "forbidden_intents": [
+        "search_decline",
+        "cdp",
+        "replatform",
+        "coherence",
+        "measurement"
+      ],
+      "lengths": {
+        "full": "Doug Cirillo joined host Brian Sheehy on the Determination podcast, published November 17, 2026: distilling what you do into a story people can hire, digital product and customer experience, and the joy business. The full episode video and transcript are published on its own page."
+      }
     }
   ],
   "page_anchors": [
