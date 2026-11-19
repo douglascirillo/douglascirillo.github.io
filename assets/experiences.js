@@ -36,7 +36,18 @@
    test browser that cannot open a console can still show exactly
    what the SDK looked like around the show call. The probe is
    inert without the parameter and is removed with the fix it
-   informs. */
+   informs.
+
+   Nov 19, 2026 boot gate (the fix the probe informed): in a fresh
+   browser the router called gs.show() about 1.4s before the
+   engagement bundle finished booting, while its
+   _analytics.hasBooted flag was still false. The call sat in the
+   loader stub's queue; the queue drained as the real bundle took
+   over and the show was never replayed: no render, no error, no
+   Guide Viewed. Natively triggered guides (tooltip, survey) were
+   unaffected because their triggers live downstream of boot. The
+   readiness wait now requires the booted flag, not merely a
+   callable show, before run() fires. */
 (function () {
   var REGISTRY_VERSION = 4;
   var ASSIGN_KEY = "dc_experience_v1";
@@ -173,22 +184,34 @@
 
   window.DCAmplitude.whenReady(function () {
     probeMark("whenReady fired");
-    /* Wait for the engagement API to exist. The plugin is registered
-       before init, but its bundle defines the API on its own clock;
-       if it never arrives, the router does nothing at all, including
-       no assignment, so broken sessions never enter the readout. */
+    /* Wait for the engagement API to exist AND to have booted.
+       The loader stub exposes a callable gs.show almost at once,
+       but a show issued before the real bundle finishes booting
+       (window.engagement._analytics.hasBooted) sits in the stub's
+       queue and is silently dropped in the handoff; the probe
+       timeline of Nov 19, 2026 showed the show landing ~1.4s
+       before boot in fresh browsers. If the API never boots, the
+       router does nothing at all, including no assignment, so
+       broken sessions never enter the readout. */
     var waited = 0;
     var timer = window.setInterval(function () {
       waited += 250;
       var gs = window.engagement && window.engagement.gs;
-      if (gs && typeof gs.show === "function") {
+      var booted = !!(window.engagement &&
+                      window.engagement._analytics &&
+                      window.engagement._analytics.hasBooted);
+      if (gs && typeof gs.show === "function" && booted) {
         window.clearInterval(timer);
-        probeMark("gs found; run()");
+        probeMark("gs booted; run()");
         run(gs);
       } else if (waited >= 15000) {
         window.clearInterval(timer);
-        probeMark("gs never arrived in 15s");
-        warn("engagement API never arrived; router stood down");
+        probeMark("gs never booted in 15s");
+        warn("engagement API never booted; router stood down" +
+             " (gs callable: " + !!(gs && typeof gs.show === "function") +
+             ", _analytics: " +
+             (window.engagement && window.engagement._analytics
+                ? "present" : "absent") + ")");
       }
     }, 250);
   });
