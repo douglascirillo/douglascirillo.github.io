@@ -19,7 +19,7 @@
    so demo traffic stays out of the readout, and it resets the guide
    before showing it, so a walkthrough always starts clean. */
 (function () {
-  var REGISTRY_VERSION = 3;
+  var REGISTRY_VERSION = 4;
   var ASSIGN_KEY = "dc_experience_v1";
   var SHOWN_KEY = "dc_experience_shown_v1";
   var DEMO_KEY = "dc_experience_demo_v1";
@@ -29,9 +29,10 @@
     "tour": { key: "guide-start-here-tour", surface: "home" },
     "scorecard-checklist": { key: "guide-scorecard-checklist", surface: "scorecard" },
     "product-tour": { key: "guide-conversation-tour", surface: "home" },
-    "sothebys-hotspot": { key: "guide-sotheby-s-results-ho-2e4", surface: "sothebys" }
+    "sothebys-hotspot": { key: "guide-sotheby-s-results-ho-2e4", surface: "sothebys" },
+    "newsletter-banner": { key: "guide-newsletter-banner", surface: "any-except-scorecard" }
   };
-  var VARIANTS = ["control", "tour", "scorecard-checklist", "product-tour", "sothebys-hotspot"];
+  var VARIANTS = ["control", "tour", "scorecard-checklist", "product-tour", "sothebys-hotspot", "newsletter-banner"];
 
   function surfaceOf(path) {
     if (path === "/" || path === "/index.html") return "home";
@@ -134,6 +135,17 @@
     } catch (e) { /* A guide must never break the page. */ }
   }
 
+  /* Surface match: most guides live on one named surface; the
+     banner variant lives on every page except the scorecard. */
+  function onSurface(dg, surface, path) {
+    if (!dg) return false;
+    if (dg.surface === "any-except-scorecard") {
+      return !(path === "/scorecard" || path === "/scorecard/" ||
+               path === "/scorecard/index.html");
+    }
+    return surface === dg.surface;
+  }
+
   function run(gs) {
     var surface = surfaceOf(window.location.pathname);
 
@@ -158,7 +170,7 @@
     }
     if (demo) {
       var dg = GUIDES[demo];
-      if (dg && surface === dg.surface) showGuide(gs, dg.key, true);
+      if (dg && onSurface(dg, surface, window.location.pathname)) showGuide(gs, dg.key, true);
       return;
     }
 
@@ -184,7 +196,7 @@
     identify({ experience: variant });
 
     var guide = GUIDES[variant];
-    if (!guide || surface !== guide.surface) return;
+    if (!guide || !onSurface(guide, surface, window.location.pathname)) return;
     var shown = storageGet(window.localStorage, SHOWN_KEY) || {};
     if (shown[guide.key]) return;
     showGuide(gs, guide.key, false);
