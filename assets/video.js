@@ -112,12 +112,20 @@
         settleTick();
         var duration = player.getDuration() || 0;
         var position = player.getCurrentTime() || 0;
-        var jumped = position - state.lastPosition > 2;
+        var prevPosition = state.lastPosition;
+        var jumped = position - prevPosition > 2;
         state.lastPosition = position;
         if (duration > 0 && !jumped) {
+          /* A milestone fires only when continuous playback crosses
+             it: previous position below it, current at or past it.
+             Being positioned beyond a milestone (after a seek) never
+             fires it. */
+          var prevPercent = (prevPosition / duration) * 100;
           var percent = (position / duration) * 100;
           for (var i = 0; i < MILESTONES.length; i++) {
-            if (percent >= MILESTONES[i]) fireMilestone(MILESTONES[i]);
+            if (prevPercent < MILESTONES[i] && percent >= MILESTONES[i]) {
+              fireMilestone(MILESTONES[i]);
+            }
           }
         }
       }, 250);
