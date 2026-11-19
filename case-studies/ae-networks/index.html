@@ -596,6 +596,16 @@
        session. With no guide or survey published it renders
        nothing. */
     var ENGAGEMENT_SRC = 'https://cdn.amplitude.com/script/' + encodeURIComponent(AMPLITUDE_API_KEY) + '.engagement.js';
+    /* Feature Experiment (Nov 19, 2026): the Experiment JS
+       client, self-hosted at a pinned version (@amplitude/
+       experiment-js-client 1.24.0, UMD build) so no new
+       third-party host touches the page. Loaded the same way
+       as the other plugins: inside this gated boot, human
+       sessions only, settled before analytics starts. The
+       deployment key is a public client key, like the
+       analytics API key above. */
+    var EXPERIMENT_SRC = '/assets/experiment-js-client-1.24.0.min.js';
+    var EXPERIMENT_DEPLOYMENT_KEY = 'client-iViyDpXJp6c131vcAX37DSYDV0ZzJHUn';
 
     var sdk = document.createElement('script');
     sdk.src = 'https://cdn.amplitude.com/script/' + encodeURIComponent(AMPLITUDE_API_KEY) + '.js';
@@ -629,6 +639,34 @@
               }
             });
             ready = true;
+            /* Feature Experiment client (Nov 19, 2026):
+               initialize against the analytics instance so
+               identity is shared, then fetch variants in the
+               background. Automatic exposure tracking is off;
+               compose.js fires exposure manually at a genuine
+               card showing. DCExperimentFetched marks a
+               completed fetch; until then (or if the load or
+               the fetch fails) the card renders control. */
+            if (!BOT_CLS.is_bot && window.Experiment &&
+                typeof window.Experiment
+                  .initializeWithAmplitudeAnalytics ===
+                  'function') {
+              try {
+                window.DCExperiment = window.Experiment
+                  .initializeWithAmplitudeAnalytics(
+                    EXPERIMENT_DEPLOYMENT_KEY, {
+                      automaticExposureTracking: false,
+                      fetchTimeoutMillis: 2000
+                    });
+                window.DCExperimentFetched = false;
+                window.DCExperiment.fetch().then(
+                  function () {
+                    window.DCExperimentFetched = true;
+                  },
+                  function () { /* Control copy stands. */ });
+              } catch (e) { /* Experiments must never break
+                 analytics. */ }
+            }
           /* If a revoke in an earlier session persisted an
              opt-out in the SDK's identity store, lift it before
              anything is identified or sent: this load only
@@ -701,6 +739,15 @@
           eng.onload = pluginSettled;
           eng.onerror = pluginSettled;
           document.head.appendChild(eng);
+        }
+        if (!window.Experiment) {
+          pluginsPending++;
+          var exp = document.createElement('script');
+          exp.src = EXPERIMENT_SRC;
+          exp.async = true;
+          exp.onload = pluginSettled;
+          exp.onerror = pluginSettled;
+          document.head.appendChild(exp);
         }
         if (pluginsPending === 0) {
           start();
@@ -886,7 +933,7 @@
 <script src="/assets/surface.js?v=20261117-11"></script>
 <script src="/assets/ledger.js?v=20261118-2"></script>
 <script src="/assets/ask.js?v=20261118-1"></script>
-<script src="/assets/compose.js?v=20261118-1" defer></script>
+<script src="/assets/compose.js?v=20261119-1" defer></script>
 <script src="/assets/experiences.js?v=20261118-4"></script>
 </body>
 </html>
