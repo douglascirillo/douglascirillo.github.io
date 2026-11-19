@@ -17,7 +17,16 @@
    Demo mode never touches the natural assignment or the experience
    user property. It marks the visitor with separate demo properties
    so demo traffic stays out of the readout, and it resets the guide
-   before showing it, so a walkthrough always starts clean. */
+   before showing it, so a walkthrough always starts clean.
+
+   Nov 19, 2026 fix: the demo links stopped rendering guides even
+   though the assignment fired and the engagement SDK booted (the
+   SDK's own triggers, tooltip and survey, kept working). The show
+   path is now hardened: the reset is awaited with a cap and lives
+   in its own guard, so a reset that throws, rejects, or hangs can
+   never eat the show; a failed show retries once; failures warn to
+   the console instead of vanishing; and the wait for the
+   engagement API runs 15s instead of 4s. */
 (function () {
   var REGISTRY_VERSION = 4;
   var ASSIGN_KEY = "dc_experience_v1";
@@ -96,8 +105,9 @@
       if (gs && typeof gs.show === "function") {
         window.clearInterval(timer);
         run(gs);
-      } else if (waited >= 4000) {
+      } else if (waited >= 15000) {
         window.clearInterval(timer);
+        warn("engagement API never arrived; router stood down");
       }
     }, 250);
   });
@@ -124,15 +134,67 @@
     } catch (e) {}
   }
 
-  function showGuide(gs, guideKey, resetFirst) {
+  /* Failures here warn instead of vanishing: the Nov 19 break stayed
+     invisible precisely because every error was swallowed. */
+  function warn(msg) {
     try {
-      if (resetFirst && typeof gs.reset === "function") {
-        var r = gs.reset(guideKey, 0);
-        if (r && typeof r.catch === "function") r.catch(function () {});
+      if (window.console && typeof window.console.warn === "function") {
+        window.console.warn("[DCRouter] " + msg);
       }
-      var s = gs.show(guideKey);
-      if (s && typeof s.catch === "function") s.catch(function () {});
-    } catch (e) { /* A guide must never break the page. */ }
+    } catch (e) {}
+  }
+
+  /* The show lives in its own guard, apart from the reset: a reset
+     that throws synchronously must not skip it. In demo mode the
+     reset is awaited before the show, capped at 2s, so a hung reset
+     cannot eat the show either. A failed show, thrown or rejected,
+     retries once through the same path. */
+  function showGuide(gs, guideKey, resetFirst) {
+    var show = function () {
+      var attempts = 0;
+      var attempt = function () {
+        attempts += 1;
+        try {
+          var s = gs.show(guideKey);
+          if (s && typeof s.catch === "function") {
+            s.catch(function () {
+              warn("show rejected for " + guideKey);
+              if (attempts < 2) window.setTimeout(attempt, 1000);
+            });
+          }
+        } catch (e) {
+          warn("show threw for " + guideKey);
+          if (attempts < 2) window.setTimeout(attempt, 1000);
+        }
+      };
+      attempt();
+    };
+    if (resetFirst && typeof gs.reset === "function") {
+      var settled = false;
+      var go = function () {
+        if (!settled) { settled = true; show(); }
+      };
+      try {
+        var r = gs.reset(guideKey, 0);
+        if (r && typeof r.then === "function") {
+          r.then(go, function () {
+            warn("reset rejected for " + guideKey);
+            go();
+          });
+          window.setTimeout(function () {
+            if (!settled) warn("reset still pending after 2s for " + guideKey);
+            go();
+          }, 2000);
+        } else {
+          go();
+        }
+      } catch (e) {
+        warn("reset threw for " + guideKey);
+        go();
+      }
+    } else {
+      show();
+    }
   }
 
   /* Surface match: most guides live on one named surface; the
