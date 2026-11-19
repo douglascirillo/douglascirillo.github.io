@@ -18,6 +18,12 @@
    counting after 90 days and are pruned on read and on write.
    Inspect-and-clear lives in the panel this file renders (doors:
    the receipt and the colophon).
+   This file also hosts the Network Error fetch observer (see
+   the network error section below): after the consent gate
+   releases, it wraps window.fetch and reports failed requests
+   to the site's own services (the ask endpoint, Algolia search)
+   as the Network Error event. Observe-only; it never reads a
+   request or response body and returns every promise untouched.
    Measurement never breaks the page: every storage, network and
    Amplitude call here is wrapped, and any internal failure leaves
    window.DCLedger as the inert stub below (fail closed). */
@@ -219,6 +225,115 @@
 
   function eventPage() {
     try { return window.location.pathname; } catch (e) { return ""; }
+  }
+
+  /* ---------- network error observer (Network Error) ----------
+     Wraps window.fetch, but installs only inside
+     DCAmplitude.whenReady: after the consent gate has released
+     and Amplitude has initialized. Nothing is observed before
+     consent, and a decline installs nothing. Observe-only: the
+     original promise is returned untouched and no request or
+     response body is ever read. Scope is an allowlist of the
+     site's own service hosts: the ask endpoint and Algolia
+     search. Amplitude's own hosts are not on it, so a failed
+     analytics call can never report itself. Same-origin fetches
+     and every other host pass through unobserved. Deduped once
+     per page view per host, path and status. A rejection
+     reports status 0, except a caller's own abort and any
+     rejection after pagehide: neither is an error. XHR is not
+     wrapped; the site's ask and search calls all use fetch. */
+  var NETWORK_ASK_HOST =
+    "7i3yr1dzge.execute-api.us-east-1.amazonaws.com";
+  var networkErrorSeen = {};
+  var networkErrorInstalled = false;
+  var networkPageUnloading = false;
+
+  function networkErrorSource(host) {
+    if (host === NETWORK_ASK_HOST) return "ask";
+    if (/(^|\.)algolia\.net$/.test(host) ||
+        /(^|\.)algolianet\.com$/.test(host)) return "search";
+    return null;
+  }
+
+  function reportNetworkError(host, path, status, source) {
+    try {
+      var key = host + "|" + path + "|" + status;
+      if (networkErrorSeen[key]) return;
+      networkErrorSeen[key] = true;
+      track("Network Error", {
+        status_code: status,
+        request_host: host,
+        request_path: path,
+        source: source,
+        page: eventPage()
+      });
+    } catch (e) { /* measurement never breaks the page */ }
+  }
+
+  function installNetworkErrorObserver() {
+    if (networkErrorInstalled) return;
+    networkErrorInstalled = true;
+    try {
+      /* Rejections caused by the page going away are not
+         errors: once pagehide fires, in-flight fetches reject
+         as a side effect of the navigation itself. */
+      try {
+        window.addEventListener("pagehide", function () {
+          networkPageUnloading = true;
+        });
+      } catch (e) {}
+      if (typeof window.fetch !== "function") return;
+      var originalFetch = window.fetch;
+      window.fetch = function (input, init) {
+        var url = "";
+        try {
+          url = typeof input === "string" ? input :
+            (input && typeof input.url === "string" ?
+              input.url :
+              (input && typeof input.href === "string" ?
+                input.href : ""));
+        } catch (e) { url = ""; }
+        var host = "", path = "", source = null;
+        if (url) {
+          try {
+            var parsed = new URL(url, window.location.href);
+            host = parsed.hostname || "";
+            path = parsed.pathname || "";
+          } catch (e) { host = ""; path = ""; }
+          if (host) source = networkErrorSource(host);
+        }
+        var promise = originalFetch.apply(this, arguments);
+        if (source) {
+          try {
+            promise.then(function (response) {
+              try {
+                var status = response &&
+                  typeof response.status === "number" ?
+                  response.status : 0;
+                if (status >= 400 && status <= 599) {
+                  reportNetworkError(host, path, status, source);
+                }
+              } catch (e) {}
+            }, function (err) {
+              /* A caller's own abort is not an error either. */
+              if (networkPageUnloading) return;
+              if (err && err.name === "AbortError") return;
+              reportNetworkError(host, path, 0, source);
+            });
+          } catch (e) {}
+        }
+        return promise;
+      };
+    } catch (e) { /* measurement never breaks the page */ }
+  }
+
+  function armNetworkErrorObserver() {
+    try {
+      if (window.DCAmplitude &&
+          typeof window.DCAmplitude.whenReady === "function") {
+        window.DCAmplitude.whenReady(installNetworkErrorObserver);
+      }
+    } catch (e) {}
   }
 
   function currentPath() {
@@ -1309,6 +1424,7 @@
   try {
     if (isHuman) {
       initVisitMarker();
+      armNetworkErrorObserver();
       detected = detectedEU();
       consentRecord = readConsent();
       document.addEventListener("click", function (ev) {
