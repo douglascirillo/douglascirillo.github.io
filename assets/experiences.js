@@ -26,7 +26,17 @@
    in its own guard, so a reset that throws, rejects, or hangs can
    never eat the show; a failed show retries once; failures warn to
    the console instead of vanishing; and the wait for the
-   engagement API runs 15s instead of 4s. */
+   engagement API runs 15s instead of 4s.
+
+   TEMPORARY PROBE (Nov 19, 2026, later the same day): the hardening
+   above did not restore rendering in fresh browsers, while the
+   same links rendered in an established one. With ?dcprobe=1 on
+   the URL, this file samples the engagement SDK's state twice a
+   second for 30s and prints the timeline into a fixed panel, so a
+   test browser that cannot open a console can still show exactly
+   what the SDK looked like around the show call. The probe is
+   inert without the parameter and is removed with the fix it
+   informs. */
 (function () {
   var REGISTRY_VERSION = 4;
   var ASSIGN_KEY = "dc_experience_v1";
@@ -90,10 +100,79 @@
     if (wanted && VARIANTS.indexOf(wanted) !== -1) demoParam = wanted;
   } catch (e) { demoParam = null; }
 
+  /* Probe machinery (see the header note). probeMark is called
+     from warn(), the readiness poll, and showGuide(); every call
+     is a no-op unless the probe parameter is present. */
+  var PROBE = false;
+  try {
+    PROBE = new URLSearchParams(window.location.search).get("dcprobe") === "1";
+  } catch (e) { PROBE = false; }
+  var probeLines = [];
+  var probeT0 = Date.now();
+  function probeState() {
+    var e = window.engagement;
+    var q = (e && e._q && typeof e._q.length === "number") ? e._q.length : -1;
+    var real = !!(e && e._);
+    var booted = !!(e && e._analytics && e._analytics.hasBooted);
+    var showFn = (e && e.gs && typeof e.gs.show === "function") ? "fn" : "-";
+    var dom = -1;
+    try {
+      dom = document.querySelectorAll(
+        '[class*="amplitude" i],[id*="amplitude" i],' +
+        '[class*="engagement" i],[id*="engagement" i],' +
+        'iframe[src*="amplitude"]').length;
+    } catch (err) {}
+    var bt = false;
+    try {
+      var bodyText = document.body
+        ? (document.body.innerText || document.body.textContent || "")
+        : "";
+      bt = bodyText.indexOf("From the Middle Seat, the newsletter") !== -1;
+    } catch (err) {}
+    return "q=" + q + " real=" + (real ? 1 : 0) +
+           " booted=" + (booted ? 1 : 0) + " gs.show=" + showFn +
+           " dom=" + dom + " bannerText=" + (bt ? 1 : 0);
+  }
+  function probeRender() {
+    try {
+      var el = document.getElementById("dc-probe");
+      if (!el) {
+        if (!document.body) return;
+        el = document.createElement("pre");
+        el.id = "dc-probe";
+        el.setAttribute("style",
+          "position:fixed;top:0;left:0;z-index:2147483647;" +
+          "background:#ffffff;color:#000000;font:11px/1.45 monospace;" +
+          "padding:8px;margin:0;max-height:70vh;overflow:auto;" +
+          "white-space:pre-wrap;border:2px solid #cc0000;");
+        document.body.appendChild(el);
+      }
+      el.textContent = probeLines.slice(-40).join("\n");
+    } catch (err) {}
+  }
+  function probeMark(label) {
+    if (!PROBE) return;
+    try {
+      probeLines.push(((Date.now() - probeT0) / 1000).toFixed(1) +
+                      "s " + label + " | " + probeState());
+      probeRender();
+    } catch (err) {}
+  }
+  if (PROBE) {
+    probeMark("probe start");
+    var probeTicks = 0;
+    var probeTimer = window.setInterval(function () {
+      probeTicks += 1;
+      probeMark("tick");
+      if (probeTicks >= 60) window.clearInterval(probeTimer);
+    }, 500);
+  }
+
   if (!window.DCAmplitude ||
       typeof window.DCAmplitude.whenReady !== "function") return;
 
   window.DCAmplitude.whenReady(function () {
+    probeMark("whenReady fired");
     /* Wait for the engagement API to exist. The plugin is registered
        before init, but its bundle defines the API on its own clock;
        if it never arrives, the router does nothing at all, including
@@ -104,9 +183,11 @@
       var gs = window.engagement && window.engagement.gs;
       if (gs && typeof gs.show === "function") {
         window.clearInterval(timer);
+        probeMark("gs found; run()");
         run(gs);
       } else if (waited >= 15000) {
         window.clearInterval(timer);
+        probeMark("gs never arrived in 15s");
         warn("engagement API never arrived; router stood down");
       }
     }, 250);
@@ -137,6 +218,7 @@
   /* Failures here warn instead of vanishing: the Nov 19 break stayed
      invisible precisely because every error was swallowed. */
   function warn(msg) {
+    probeMark("WARN " + msg);
     try {
       if (window.console && typeof window.console.warn === "function") {
         window.console.warn("[DCRouter] " + msg);
@@ -150,12 +232,19 @@
      cannot eat the show either. A failed show, thrown or rejected,
      retries once through the same path. */
   function showGuide(gs, guideKey, resetFirst) {
+    probeMark("showGuide " + guideKey + " resetFirst=" + resetFirst);
     var show = function () {
       var attempts = 0;
       var attempt = function () {
         attempts += 1;
+        probeMark("show attempt " + attempts + " for " + guideKey);
         try {
           var s = gs.show(guideKey);
+          if (PROBE && s && typeof s.then === "function") {
+            s.then(function () {
+              probeMark("show resolved for " + guideKey);
+            }, function () {});
+          }
           if (s && typeof s.catch === "function") {
             s.catch(function () {
               warn("show rejected for " + guideKey);
@@ -172,7 +261,11 @@
     if (resetFirst && typeof gs.reset === "function") {
       var settled = false;
       var go = function () {
-        if (!settled) { settled = true; show(); }
+        if (!settled) {
+          settled = true;
+          probeMark("reset settled for " + guideKey);
+          show();
+        }
       };
       try {
         var r = gs.reset(guideKey, 0);
