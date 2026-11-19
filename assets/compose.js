@@ -2288,13 +2288,71 @@
   var SCORECARD_LINK_SOURCE_CARD = "scorecard_card";
   var SCORECARD_LINK_SOURCE_SET = "link_set";
 
+  /* Feature Experiment (Nov 19, 2026): the scorecard promotion
+     card runs as an Amplitude Feature Experiment, flag
+     "scorecard-promotion-card", variants control / proof-led
+     (proof-led copy approved by Douglas Nov 19, 2026). The
+     Experiment client is initialized by the pages' boot block
+     after consent (window.DCExperiment, fetched flag set on
+     window.DCExperimentFetched), with automatic exposure
+     tracking OFF: exposure is fired manually from the
+     Promotion Viewed observer below, so only a genuine new
+     showing counts, and restored re-renders never expose.
+     Copy is chosen at render from the fetched variant;
+     anything other than an explicit fetched value renders
+     the control strings, so a missing SDK, a pending or
+     failed fetch, or the experiment being off all degrade
+     to today's card. SCORECARD_EXPERIMENT_ENABLED is the
+     site-side kill switch. */
+  var SCORECARD_EXPERIMENT_ENABLED = true;
+  var SCORECARD_EXPERIMENT_FLAG = "scorecard-promotion-card";
+  var scorecardCardVariantUsed = null;
+
+  function scorecardExperimentVariant() {
+    if (!SCORECARD_EXPERIMENT_ENABLED) return null;
+    try {
+      if (!window.DCExperimentFetched || !window.DCExperiment ||
+          typeof window.DCExperiment.variant !== "function") {
+        return null;
+      }
+      var v = window.DCExperiment.variant(
+        SCORECARD_EXPERIMENT_FLAG);
+      var value = v && v.value;
+      if (value === "proof-led" || value === "control") {
+        return value;
+      }
+    } catch (e) { /* the experiment never breaks the card */ }
+    return null;
+  }
+
+  function scorecardExperimentExpose(variant) {
+    try {
+      if (!SCORECARD_EXPERIMENT_ENABLED) return;
+      if (variant !== "control" && variant !== "proof-led") {
+        return;
+      }
+      if (window.DCExperiment &&
+          typeof window.DCExperiment.exposure === "function") {
+        window.DCExperiment.exposure(SCORECARD_EXPERIMENT_FLAG);
+      }
+    } catch (e) { /* measurement never breaks the page */ }
+  }
+
   function scorecardCardHtml() {
+    var variant = scorecardExperimentVariant();
+    scorecardCardVariantUsed = variant;
+    var title = "The Digital Experience Leadership Scorecard";
+    var line = "Twenty statements, five dimensions, scored " +
+      "on what you can prove.";
+    if (variant === "proof-led") {
+      title = "Where does your team actually stand?";
+      line = "Twenty statements, about three minutes. Five " +
+        "dimensions, one band, and the first move worth " +
+        "making.";
+    }
     return '<div class="cp-scorecard-card">' +
-      '<p class="cp-scorecard-title">' +
-      "The Digital Experience Leadership Scorecard</p>" +
-      '<p class="cp-scorecard-line">' +
-      "Twenty statements, five dimensions, scored on what " +
-      "you can prove.</p>" +
+      '<p class="cp-scorecard-title">' + title + "</p>" +
+      '<p class="cp-scorecard-line">' + line + "</p>" +
       '<p class="cp-scorecard-action"><a href="' +
       SCORECARD_PATH + '" data-link-source="' +
       SCORECARD_LINK_SOURCE_CARD +
@@ -2413,6 +2471,9 @@
     }
     var holder = document.createElement("div");
     holder.innerHTML = scorecardCardHtml();
+    /* The variant this insertion actually rendered with;
+       the Viewed observer exposes exactly this value. */
+    var cardVariant = scorecardCardVariantUsed;
     var cardEl = holder.firstElementChild;
     var receipt = el.querySelector
       ? el.querySelector(".stream-receipt") : null;
@@ -2426,7 +2487,7 @@
       }
     }
     scorecardLog(ctx, "rendered", rctx);
-    scorecardObserveViewed(ctx, el);
+    scorecardObserveViewed(ctx, el, cardVariant);
   }
 
   /* F1 (P-1117-24): no DOM mutation inside a pointer
@@ -2482,7 +2543,7 @@
      at least half the card is in the viewport, with no
      properties. The viewed flag rides the same store, so a
      restored card never re-fires it. */
-  function scorecardObserveViewed(ctx, el) {
+  function scorecardObserveViewed(ctx, el, cardVariant) {
     try {
       var card = el && el.querySelector
         ? el.querySelector(".cp-scorecard-card") : null;
@@ -2498,6 +2559,10 @@
               caps.scorecardViewed = true;
               streamSaveStore(ctx.store, ctx.page);
               track("Scorecard Promotion Viewed", {});
+              /* Feature Experiment exposure rides the same
+                 genuine-showing signal, for the variant this
+                 card actually rendered with. */
+              scorecardExperimentExpose(cardVariant);
             }
             try { ob.disconnect(); } catch (e) {}
             break;
