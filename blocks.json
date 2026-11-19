@@ -52,7 +52,7 @@
       "forbidden_intents": [],
       "lengths": {
         "compact": "At Sotheby's (2017 to 2020), organic traffic rose 167%. The CDP was an integral contributor to that growth, alongside Conductor on organic search intelligence and the Brightspot replatform. The whole stack had to work together.",
-        "full": "Douglas Cirillo was Assistant Vice President, Director of Digital Product and Growth Stack at Sotheby’s from 2017 to 2020. He directed the rearchitecture of Sotheby’s digital and growth stack, including the migration from Adobe Experience Manager onto a composable, data-first stack, running the function with one direct report and a vendor team of about 20, directing $5 to $6M in spend. Organic traffic rose 167%, search click-through rose 48.7%, consignment search placement doubled, and consignment ad spend fell 50%."
+        "full": "Douglas Cirillo was Assistant Vice President, Director of Digital Product and Growth Stack at Sotheby\u2019s from 2017 to 2020. He directed the rearchitecture of Sotheby\u2019s digital and growth stack, including the migration from Adobe Experience Manager onto a composable, data-first stack, running the function with one direct report and a vendor team of about 20, directing $5 to $6M in spend. Organic traffic rose 167%, search click-through rose 48.7%, consignment search placement doubled, and consignment ad spend fell 50%."
       }
     },
     {
@@ -86,7 +86,7 @@
       "scope_required": [],
       "forbidden_intents": [],
       "lengths": {
-        "full": "Customer data first. At Sotheby’s the CDP sat at the center of a stack that took organic traffic up 167%, and it worked because the whole stack worked together."
+        "full": "Customer data first. At Sotheby\u2019s the CDP sat at the center of a stack that took organic traffic up 167%, and it worked because the whole stack worked together."
       }
     },
     {
@@ -119,7 +119,7 @@
       "scope_required": [],
       "forbidden_intents": [],
       "lengths": {
-        "full": "The Synapse 2019 talk, told live with Richard McGovern, is the fastest way to see how the Sotheby’s build actually worked."
+        "full": "The Synapse 2019 talk, told live with Richard McGovern, is the fastest way to see how the Sotheby\u2019s build actually worked."
       }
     },
     {
@@ -152,7 +152,7 @@
       "scope_required": [],
       "forbidden_intents": [],
       "lengths": {
-        "full": "Douglas Cirillo led digital product at Lindblad Expeditions - National Geographic, the small-ship expedition travel company that sails in partnership with National Geographic. He was recruited there by former MSG and Sotheby’s leaders then in Lindblad’s leadership. He led a team of 10 and a $5M portfolio across product, analytics, design, and partners. Within eight months of the replatform: bookings up 30%, booking funnel completion up 82%, qualified leads up 40%."
+        "full": "Douglas Cirillo led digital product at Lindblad Expeditions - National Geographic, the small-ship expedition travel company that sails in partnership with National Geographic. He was recruited there by former MSG and Sotheby\u2019s leaders then in Lindblad\u2019s leadership. He led a team of 10 and a $5M portfolio across product, analytics, design, and partners. Within eight months of the replatform: bookings up 30%, booking funnel completion up 82%, qualified leads up 40%."
       }
     },
     {
@@ -187,7 +187,7 @@
       "scope_required": [],
       "forbidden_intents": [],
       "lengths": {
-        "full": "Douglas Cirillo was Head of Marketing and Product Strategy at Gangverk from 2022 to 2025, promoted from Head of Digital Transformation and Martech. Former Sotheby’s and MSG leaders who had become invested partners in the firm recruited him to build its transformation portfolio and go-to-market. He carried revenue targets and hiring authority as he grew the firm’s client brands from 1 to more than 60. He led the History.com replatform in four months, and A+E Networks adopted the architecture as its migration standard."
+        "full": "Douglas Cirillo was Head of Marketing and Product Strategy at Gangverk from 2022 to 2025, promoted from Head of Digital Transformation and Martech. Former Sotheby\u2019s and MSG leaders who had become invested partners in the firm recruited him to build its transformation portfolio and go-to-market. He carried revenue targets and hiring authority as he grew the firm\u2019s client brands from 1 to more than 60. He led the History.com replatform in four months, and A+E Networks adopted the architecture as its migration standard."
       }
     },
     {
@@ -198,7 +198,7 @@
       "scope_required": [],
       "forbidden_intents": [],
       "lengths": {
-        "full": "Composable martech is a stack built from best-of-breed tools, each chosen for one job and connected through defined interfaces, instead of a single vendor suite. The content platform, the data platform, the decisioning tools, and the analytics layer are separate components with clean contracts between them: documented schemas, stable interfaces, clear ownership. When one component stops earning its place, you can replace that component without rebuilding the whole stack, and you do not wait for a suite vendor’s roadmap to catch up with your business."
+        "full": "Composable martech is a stack built from best-of-breed tools, each chosen for one job and connected through defined interfaces, instead of a single vendor suite. The content platform, the data platform, the decisioning tools, and the analytics layer are separate components with clean contracts between them: documented schemas, stable interfaces, clear ownership. When one component stops earning its place, you can replace that component without rebuilding the whole stack, and you do not wait for a suite vendor\u2019s roadmap to catch up with your business."
       }
     },
     {
@@ -209,7 +209,7 @@
       "scope_required": [],
       "forbidden_intents": [],
       "lengths": {
-        "full": "Digital experience strategy is the work of deciding what a brand’s website and apps should do, then building the team and the data to do it. The deliverable is not a deck. It is one set of metrics that matter, one shared understanding of the customer, and a sequence the organization can actually execute: what gets built, in what order, and how everyone will know it worked.\n\nTechnology decisions are only part of the strategy. The harder work is deciding what matters first, who owns it, what the organization can deliver, and how progress will be measured."
+        "full": "Digital experience strategy is the work of deciding what a brand\u2019s website and apps should do, then building the team and the data to do it. The deliverable is not a deck. It is one set of metrics that matter, one shared understanding of the customer, and a sequence the organization can actually execute: what gets built, in what order, and how everyone will know it worked.\n\nTechnology decisions are only part of the strategy. The harder work is deciding what matters first, who owns it, what the organization can deliver, and how progress will be measured."
       }
     },
     {
@@ -238,7 +238,7 @@
       "id": "speaking-synapse",
       "kind": "speaking",
       "description": "Speaking proof: the Synapse 2019 talk, presented with Richard McGovern, on the Sotheby's data transformation.",
-      "link": "/speaking/",
+      "link": "/speaking/synapse/",
       "scope_required": [],
       "forbidden_intents": [
         "search_decline",
@@ -249,7 +249,7 @@
         "measurement"
       ],
       "lengths": {
-        "full": "Douglas Cirillo and Richard McGovern presented the Sotheby's data transformation story live at Synapse 2019, Segment's user conference; the full talk and transcript are published on the speaking page."
+        "full": "Douglas Cirillo and Richard McGovern presented the Sotheby's data transformation story live at Synapse 2019, Segment's user conference; the full talk and transcript are published on its own page."
       }
     },
     {
@@ -280,7 +280,7 @@
       "forbidden_intents": [],
       "lengths": {
         "full": "This page is the Lindblad Expeditions case study: the booking-engine rebuild Douglas Cirillo led at Lindblad Expeditions - National Geographic, where he led digital product, and the reservation-platform work that continued in a later engagement through Gangverk. The records behind it cover the replatform, the team and portfolio he ran, and the results within eight months.",
-        "short": "Fourth in the record: recruited by leaders he had worked for at Madison Square Garden and Sotheby’s, and the platform work here continued through Gangverk."
+        "short": "Fourth in the record: recruited by leaders he had worked for at Madison Square Garden and Sotheby\u2019s, and the platform work here continued through Gangverk."
       },
       "page": "/case-studies/lindblad-expeditions/",
       "page_name": "the Lindblad Expeditions case study"
@@ -322,7 +322,7 @@
       "forbidden_intents": [],
       "lengths": {
         "full": "This page is the A+E Networks case study: the complete redesign and replatform of History.com that Douglas Cirillo directed through Gangverk, in four months. The records behind it cover the build itself and the architecture A+E Networks adopted as its migration standard across its brands.",
-        "short": "This one sits inside the Gangverk years: a client engagement from the record’s last stop, not a separate stop of its own."
+        "short": "This one sits inside the Gangverk years: a client engagement from the record\u2019s last stop, not a separate stop of its own."
       },
       "page": "/case-studies/ae-networks/",
       "page_name": "the A+E Networks case study"
@@ -350,7 +350,7 @@
       "forbidden_intents": [],
       "lengths": {
         "full": "This page is the Gangverk case study: the transformation portfolio and go-to-market Douglas Cirillo built as Head of Marketing and Product Strategy from 2022 to 2025. The records behind it cover the firm's growth from 1 client brand to more than 60 and the work that anchored it, including the History.com replatform.",
-        "short": "The record’s last completed stop, 2022 to 2025, and the third time former leaders recruited him back."
+        "short": "The record\u2019s last completed stop, 2022 to 2025, and the third time former leaders recruited him back."
       },
       "page": "/case-studies/gangverk/",
       "page_name": "the Gangverk case study"
