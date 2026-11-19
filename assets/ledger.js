@@ -24,6 +24,10 @@
    to the site's own services (the ask endpoint, Algolia search)
    as the Network Error event. Observe-only; it never reads a
    request or response body and returns every promise untouched.
+   This file also hosts the web vitals reporter (see the web
+   vitals section below): after the consent gate releases, it
+   loads the vendored web-vitals library and reports each
+   finalized Core Web Vital as the Web Vital Measure event.
    Measurement never breaks the page: every storage, network and
    Amplitude call here is wrapped, and any internal failure leaves
    window.DCLedger as the inert stub below (fail closed). */
@@ -332,6 +336,113 @@
       if (window.DCAmplitude &&
           typeof window.DCAmplitude.whenReady === "function") {
         window.DCAmplitude.whenReady(installNetworkErrorObserver);
+      }
+    } catch (e) {}
+  }
+
+  /* ---------- web vitals (Web Vital Measure) ----------
+     Real-user Core Web Vitals for the SEO/GEO and Engineering
+     views. The standard web-vitals library (Google's, vendored
+     self-hosted at assets/web-vitals-6.2.3.min.js) loads
+     dynamically only inside DCAmplitude.whenReady: before
+     consent nothing is fetched and no callback is registered,
+     and a decline loads nothing. The library's observers are
+     buffered, so a metric that settled before consent released
+     (LCP above all) is still delivered from the entries the
+     browser already recorded; the event itself only ever fires
+     after consent. One event per metric per page view: the
+     library reports each metric when it finalizes (pagehide,
+     or visibilitychange to hidden), and the wiring dedupes by
+     metric name for the life of the page. Values are
+     milliseconds for lcp, inp, fcp and ttfb (rounded to the
+     nearest millisecond); cls is the unitless layout-shift
+     score, passed through unscaled. Ratings come from the
+     library, which rates on the standard thresholds; if a
+     metric ever arrives without one, the same thresholds are
+     applied here. Delivery honesty: CLS and INP finalize as
+     the page goes away, and the Amplitude SDK's default
+     transport batches on an interval with no pagehide beacon
+     flush on this site, so a fast close can lose the final
+     batch. That undercount is accepted (see the tracking
+     plan); a tab switch finalizes the same metrics while the
+     page lives on, and those flush normally. The first
+     finalization is the one reported: later shifts or
+     interactions in the same page view are deduped away. */
+  var WEB_VITALS_SRC = "/assets/web-vitals-6.2.3.min.js";
+  var WEB_VITAL_THRESHOLDS = {
+    lcp: [2500, 4000],
+    cls: [0.1, 0.25],
+    inp: [200, 500],
+    fcp: [1800, 3000],
+    ttfb: [800, 1800]
+  };
+  var webVitalsSeen = {};
+  var webVitalsArmed = false;
+
+  function webVitalRating(name, value) {
+    var t = WEB_VITAL_THRESHOLDS[name];
+    if (!t) return "";
+    if (value > t[1]) return "poor";
+    if (value > t[0]) return "needs-improvement";
+    return "good";
+  }
+
+  function reportWebVital(metric) {
+    try {
+      if (!metric || typeof metric.name !== "string") return;
+      var name = metric.name.toLowerCase();
+      if (!WEB_VITAL_THRESHOLDS[name]) return;
+      if (webVitalsSeen[name]) return;
+      var value = metric.value;
+      if (typeof value !== "number" || !isFinite(value) ||
+          value < 0) return;
+      webVitalsSeen[name] = true;
+      var rating = metric.rating;
+      if (rating !== "good" && rating !== "needs-improvement" &&
+          rating !== "poor") {
+        rating = webVitalRating(name, value);
+      }
+      track("Web Vital Measure", {
+        metric_name: name,
+        metric_value: name === "cls" ? value : Math.round(value),
+        metric_rating: rating,
+        page: eventPage()
+      });
+    } catch (e) { /* measurement never breaks the page */ }
+  }
+
+  function registerWebVitals() {
+    try {
+      var wv = window.webVitals;
+      if (!wv) return;
+      if (typeof wv.onLCP === "function") wv.onLCP(reportWebVital);
+      if (typeof wv.onCLS === "function") wv.onCLS(reportWebVital);
+      if (typeof wv.onINP === "function") wv.onINP(reportWebVital);
+      if (typeof wv.onFCP === "function") wv.onFCP(reportWebVital);
+      if (typeof wv.onTTFB === "function") wv.onTTFB(reportWebVital);
+    } catch (e) { /* measurement never breaks the page */ }
+  }
+
+  function loadWebVitals() {
+    try {
+      if (window.webVitals) { registerWebVitals(); return; }
+      var tag = document.createElement("script");
+      tag.src = WEB_VITALS_SRC;
+      tag.onload = function () { registerWebVitals(); };
+      /* A failed load reports nothing: vitals are absent for
+         this page view, never an error on the page. */
+      tag.onerror = function () {};
+      (document.head || document.documentElement).appendChild(tag);
+    } catch (e) { /* measurement never breaks the page */ }
+  }
+
+  function armWebVitals() {
+    if (webVitalsArmed) return;
+    webVitalsArmed = true;
+    try {
+      if (window.DCAmplitude &&
+          typeof window.DCAmplitude.whenReady === "function") {
+        window.DCAmplitude.whenReady(loadWebVitals);
       }
     } catch (e) {}
   }
@@ -1425,6 +1536,7 @@
     if (isHuman) {
       initVisitMarker();
       armNetworkErrorObserver();
+      armWebVitals();
       detected = detectedEU();
       consentRecord = readConsent();
       document.addEventListener("click", function (ev) {
