@@ -345,6 +345,7 @@
     html.shell-on .shell-close::before{content:"";position:absolute;left:13px;right:13px;top:13px;bottom:13px;border:2px solid currentColor;border-radius:4px}
     html.shell-on .shell-close::after{content:"";position:absolute;top:13px;bottom:13px;left:19px;border-left:2px solid currentColor}
     html.shell-on .cp-dock{left:var(--shell-side-w)}
+    html.shell-on:not(.shell-collapsed) [id*="engagement-nudges-banner-inline-container-top"],html.shell-on:not(.shell-collapsed) [id*="engagement-nudges-banner-sticky-container"]{left:var(--shell-side-w) !important;width:calc(100% - var(--shell-side-w)) !important}
     html.shell-on .skip-link:focus-visible{left:calc(var(--shell-side-w) + 16px)}
     html.shell-on.shell-collapsed body{margin-left:0}
     html.shell-on.shell-collapsed .shell-bar{display:block}
