@@ -320,6 +320,7 @@
     html.shell-on .shell-close::before{content:"";position:absolute;left:13px;right:13px;top:13px;bottom:13px;border:2px solid currentColor;border-radius:4px}
     html.shell-on .shell-close::after{content:"";position:absolute;top:13px;bottom:13px;left:19px;border-left:2px solid currentColor}
     html.shell-on .cp-dock{left:var(--shell-side-w)}
+    html.shell-on:not(.shell-collapsed) [id*="engagement-nudges-banner-inline-container-top"],html.shell-on:not(.shell-collapsed) [id*="engagement-nudges-banner-sticky-container"]{left:var(--shell-side-w) !important;width:calc(100% - var(--shell-side-w)) !important}
     html.shell-on .skip-link:focus-visible{left:calc(var(--shell-side-w) + 16px)}
     html.shell-on.shell-collapsed body{margin-left:0}
     html.shell-on.shell-collapsed .shell-bar{display:block}
@@ -1137,7 +1138,7 @@
           <li><strong>One experiment, six doors:</strong> The guides run as variants of a single experiment behind one router, so any of them can be summoned from a demo link, while an ordinary visit draws one and keeps it.</li>
           <li><strong>A first survey:</strong> Completing the scorecard now offers a short follow-up survey, the first on the site, run by the same engagement layer under the same gate.</li>
         </ul></div></details>
-        <details class="acc log-acc-last"><summary>Nov 19, 2026</summary><div class="acc-body"><ul class="log">
+        <details class="acc"><summary>Nov 19, 2026</summary><div class="acc-body"><ul class="log">
           <li><strong>The first experiment:</strong> The home page's scorecard card now runs as a proper A/B test in Amplitude. Half of visitors get the original card, half a proof-led version, and the measure is completed scorecards. Exposure counts only when the card is actually seen.</li>
           <li><strong>Failed requests, counted:</strong> When one of the site's own services fails a visitor, the failure is now recorded as an event of its own: which service, which page, and whether the request got an answer at all. Amplitude's built-in version of this event never populated, so the site keeps its own.</li>
           <li><strong>Core Web Vitals, measured:</strong> The site now records its own performance numbers on every page view, behind the same consent gate: how fast the page paints, how quickly it answers a tap, and how much it shifts while loading.</li>
@@ -1145,6 +1146,9 @@
           <li><strong>Speaking gets its own pages:</strong> Two talks now live on pages of their own, the Determination podcast conversation and the Synapse talk, each with its video and full transcript, and each pointing at the other.</li>
           <li><strong>A correction:</strong> The demo links that summon a guide could arrive before the engagement layer finished loading, and the request was lost without a trace. The router now waits until the layer has fully booted before it shows a guide, and stands down rather than guess. Every demo link was re-checked in a fresh browser afterward.</li>
           <li><strong>Speaking, finished as a hub:</strong> The speaking page is now an index of video cards, one per recording, each leading to its own page. The Conductor Search From Home session from A Place for Mom, April 2020, joins Determination and Synapse with a page of its own, and the Synapse talk's video and transcript now live only on its page, not on the hub as well. Every video page points at the other two.</li>
+        </ul></div></details>
+        <details class="acc log-acc-last"><summary>Nov 20, 2026</summary><div class="acc-body"><ul class="log">
+          <li><strong>A correction:</strong> The newsletter banner, when it showed, covered the second line of the sidebar's heading on wide screens: the banner reserves its space in the page, but the sidebar is fixed in place and never moved. The banner now spans only the page's content column, so the heading stays fully visible while the banner is up.</li>
         </ul></div></details>
       </section>
 
