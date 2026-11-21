@@ -649,6 +649,33 @@
                 fileDownloads: false,
                 elementInteractions: false,
                 webVitals: true,
+                frustrationInteractions: {
+                  rageClicks: {
+                    cssSelectorAllowlist: ['*']
+                  },
+                  deadClicks: {
+                    cssSelectorAllowlist: [
+                      'input[type="button"]',
+                      'input[type="submit"]',
+                      'input[type="reset"]',
+                      'input[type="image"]',
+                      'input[type="file"]',
+                      'a',
+                      'button',
+                      '[role="button"]',
+                      '[role="link"]',
+                      '[role="menuitem"]',
+                      '[role="menuitemcheckbox"]',
+                      '[role="menuitemradio"]',
+                      '[role="option"]',
+                      '[role="tab"]',
+                      '[role="treeitem"]',
+                      '[contenteditable="true" i]'
+                    ]
+                  },
+                  errorClicks: false,
+                  thrashedCursor: false
+                },
                 networkTracking: {
                   captureRules: [
                     { statusCodeRange: '400-599' }
