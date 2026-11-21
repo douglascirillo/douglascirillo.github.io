@@ -623,6 +623,7 @@
                 formInteractions: false,
                 fileDownloads: false,
                 elementInteractions: false,
+                webVitals: true,
                 networkTracking: {
                   captureRules: [
                     { statusCodeRange: '400-599' }
@@ -1147,9 +1148,12 @@
           <li><strong>A correction:</strong> The demo links that summon a guide could arrive before the engagement layer finished loading, and the request was lost without a trace. The router now waits until the layer has fully booted before it shows a guide, and stands down rather than guess. Every demo link was re-checked in a fresh browser afterward.</li>
           <li><strong>Speaking, finished as a hub:</strong> The speaking page is now an index of video cards, one per recording, each leading to its own page. The Conductor Search From Home session from A Place for Mom, April 2020, joins Determination and Synapse with a page of its own, and the Synapse talk's video and transcript now live only on its page, not on the hub as well. Every video page points at the other two.</li>
         </ul></div></details>
-        <details class="acc log-acc-last"><summary>Nov 20, 2026</summary><div class="acc-body"><ul class="log">
+        <details class="acc"><summary>Nov 20, 2026</summary><div class="acc-body"><ul class="log">
           <li><strong>A correction:</strong> The newsletter banner, when it showed, covered the second line of the sidebar's heading on wide screens: the banner reserves its space in the page, but the sidebar is fixed in place and never moved. The banner now spans only the page's content column, so the heading stays fully visible while the banner is up.</li>
           <li><strong>Video, promoted and better linked:</strong> The home page now carries a Speaking and media section with cards for the three recordings, and the Sotheby&rsquo;s and A Place for Mom case studies each link straight to their own talk. The speaking and practice indexes now declare their sets to search engines the way the other indexes do, the machine-readable briefing covers all three recordings, and the record section on the home page links to the record organized by problem. Five essays that other essays rarely linked to gained links, and the home writing shelf rotated. Each of the four practice areas gained a photograph of its own, shown on its card on the practice index and at the head of its page.</li>
+        </ul></div></details>
+        <details class="acc log-acc-last"><summary>Nov 21, 2026</summary><div class="acc-body"><ul class="log">
+          <li><strong>A correction:</strong> Amplitude&rsquo;s built-in Web Vitals capture was switched on in the console on November 19, but it never ran: the site&rsquo;s initialization names its automatic capture choices explicitly, and Web Vitals was not among them, and the site does not fetch its settings from the console, so the switch never reached the pages. Web Vitals is now named in the initialization, and Amplitude&rsquo;s capture runs alongside the site&rsquo;s own measurement while the two are compared.</li>
         </ul></div></details>
       </section>
 
