@@ -3,7 +3,8 @@
 """Build the Algolia public projection index for douglascirillo.com (A1).
 
 Reads the deployed site bundle, emits one object per page (title, fixed
-approved summary = the page's meta description, URL, type, H2 headings),
+approved summary = the page's meta description, URL, type, H2 headings,
+hero image, declared keywords = the page's meta keywords, if any),
 builds into site_public_tmp, and swaps atomically to site_public on success.
 Records are NOT indexed here (that is A2). Restricted/excluded content never
 enters this index: it is built from published pages only, and results show
@@ -61,6 +62,10 @@ for html_file in sorted(SITE.rglob("index.html")):
     title = re.sub(r"\s*\|\s*Douglas Cirillo\s*$", "", title_m.group(1).strip()) if title_m else rel
     desc_m = re.search(r'<meta name="description" content="(.*?)"', text, re.S)
     summary = desc_m.group(1).strip() if desc_m else ""
+    # Declared bridge terms (Nov 22, 2026): searchable, never retrieved;
+    # results still surface on title + summary.
+    kw_m = re.search(r'<meta name="keywords" content="(.*?)"', text, re.S)
+    keywords = [k.strip() for k in kw_m.group(1).split(",") if k.strip()] if kw_m else []
     headings = [re.sub(r"<[^>]+>", "", h).strip() for h in re.findall(r"<h2[^>]*>(.*?)</h2>", text, re.S)]
     hero_m = re.search(r'<figure class="hero"><img src="([^"]+)"', text)
     image = hero_m.group(1) if hero_m else ""
@@ -75,7 +80,7 @@ for html_file in sorted(SITE.rglob("index.html")):
     oid = "home" if rel == "/" else rel.strip("/").replace("/", "-")
     objects.append({"objectID": oid, "title": title, "summary": summary,
                     "url": rel, "type": page_type(rel), "headings": headings,
-                    "date": date_ts, "image": image})
+                    "date": date_ts, "image": image, "keywords": keywords})
 
 print(f"{len(objects)} objects")
 # fresh tmp index
@@ -85,7 +90,7 @@ try:
 except Exception:
     pass
 s = req("PUT", f"{BASE}/{TMP}/settings", {
-    "searchableAttributes": ["title", "headings", "summary"],
+    "searchableAttributes": ["title", "headings", "summary", "keywords"],
     "attributesToRetrieve": ["title", "summary", "url", "type", "date", "image"],
     "attributesForFaceting": ["type"],
     "attributesToHighlight": [],
