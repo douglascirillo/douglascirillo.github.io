@@ -681,12 +681,20 @@
 
   /* ---------- Search ---------- */
   var QWORDS = ["what", "how", "who", "when", "where", "why", "did", "does", "do", "is", "was", "were", "can", "could", "would", "should", "has", "have"];
+  /* Imperative openers route as questions too (Nov 22, 2026,
+     search-intelligence fix): "show me the platform work" was a
+     top no-result query, and Enter on it did nothing because it
+     is not question-shaped. These openers ask the record, they
+     do not search it. */
+  var IMPERATIVES = ["show me", "tell me", "find me", "give me"];
   function isQuestion(q) {
     var t = (q || "").trim();
     if (!t) return false;
     if (t.charAt(t.length - 1) === "?") return true;
     var words = t.split(/\s+/);
     if (words.length >= 6) return true;
+    var lower = t.toLowerCase();
+    for (var i = 0; i < IMPERATIVES.length; i++) { if (lower.indexOf(IMPERATIVES[i]) === 0) return true; }
     return QWORDS.indexOf(words[0].toLowerCase().replace(/[^a-z]/g, "")) >= 0;
   }
   function getRecents() {
@@ -863,9 +871,17 @@
         track("Search Query", { page: page, length: q.length, result_class: hits.length ? "results" : "none" });
         panel.innerHTML = "";
         if (!hits.length) {
+          /* Zero-hit copy split by shape (Nov 22, 2026,
+             search-intelligence fix): the old line told a visitor
+             who had typed a full question to "try a question
+             instead: press Enter to ask", and told keyword
+             searchers to press an Enter that does nothing. A
+             question gets an affirmative handoff to the ask row
+             appended below; a keyword miss points at the same
+             row. The panel composition itself is unchanged. */
           var none = document.createElement("p");
           none.className = "explore-none";
-          none.textContent = "Nothing in the record matches that. Try a question instead: press Enter to ask.";
+          none.textContent = isQuestion(q) ? "That's a question for my record, not keyword search:" : "Nothing in the record matches that. Ask my record instead:";
           panel.appendChild(none);
         }
         hits.forEach(function (h, hi) {
