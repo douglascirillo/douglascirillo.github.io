@@ -868,7 +868,7 @@
           none.textContent = "Nothing in the record matches that. Try a question instead: press Enter to ask.";
           panel.appendChild(none);
         }
-        hits.forEach(function (h) {
+        hits.forEach(function (h, hi) {
           var a = document.createElement("a");
           a.className = "explore-hit"; a.href = h.url; extAttrs(a);
           var t = document.createElement("span"); t.className = "t"; t.textContent = h.type || "";
@@ -879,7 +879,7 @@
             track("Search Result Click", { page: page, destination_type: h.type || "" });
             saveRecent(q);
             var aa = insights();
-            if (aa && queryID) { try { aa("clickedObjectIDsAfterSearch", { eventName: "Search Result Clicked", index: ALGOLIA_INDEX, queryID: queryID, objectIDs: [h.objectID] }); } catch (e) {} }
+            if (aa && queryID) { try { aa("clickedObjectIDsAfterSearch", { eventName: "Search Result Clicked", index: ALGOLIA_INDEX, queryID: queryID, objectIDs: [h.objectID], positions: [hi + 1] }); } catch (e) {} }
           });
           panel.appendChild(a);
         });
