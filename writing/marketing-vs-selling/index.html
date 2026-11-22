@@ -17,7 +17,7 @@
 <meta property="og:title" content="Marketing vs. Selling | Douglas Cirillo" />
 <meta property="og:description" content="Douglas Cirillo on the shift from selling ideas to marketing them: listen first, show value in-market, and let people see themselves in the win." />
 <meta property="og:url" content="https://douglascirillo.com/writing/marketing-vs-selling/" />
-<meta property="og:image" content="https://douglascirillo.com/assets/og-image.png" />
+<meta property="og:image" content="https://douglascirillo.com/assets/og-marketing-vs-selling.jpg" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta property="og:image:alt" content="Douglas Cirillo, Head of Digital Experience and Growth, douglascirillo.com" />
@@ -27,7 +27,7 @@
 <meta name="twitter:creator" content="@DouglasCirillo" />
 <meta name="twitter:title" content="Marketing vs. Selling | Douglas Cirillo" />
 <meta name="twitter:description" content="Douglas Cirillo on the shift from selling ideas to marketing them: listen first, show value in-market, and let people see themselves in the win." />
-<meta name="twitter:image" content="https://douglascirillo.com/assets/og-image.png" />
+<meta name="twitter:image" content="https://douglascirillo.com/assets/og-marketing-vs-selling.jpg" />
 <meta name="twitter:image:alt" content="Douglas Cirillo, Head of Digital Experience and Growth, douglascirillo.com" />
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTIiIGZpbGw9IiMyZjRhM2UiLz48dGV4dCB4PSIzMiIgeT0iNDMiIGZvbnQtZmFtaWx5PSJHZW9yZ2lhLCAnVGltZXMgTmV3IFJvbWFuJywgc2VyaWYiIGZvbnQtc2l6ZT0iMjciIGZpbGw9IiNmY2ZjZjkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkRDPC90ZXh0Pjwvc3ZnPgo=" />
 <link rel="icon" type="image/x-icon" href="/favicon.ico" />
@@ -269,6 +269,11 @@
   .skip-link{position:absolute;left:16px;top:-80px;z-index:200;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:6px;font-weight:600;text-decoration:none}
   .skip-link:focus-visible{top:14px}
   .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  .share{margin-top:40px;padding:20px 0 0;border-top:1px solid var(--line);font-size:15.5px;color:var(--ink-2)}
+  .share p{margin:0;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline}
+  .share .share-label{font-weight:600;color:var(--ink)}
+  .share button{font:inherit;color:var(--link);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-decoration-color:color-mix(in srgb, var(--link) 35%, transparent);text-underline-offset:3px}
+  .share [hidden]{display:none}
   :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
   /* shell (sidebar build: one pattern, docked or hidden) */
@@ -975,6 +980,14 @@
         <p><em>First published on <a href="https://douglascirillo.substack.com/p/marketing-vs-selling-internally-and" data-outbound-link data-link-label="Marketing vs. Selling (Internally & Externally) on Substack" target="_blank" rel="noopener">Substack<span class="visually-hidden">(opens in new tab)</span></a>, September 3, 2025. The discussion lives there.</em></p>
       </section>
 
+      <div class="share" data-share data-page-type="essay">
+        <p><span class="share-label">Share</span>
+        <button type="button" data-share-native hidden>Share&hellip;</button>
+        <button type="button" data-share-copy>Copy link</button>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fdouglascirillo.com%2Fwriting%2Fmarketing-vs-selling%2F" target="_blank" rel="noopener" data-share-method="linkedin" aria-label="Share on LinkedIn">LinkedIn<span class="visually-hidden">(opens in new tab)</span></a>
+        <a href="https://twitter.com/intent/tweet?url=https%3A%2F%2Fdouglascirillo.com%2Fwriting%2Fmarketing-vs-selling%2F&amp;text=Marketing%20vs.%20Selling" target="_blank" rel="noopener" data-share-method="x" aria-label="Share on X">X<span class="visually-hidden">(opens in new tab)</span></a>
+        <a href="mailto:?subject=Marketing%20vs.%20Selling&amp;body=Marketing%20vs.%20Selling%0A%0Ahttps%3A%2F%2Fdouglascirillo.com%2Fwriting%2Fmarketing-vs-selling%2F" data-share-method="email" aria-label="Share by email">Email</a></p>
+      </div>
       <div class="more">
         <p><a href="/writing/">All writing</a> &middot; <a href="/practice/digital-experience-strategy/">The practice: digital experience strategy</a></p>
       </div>
@@ -1002,5 +1015,6 @@
 <script src="/assets/ask.js?v=20261118-1"></script>
 <script src="/assets/compose.js?v=20261119-1" defer></script>
 <script src="/assets/experiences.js?v=20261119-4"></script>
+  <script src="/assets/share.js?v=20261122-1"></script>
 </body>
 </html>
