@@ -856,7 +856,7 @@
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
-  <div class="shell-bar">
+  <div class="shell-bar" role="region" aria-label="Site header">
     <div class="shell-bar-in">
       <button type="button" class="shell-trigger" id="shell-trigger" aria-label="Menu"></button>
       <a class="shell-brand" href="/">Douglas Cirillo</a>
@@ -1199,6 +1199,7 @@
           <li><strong>A face on the listing:</strong> The speaking page gains a preview card of its own, composed from the headshot the page already carries, so the hub arrives with a face when it is shared, the way its three talks have since this morning.</li>
           <li><strong>Positions, reported:</strong> When a reader picks a search result, the site now tells Algolia which position it held, not only which result it was. The click report was true but incomplete; position is the part click analytics learn from.</li>
           <li><strong>Questions, sent to the record:</strong> A week of search data showed half of all searches finding nothing, and the misses were questions, full sentences typed where keywords live. The explore box now names a question a question and hands it to the record that can answer it; &lsquo;show me&rsquo; requests route the same way. A keyword miss, in turn, points at the ask button beneath it instead of an Enter key that was never going to answer.</li>
+          <li><strong>Every part of the page, on the map:</strong> An accessibility pass over all 39 pages found one gap: the strip at the top of each page, carrying the menu and the name, sat outside the page&rsquo;s landmarks, and the home page&rsquo;s opening definition sat outside them too. The strip now declares itself a named region, and the definition moved inside the header it belongs to. Nothing looks different; the map a screen reader reads is now complete.</li>
         </ul></div></details>
         </div></details></div></details>
       </section>
