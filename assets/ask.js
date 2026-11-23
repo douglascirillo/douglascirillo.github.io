@@ -642,6 +642,23 @@
             div.className = "ask-item";
             var p = document.createElement("p"); p.textContent = it.claim;
             var a = document.createElement("a"); a.href = it.source; a.textContent = "Read it in context"; extAttrs(a);
+            /* Scorecard-bound context links carry the scorecard
+               anchors' Link Clicked attribution (producer-
+               coverage fix, Nov 23, 2026): compose.js's
+               delegated handler defers the click through the
+               pages' snippet, the same path the scorecard
+               card's anchor takes. Bare before this build,
+               these clicks matched no Link Clicked producer
+               and were never measured; the panel's own
+               Ask Next Click below still fires as before. */
+            try {
+              var u = new URL(a.href);
+              if (u.origin === window.location.origin &&
+                  u.pathname === "/scorecard/") {
+                a.setAttribute("data-link-source", "answer_context");
+                a.setAttribute("data-link-label", "Read it in context");
+              }
+            } catch (e) {}
             a.addEventListener("click", function () { track("Ask Next Click", { page: page, kind: "source" }); ledgerRecordOpened(it); markStreamExitedForContext(); });
             /* The fragment lands when the registry resolves;
                the render never waits on it (the same bargain
