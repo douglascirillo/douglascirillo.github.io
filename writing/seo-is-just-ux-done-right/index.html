@@ -615,6 +615,76 @@
     var pending = [];
     var ready = false;
 
+    /* Deferred Link Clicked store (link-clicked delivery fix,
+       Nov 23, 2026): a click that queues before the SDK is
+       ready is mirrored here, in sessionStorage, and the
+       scorecard anchors' clicks (handed over by compose.js
+       through DCAmplitude.deferLinkClick below) are persisted
+       here outright, because both face the same loss: the
+       page navigates same-tab or closes before the in-memory
+       queue drains, and the SDK's interval batch has no
+       pagehide flush on this site (the loss ledger.js
+       documents for Web Vital Measure). sessionStorage
+       survives the same-tab navigation a click causes and
+       dies with the tab session; nothing is persisted before
+       the gates that govern the click itself have allowed it
+       (sendOutbound and deferLinkClick check the internal
+       flag and the consent gate first). start() drains the
+       store through the page's consented instance with each
+       click's original properties, and an entry is removed
+       only as its click is sent, so no click is sent twice:
+       the in-memory queue above stays the same-page fast
+       path, and this store is its persistent mirror plus the
+       deferred anchors' only path. */
+    var DEFERRED_CLICK_KEY = "dc_deferred_link_clicks_v1";
+    function readDeferredClicks() {
+      try {
+        var raw = window.sessionStorage.getItem(DEFERRED_CLICK_KEY);
+        if (!raw) return [];
+        var list = JSON.parse(raw);
+        return Object.prototype.toString.call(list) === "[object Array]" ? list : [];
+      } catch (e) { return []; }
+    }
+    function writeDeferredClicks(list) {
+      try {
+        if (list.length) {
+          window.sessionStorage.setItem(DEFERRED_CLICK_KEY, JSON.stringify(list));
+        } else {
+          window.sessionStorage.removeItem(DEFERRED_CLICK_KEY);
+        }
+      } catch (e) { /* Storage unavailable: the in-memory queue still covers this page. */ }
+    }
+    function persistDeferredClick(properties) {
+      var list = readDeferredClicks();
+      list.push(properties);
+      /* The store is capped (25 entries, oldest dropped
+         first) so no session can grow it without bound; a
+         real tab session holds a handful of clicks. */
+      while (list.length > 25) list.shift();
+      writeDeferredClicks(list);
+    }
+    /* A standing decline purges the store at boot: entries
+       restored with a tab session after the visitor declined
+       (in another tab, or across a browser restart) can
+       never be sent -- start() never runs under a declined
+       gate, and a later grant clears the queues first -- so
+       they are discarded here rather than left to sit. */
+    if (AMP_GATE === "declined") writeDeferredClicks([]);
+    function dropDeferredClick(properties) {
+      /* Remove one entry matching this payload (a click the
+         drain just sent). Two identical clicks in one session
+         are two entries; each send drops exactly one. */
+      var target = null;
+      try { target = JSON.stringify(properties); } catch (e) { return; }
+      var list = readDeferredClicks();
+      for (var i = 0; i < list.length; i++) {
+        var mine = null;
+        try { mine = JSON.stringify(list[i]); } catch (e) {}
+        if (mine === target) { list.splice(i, 1); break; }
+      }
+      writeDeferredClicks(list);
+    }
+
     function sendOutbound(properties) {
       if (!isConfigured) return;
       /* Internal flag: the owner's own clicks are never queued
@@ -627,6 +697,11 @@
         try { window.amplitude.track('Link Clicked', properties); } catch (e) {}
       } else {
         pending.push(properties);
+        /* Mirror the queued click into the deferred store
+           (link-clicked delivery fix, Nov 23, 2026): if this
+           page navigates or closes before start() drains the
+           queue, the next page's start() sends it instead. */
+        persistDeferredClick(properties);
       }
     }
 
@@ -792,6 +867,20 @@
             while (pending.length) {
               var queued = pending.shift();
               try { window.amplitude.track('Link Clicked', queued); } catch (e) {}
+              dropDeferredClick(queued);
+            }
+            /* Deferred clicks persisted earlier in this tab
+               session (link-clicked delivery fix, Nov 23,
+               2026): the scorecard anchors' same-tab clicks,
+               and any queued click whose page navigated or
+               closed before its own start() ran. They are
+               sent now, through this page's consented
+               instance, with their original properties, and
+               dropped from the store as each one sends. */
+            var deferredClicks = readDeferredClicks();
+            for (var di = 0; di < deferredClicks.length; di++) {
+              try { window.amplitude.track('Link Clicked', deferredClicks[di]); } catch (e) {}
+              dropDeferredClick(deferredClicks[di]);
             }
             while (ampReadyCallbacks.length) {
               var readyFn = ampReadyCallbacks.shift();
@@ -872,6 +961,12 @@
     }
     function clearQueues() {
       pending.length = 0;
+      /* The deferred store clears with the queues (link-
+         clicked delivery fix, Nov 23, 2026): a consent
+         transition discards persisted clicks with the rest,
+         so nothing gathered before an answer flushes after
+         one. */
+      writeDeferredClicks([]);
       if (typeof pendingEvents !== "undefined") {
         pendingEvents.length = 0;
       }
@@ -881,6 +976,23 @@
       isInternal: function () { return DC_INTERNAL; },
       isReady: function () { return ready; },
       whenReady: onAmpReady,
+      /* Deferred Link Clicked (link-clicked delivery fix,
+         Nov 23, 2026): compose.js hands the scorecard
+         anchors' clicks here instead of firing them. Both
+         anchors navigate same-tab, so an immediate track()
+         races the SDK's interval batch against the unload
+         and usually loses; the payload is persisted instead
+         and the destination page's start() sends it through
+         its consented instance with the original properties.
+         The gates match sendOutbound's: the internal flag
+         drops, and a pending or declined consent gate drops
+         (never queues). */
+      deferLinkClick: function (properties) {
+        if (!isConfigured) return;
+        if (DC_INTERNAL) return;
+        if (AMP_GATE === "pending" || AMP_GATE === "declined") return;
+        persistDeferredClick(properties);
+      },
       grant: function () {
         var liftOptOut = AMP_GATE === "declined";
         AMP_GATE = "granted";
@@ -1071,7 +1183,7 @@
 <script src="/assets/surface.js?v=20261117-11"></script>
 <script src="/assets/ledger.js?v=20261119-2"></script>
 <script src="/assets/ask.js?v=20261122-2"></script>
-<script src="/assets/compose.js?v=20261119-1" defer></script>
+<script src="/assets/compose.js?v=20261123-1" defer></script>
 <script src="/assets/experiences.js?v=20261119-4"></script>
   <script src="/assets/share.js?v=20261122-1"></script>
 </body>
