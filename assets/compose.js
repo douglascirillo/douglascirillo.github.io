@@ -484,9 +484,15 @@
         ? ' data-link-source="' + SCORECARD_LINK_SOURCE_ANSWER +
           '" data-link-label="Read it in context"'
         : '';
+      /* Algolia citation attribution (citation-click fix,
+         Nov 23, 2026): every citation anchor carries
+         data-ask-citation; ask.js's delegated listener
+         resolves the click against the page's last
+         rendered search and sends the Algolia click
+         event this renderer cannot reach on its own. */
       html += '<p class="cp-answer-claim">' + esc(it.claim) +
         ' <a href="' + esc(href) + '"' + attrs +
-        '>Read it in context</a></p>';
+        ' data-ask-citation="1">Read it in context</a></p>';
     });
     return html + "</div>";
   }
