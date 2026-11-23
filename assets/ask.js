@@ -665,6 +665,74 @@
     if (aaQueue.length > 50) aaQueue.shift();
     if (aaClient) aaFlush(); else aaLoad();
   }
+  /* Queued-event persistence (citation-click fix, Nov 23,
+     2026): the queue above is memory only, so an event
+     queued while the library is still loading dies with
+     the page when a click navigates this tab — the same
+     loss the Link Clicked fix closed for Amplitude by
+     persisting through DCAmplitude.deferLinkClick. On
+     pagehide, whatever is still queued is written to
+     sessionStorage; the next page in the tab restores it
+     (consuming the stored copy) ahead of its first flush,
+     where aaFlush's gate re-check drops it if measurement
+     has since been held. A pagehide under a hold persists
+     nothing and clears any stored copy. */
+  var AA_PENDING_KEY = "dc_aa_pending_v1";
+  var AA_METHODS = { clickedObjectIDsAfterSearch: 1, clickedObjectIDs: 1, viewedObjectIDs: 1, convertedObjectIDsAfterSearch: 1 };
+  function aaRestorePending() {
+    var savedAa = null;
+    try { savedAa = window.sessionStorage.getItem(AA_PENDING_KEY); } catch (e) {}
+    if (!savedAa) return;
+    /* Consume unconditionally (P-1123-CC fix 1): a copy
+       left in place under a hold would survive the
+       decline and replay after a later grant. Only a
+       not-held restore queues it. */
+    try { window.sessionStorage.removeItem(AA_PENDING_KEY); } catch (e) {}
+    if (measurementHeld()) return;
+    try {
+      var parsedAa = JSON.parse(savedAa);
+      if (parsedAa && parsedAa.length) {
+        parsedAa.forEach(function (item) {
+          if (item && AA_METHODS[item[0]] && item[1] &&
+              typeof item[1] === "object" && aaQueue.length < 50) {
+            aaQueue.push([item[0], item[1]]);
+          }
+        });
+      }
+    } catch (e) { /* a failed restore drops the events, nothing else */ }
+  }
+  aaRestorePending();
+  window.addEventListener("pagehide", function () {
+    try {
+      if (aaQueue.length && !measurementHeld()) {
+        window.sessionStorage.setItem(AA_PENDING_KEY,
+          JSON.stringify(aaQueue.slice(0, 50)));
+        /* The stored copy is now the single owner
+           (P-1123-CC2): if this page is later restored
+           from bfcache, its queue no longer holds a
+           second copy to send. */
+        aaQueue.length = 0;
+      } else {
+        window.sessionStorage.removeItem(AA_PENDING_KEY);
+      }
+    } catch (e) { /* persistence is best-effort */ }
+  });
+  /* A bfcache restore (P-1123-CC fix 5, completed by
+     CC2): the queue was handed to storage at pagehide,
+     so a restored page takes back whatever storage
+     still holds — nothing, if the destination page
+     already consumed and sent it — and flushes it
+     through the client. */
+  window.addEventListener("pageshow", function (ev) {
+    try {
+      if (ev && ev.persisted) {
+        aaRestorePending();
+        if (aaQueue.length && !measurementHeld()) {
+          if (aaInstance()) aaFlush(); else aaLoad();
+        }
+      }
+    } catch (e) {}
+  });
   /* A decline recorded after a token was stored retires the
      token: on the next page build under a declined gate, both
      stored copies are removed, so a later grant starts from a
@@ -675,9 +743,75 @@
         window.DCAmplitude.gate() === "declined") {
       window.localStorage.removeItem("dc_anon_token");
       window.sessionStorage.removeItem("dc_anon_token");
+      window.sessionStorage.removeItem(AA_PENDING_KEY);
     }
   } catch (e) {}
   if (!measurementHeld()) aaLoad();
+
+  /* ---------- Answer-citation clicks (Algolia) ----------
+     Citation-click fix (Nov 23, 2026): the third unwired
+     producer of the day. The search-hit rows send
+     clickedObjectIDsAfterSearch; an answer's "Read it in
+     context" links — in the panel below and in the stream
+     (compose.js) alike — sent nothing to Algolia at all:
+     their handlers carried only the Amplitude and ledger
+     writes, and the items themselves are {claim, source}
+     pairs from the record endpoint, with no objectID,
+     queryID, or position of their own. The attribution
+     they can honestly carry is the search that surfaced
+     them: the last search rendered on this page, recorded
+     by runSearch below. A citation click resolves its
+     source path against that render's hits and, on a
+     match, sends the click with the search's queryID, the
+     hit's objectID, and its 1-based position — the
+     payload shape the endpoint already accepts. No match,
+     or no search yet on this page, sends nothing: no
+     attribution is fabricated. Both renderers mark their
+     citation anchors data-ask-citation; the one delegated
+     listener here serves both, so the stream needs no
+     pipe of its own. */
+  var lastSearchCtx = null;
+  function aaPathKey(raw) {
+    try {
+      var p = new URL(raw, window.location.href).pathname;
+      return p.length > 1 ? p.replace(/\/$/, "") : p;
+    } catch (e) { return null; }
+  }
+  function aaCitationClick(rawUrl) {
+    if (!lastSearchCtx || !lastSearchCtx.queryID) return;
+    var key = aaPathKey(rawUrl);
+    if (!key) return;
+    var matches = [];
+    lastSearchCtx.hits.forEach(function (h, i) {
+      if (aaPathKey(h.url) === key) matches.push(i);
+    });
+    if (matches.length > 1) {
+      /* Same-path hits (P-1123-CC fix 3): only a full
+         URL match, fragment included, may disambiguate;
+         anything else sends nothing rather than credit
+         the wrong result. */
+      var full = null;
+      try { full = new URL(rawUrl, window.location.href); } catch (e) {}
+      var exact = matches.filter(function (i) {
+        try {
+          var hu = new URL(lastSearchCtx.hits[i].url, window.location.href);
+          return !!full && hu.pathname === full.pathname && hu.hash === full.hash;
+        } catch (e) { return false; }
+      });
+      if (exact.length === 1) matches = exact;
+    }
+    if (matches.length !== 1) return;
+    var hit = lastSearchCtx.hits[matches[0]];
+    aaSend("clickedObjectIDsAfterSearch", { eventName: "Search Result Clicked", index: ALGOLIA_INDEX, queryID: lastSearchCtx.queryID, objectIDs: [hit.objectID], positions: [matches[0] + 1] });
+  }
+  document.addEventListener("click", function (ev) {
+    try {
+      var t = ev.target;
+      var a = t && t.closest ? t.closest("a[data-ask-citation]") : null;
+      if (!a) return;
+      aaCitationClick(a.getAttribute("href") || "");
+    } catch (e) { /* measurement never breaks the page */ }
+  });
 
   /* ---------- Ask: answers render in place ---------- */
   function nextStep() {
@@ -739,6 +873,12 @@
             div.className = "ask-item";
             var p = document.createElement("p"); p.textContent = it.claim;
             var a = document.createElement("a"); a.href = it.source; a.textContent = "Read it in context"; extAttrs(a);
+            /* Algolia citation attribution (citation-click
+               fix, Nov 23, 2026): the marker ask.js's
+               delegated listener resolves against the
+               page's last rendered search. compose.js's
+               renderer marks its anchors the same way. */
+            a.setAttribute("data-ask-citation", "1");
             /* Scorecard-bound context links carry the scorecard
                anchors' Link Clicked attribution (producer-
                coverage fix, Nov 23, 2026): compose.js's
@@ -901,6 +1041,7 @@
       b.addEventListener("click", function () {
         panel.hidden = true;
         ein.value = "";
+        lastSearchCtx = null;
         resetInputHeight();
         if (model.onTap) model.onTap(s);
       });
@@ -962,6 +1103,11 @@
   }
   function runSearch(q) {
     var seq = ++searchSeq;
+    /* A new search disarms the previous render's citation
+       context until its own render lands (P-1123-CC fix 2):
+       a failed, superseded, or cleared search must not
+       leave a stale queryID armed for citation clicks. */
+    lastSearchCtx = null;
     /* While measurement is held, the search still runs (it is
        the visitor's own request) but carries no token and no
        click analytics, so a held visitor's searches stay out
@@ -991,6 +1137,11 @@
         if (seq !== searchSeq) return;
         if (ein.value.trim() !== q) return;
         var hits = data.hits || [], queryID = data.queryID;
+        /* The page's search context for citation attribution:
+           an answer's citation click resolves against this
+           render's hits (see aaCitationClick above). A held
+           search returns no queryID, which disarms it. */
+        lastSearchCtx = { queryID: queryID || null, hits: hits.map(function (h) { return { objectID: h.objectID, url: h.url }; }) };
         track("Search Query", { page: page, length: q.length, result_class: hits.length ? "results" : "none" });
         panel.innerHTML = "";
         if (!hits.length) {
@@ -1041,6 +1192,7 @@
       .catch(function () {
         if (seq !== searchSeq) return;
         if (ein.value.trim() !== q) return;
+        lastSearchCtx = null;
         showAskRow(q);
       });
   }
@@ -1062,6 +1214,12 @@
     if (!ein.value.trim()) showEmptyState();
   });
   ein.addEventListener("input", function () {
+    /* Every keystroke disarms the previous render's
+       citation context (P-1123-CC2 fix 1): inside the
+       debounce window the armed context still belongs
+       to the earlier text, while a submit already
+       answers the new text. The next render re-arms. */
+    lastSearchCtx = null;
     growInput();
     answerBox.hidden = true;
     var q = ein.value.trim();
@@ -1072,7 +1230,7 @@
        at one; at and above it the ask row renders at once
        and the matches join on the response. The starters
        drop away once typing starts (flag F8, as ruled). */
-    if (q.length === 0) { showEmptyState(); return; }
+    if (q.length === 0) { lastSearchCtx = null; showEmptyState(); return; }
     if (q.length < 2) { showRecents(); return; }
     showAskRow(q);
     debounce = setTimeout(function () { runSearch(q); }, 150);
