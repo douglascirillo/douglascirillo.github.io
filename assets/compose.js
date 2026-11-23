@@ -2583,7 +2583,16 @@
      (destination, destination_host, link_label). The
      pages' delegated handler keys
      on a[data-outbound-link], which neither scorecard
-     anchor carries, so nothing double-fires. */
+     anchor carries, so nothing double-fires.
+     Delivery (link-clicked delivery fix, Nov 23, 2026):
+     both anchors navigate same-tab, so firing immediately
+     raced the SDK's interval batch against the unload and
+     the event was usually lost. The click is handed to
+     the pages' snippet (DCAmplitude.deferLinkClick),
+     which persists it and lets the destination page send
+     it on boot with these original properties; the
+     immediate track() below remains only as the fallback
+     for a page whose snippet offers no deferral. */
   document.addEventListener("click", function (ev) {
     try {
       var t = ev.target;
@@ -2598,12 +2607,30 @@
       } catch (e) {}
       var internal = !abs ||
         abs.hostname.toLowerCase() === "douglascirillo.com";
-      track("Link Clicked", {
+      var clickProps = {
         is_internal: internal,
         link_url: internal
           ? (abs ? abs.pathname : raw) : abs.href,
         link_source: a.getAttribute("data-link-source")
-      });
+      };
+      /* Defer only a plain primary same-tab click: a
+         modified click (ctrl/cmd/shift/alt, a non-primary
+         button), a click an earlier handler already
+         claimed, or an anchor with a target of its own
+         does not navigate this tab, so a persisted entry
+         would be stranded here or double-sent from a
+         copied tab session. Those keep the immediate
+         track() this build replaces for plain clicks. */
+      var plainSameTab = ev.button === 0 &&
+        !ev.ctrlKey && !ev.metaKey && !ev.shiftKey && !ev.altKey &&
+        !ev.defaultPrevented &&
+        (!a.target || a.target === "_self");
+      if (plainSameTab && window.DCAmplitude &&
+          typeof window.DCAmplitude.deferLinkClick === "function") {
+        window.DCAmplitude.deferLinkClick(clickProps);
+      } else {
+        track("Link Clicked", clickProps);
+      }
     } catch (e) { /* measurement never breaks the page */ }
   });
 
