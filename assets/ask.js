@@ -12,7 +12,9 @@
    Amplitude device ID, assigned at random, as the user token when
    Amplitude is present (PIPE_ENABLED), so search behavior and site
    behavior join on one device ID in both systems. Otherwise a
-   session-scoped token is used.
+   persistent anonymous token is used, and every search request
+   carries the same token so its clicks validate (Nov 23, 2026
+   repair; see the pipe section below).
 
    Engaged-UI revision (Nov 16, 2026;
    engaged-ui-revision-build-sheet.md, decisions D2, D9): the bar
@@ -539,48 +541,143 @@
   }
 
   /* ---------- Amplitude <> Algolia pipe ---------- */
-  var sessionToken = null;
-  try {
-    sessionToken = window.sessionStorage.getItem("dc_anon_token");
-    if (!sessionToken) {
-      sessionToken = "anon-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
-      window.sessionStorage.setItem("dc_anon_token", sessionToken);
-    }
-  } catch (e) { sessionToken = "anon-ephemeral"; }
+  /* Algolia click wiring repair (Nov 23, 2026): the previous
+     wiring never delivered a single event, for three stacked
+     reasons. (1) search-insights@2's browser global,
+     window.AlgoliaAnalytics, is an exports object whose
+     .default is a client INSTANCE with methods (init,
+     setUserToken, clickedObjectIDsAfterSearch, ...), not a
+     callable command function; the old code tested
+     typeof === "function", never matched, and silently
+     dropped every event. (2) The search requests carried
+     clickAnalytics but no userToken, so Algolia counted the
+     searches as untracked and would have discarded the click
+     events anyway: a click event validates only against a
+     search made with the same userToken. (3) The library was
+     loaded lazily at first use and the events fired in that
+     same tick were dropped. (4) The search-results view
+     called viewedObjectIDsAfterSearch, a method the v2
+     client does not have; it would have thrown even had the
+     client initialized. (Views after a search are
+     viewedObjectIDs events carrying the queryID.) The pipe
+     below uses the instance
+     methods, stamps the token on every search request, loads
+     the library when the bar is built, and queues events
+     until the client is ready. Events observe the same gates
+     as the rest of the site's measurement: an internal-flagged
+     browser, or a pending or declined consent gate, sends
+     nothing and queues nothing. */
+  function measurementHeld() {
+    try {
+      if (window.DCInternal) return true;
+      if (window.DCAmplitude &&
+          typeof window.DCAmplitude.gate === "function") {
+        var g = window.DCAmplitude.gate();
+        if (g === "pending" || g === "declined") return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+  /* One token per page, resolved once and cached, so the
+     token stamped on a search and the token on its click
+     events always match. The Amplitude device ID wins when
+     the SDK is already up; otherwise a persistent anonymous
+     token (localStorage, so it survives page views; the
+     session-scoped value from the previous wiring is still
+     read for continuity). While measurement is held, the
+     fallback token is ephemeral and nothing is stored; a
+     token resolved during a hold stays in force for the
+     rest of that page even if the gate opens mid-page. */
+  var pipeTokCache = null;
   function pipeToken() {
+    if (pipeTokCache) return pipeTokCache;
+    var t = null;
     if (PIPE_ENABLED) {
       try {
         if (window.amplitude && typeof window.amplitude.getDeviceId === "function") {
           var d = window.amplitude.getDeviceId();
-          if (d) return d;
+          if (d) t = d;
         }
       } catch (e) {}
     }
-    return sessionToken;
-  }
-  var aaClient = null, aaTried = false;
-  function insights() {
-    if (aaTried) return aaClient;
-    aaTried = true;
-    var lib = window.AlgoliaAnalytics;
-    var aa = lib && (lib.default || lib);
-    if (typeof aa !== "function") {
-      var sc = document.createElement("script");
-      sc.src = "https://cdn.jsdelivr.net/npm/search-insights@2/dist/search-insights.min.js";
-      sc.async = true;
-      sc.onload = function () {
-        var l2 = window.AlgoliaAnalytics;
-        var a2 = l2 && (l2.default || l2);
-        if (typeof a2 === "function") {
-          try { a2("init", { appId: ALGOLIA_APP, apiKey: ALGOLIA_SEARCH_KEY }); a2("setUserToken", pipeToken()); aaClient = a2; } catch (e) {}
+    if (!t) {
+      try {
+        t = window.localStorage.getItem("dc_anon_token") ||
+            window.sessionStorage.getItem("dc_anon_token");
+      } catch (e) {}
+      if (!t) {
+        t = "anon-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      }
+      if (!measurementHeld()) {
+        try { window.localStorage.setItem("dc_anon_token", t); } catch (e) {
+          try { window.sessionStorage.setItem("dc_anon_token", t); } catch (e2) {}
         }
-      };
-      document.head.appendChild(sc);
-      return null;
+      }
     }
-    try { aa("init", { appId: ALGOLIA_APP, apiKey: ALGOLIA_SEARCH_KEY }); aa("setUserToken", pipeToken()); aaClient = aa; } catch (e) { aaClient = null; }
-    return aaClient;
+    pipeTokCache = t;
+    return t;
   }
+  var aaClient = null, aaStarted = false, aaQueue = [];
+  function aaInstance() {
+    var lib = window.AlgoliaAnalytics;
+    if (!lib) return null;
+    var inst = lib.default || lib;
+    if (inst && typeof inst.init === "function" &&
+        typeof inst.clickedObjectIDsAfterSearch === "function") return inst;
+    return null;
+  }
+  function aaFlush() {
+    /* Re-check the gates at flush time: consent revoked (or
+       the internal flag set) while the library was in flight
+       must not let queued events out. The queue is memory
+       only and is cleared, never persisted. */
+    if (measurementHeld()) { aaQueue.length = 0; return; }
+    var inst = aaInstance();
+    if (!inst) return;
+    if (!aaClient) {
+      try { inst.init({ appId: ALGOLIA_APP, apiKey: ALGOLIA_SEARCH_KEY }); } catch (e) { return; }
+      aaClient = inst;
+    }
+    try { aaClient.setUserToken(pipeToken()); } catch (e) {}
+    while (aaQueue.length) {
+      var item = aaQueue.shift();
+      try { aaClient[item[0]](item[1]); } catch (e) {}
+    }
+  }
+  function aaLoad() {
+    if (aaStarted) return;
+    aaStarted = true;
+    if (aaInstance()) { aaFlush(); return; }
+    var sc = document.createElement("script");
+    /* Version-pinned and SRI-locked to the exact build the
+       test suite pins (2.17.3): the v2 line already changed
+       shape under this code once, silently. */
+    sc.src = "https://cdn.jsdelivr.net/npm/search-insights@2.17.3/dist/search-insights.min.js";
+    sc.integrity = "sha384-puGTibgj5tll4rKBSZMNWXFBG+MuObLcSQE3VnZ/PbPozbHGK7qhg0CFKG9FBUjZ";
+    sc.crossOrigin = "anonymous";
+    sc.async = true;
+    sc.onload = function () { aaFlush(); };
+    document.head.appendChild(sc);
+  }
+  function aaSend(method, payload) {
+    if (measurementHeld()) return;
+    aaQueue.push([method, payload]);
+    if (aaQueue.length > 50) aaQueue.shift();
+    if (aaClient) aaFlush(); else aaLoad();
+  }
+  /* A decline recorded after a token was stored retires the
+     token: on the next page build under a declined gate, both
+     stored copies are removed, so a later grant starts from a
+     fresh token rather than resurrecting the old one. */
+  try {
+    if (window.DCAmplitude &&
+        typeof window.DCAmplitude.gate === "function" &&
+        window.DCAmplitude.gate() === "declined") {
+      window.localStorage.removeItem("dc_anon_token");
+      window.sessionStorage.removeItem("dc_anon_token");
+    }
+  } catch (e) {}
+  if (!measurementHeld()) aaLoad();
 
   /* ---------- Ask: answers render in place ---------- */
   function nextStep() {
@@ -865,10 +962,19 @@
   }
   function runSearch(q) {
     var seq = ++searchSeq;
+    /* While measurement is held, the search still runs (it is
+       the visitor's own request) but carries no token and no
+       click analytics, so a held visitor's searches stay out
+       of Algolia's tracked counts entirely. */
+    var searchBody = { query: q, hitsPerPage: 6, attributesToHighlight: [], clickAnalytics: false };
+    if (!measurementHeld()) {
+      searchBody.clickAnalytics = true;
+      searchBody.userToken = pipeToken();
+    }
     var fetchOpts = {
       method: "POST",
       headers: { "content-type": "application/json", "X-Algolia-API-Key": ALGOLIA_SEARCH_KEY, "X-Algolia-Application-Id": ALGOLIA_APP },
-      body: JSON.stringify({ query: q, hitsPerPage: 6, attributesToHighlight: [], clickAnalytics: true })
+      body: JSON.stringify(searchBody)
     };
     try {
       if (typeof AbortController !== "undefined") {
@@ -911,15 +1017,23 @@
           a.addEventListener("click", function () {
             track("Search Result Click", { page: page, destination_type: h.type || "" });
             saveRecent(q);
-            var aa = insights();
-            if (aa && queryID) { try { aa("clickedObjectIDsAfterSearch", { eventName: "Search Result Clicked", index: ALGOLIA_INDEX, queryID: queryID, objectIDs: [h.objectID], positions: [hi + 1] }); } catch (e) {} }
+            if (queryID) { aaSend("clickedObjectIDsAfterSearch", { eventName: "Search Result Clicked", index: ALGOLIA_INDEX, queryID: queryID, objectIDs: [h.objectID], positions: [hi + 1] }); }
           });
           panel.appendChild(a);
         });
         appendAskSection(q);
         if (hits.length && queryID) {
-          var aa2 = insights();
-          if (aa2) { try { aa2("viewedObjectIDsAfterSearch", { eventName: "Search Results Viewed", index: ALGOLIA_INDEX, queryID: queryID, objectIDs: hits.slice(0, 20).map(function (h) { return h.objectID; }) }); } catch (e) {} }
+          /* search-insights@2 has no viewedObjectIDsAfterSearch
+             (a fourth stacked defect in the old wiring: the call
+             would have thrown even had the client initialized);
+             a search view is a viewedObjectIDs event carrying
+             the queryID in its payload, which the v2 formatter
+             passes through untouched. Whether Algolia accepts
+             and uses the field is proven by the post-deploy
+             Events debugger check, not assumed here; the
+             fallback, if it is dropped, is the same event
+             without the queryID. */
+          aaSend("viewedObjectIDs", { eventName: "Search Results Viewed", index: ALGOLIA_INDEX, queryID: queryID, objectIDs: hits.slice(0, 20).map(function (h) { return h.objectID; }) });
         }
         panel.hidden = false;
         setActive(-1);
@@ -1021,6 +1135,7 @@
      a view-all row to the type hub. Personalization may override the
      cap later; until then every list follows this pattern. */
   function queryIndex(body) {
+    if (!body.userToken && !measurementHeld()) body.userToken = pipeToken();
     return fetch("https://" + ALGOLIA_APP + "-dsn.algolia.net/1/indexes/" + ALGOLIA_INDEX + "/query", {
       method: "POST",
       headers: { "content-type": "application/json", "X-Algolia-API-Key": ALGOLIA_SEARCH_KEY, "X-Algolia-Application-Id": ALGOLIA_APP },
@@ -1029,8 +1144,7 @@
   }
   function listClick(surface, h) {
     track("Dynamic List Click", { surface: surface, destination_type: h.type || "" });
-    var aa = insights();
-    if (aa) { try { aa("clickedObjectIDs", { eventName: "List Item Clicked", index: ALGOLIA_INDEX, objectIDs: [h.objectID] }); } catch (e) {} }
+    aaSend("clickedObjectIDs", { eventName: "List Item Clicked", index: ALGOLIA_INDEX, objectIDs: [h.objectID] });
   }
   function fmtDate(ts) {
     if (!ts) return "";
@@ -1083,11 +1197,11 @@
       ct.textContent = (h.type === "Essay" ? "Read the essay" : "Read more") + " \u2192";
       body.appendChild(ct);
       a.appendChild(body);
+      li.appendChild(a);
       ul.appendChild(li);
     });
     if (hits.length) {
-      var aa3 = insights();
-      if (aa3) { try { aa3("viewedObjectIDs", { eventName: "List Items Viewed", index: ALGOLIA_INDEX, objectIDs: hits.slice(0, 20).map(function (h) { return h.objectID; }) }); } catch (e) {} }
+      aaSend("viewedObjectIDs", { eventName: "List Items Viewed", index: ALGOLIA_INDEX, objectIDs: hits.slice(0, 20).map(function (h) { return h.objectID; }) });
     }
     if (hubUrl) {
       var mli = document.createElement("li");
