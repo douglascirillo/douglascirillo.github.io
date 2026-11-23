@@ -468,9 +468,25 @@
         "</p>";
     }
     answer.items.forEach(function (it) {
+      var href = contextHref(it);
+      /* Scorecard-bound context links carry the scorecard
+         anchors' attribution (producer-coverage fix, Nov 23,
+         2026): the answer renderers emitted these links bare,
+         so a click from an answer into /scorecard/ matched
+         neither Link Clicked producer — not the snippet's
+         a[data-outbound-link], not this file's
+         a[data-link-source] — and was never measured. That
+         gap, not the deferred delivery, is what the delivery
+         fix's first live verification hit. With the attribute
+         on, the delegated handler below defers the click
+         through the snippet like the card's own anchor. */
+      var attrs = isScorecardHref(href)
+        ? ' data-link-source="' + SCORECARD_LINK_SOURCE_ANSWER +
+          '" data-link-label="Read it in context"'
+        : '';
       html += '<p class="cp-answer-claim">' + esc(it.claim) +
-        ' <a href="' + esc(contextHref(it)) +
-        '">Read it in context</a></p>';
+        ' <a href="' + esc(href) + '"' + attrs +
+        '>Read it in context</a></p>';
     });
     return html + "</div>";
   }
@@ -1539,6 +1555,22 @@
     return recordAnchorsLoading;
   }
 
+  /* A context link points at the scorecard when it resolves
+     to this origin's canonical scorecard path, fragment and
+     query aside (producer-coverage fix, Nov 23, 2026; the
+     matcher resolves like the browser does, per the
+     P-1123-LC2 review — ask.js carries the same test for the
+     panel's anchors). Only the trailing-slash path counts:
+     every scorecard link the site emits uses it. */
+  function isScorecardHref(href) {
+    if (typeof href !== "string" || !href) return false;
+    try {
+      var url = new URL(href, window.location.href);
+      return url.origin === window.location.origin &&
+        url.pathname === SCORECARD_PATH;
+    } catch (e) { return false; }
+  }
+
   function contextHref(it) {
     if (!it || typeof it.source !== "string") return "";
     if (!recordAnchors) return it.source;
@@ -2287,6 +2319,16 @@
      only, never Amplitude. */
   var SCORECARD_LINK_SOURCE_CARD = "scorecard_card";
   var SCORECARD_LINK_SOURCE_SET = "link_set";
+  /* link_source value for an answer's scorecard-bound
+     "Read it in context" link (producer-coverage fix,
+     Nov 23, 2026), in either answer renderer — the value
+     names the surface, not the renderer, by decision (see
+     the tracking plan's producer-coverage annotation).
+     ask.js sets the same literal for the panel's anchors.
+     The prose links in published pages carry prose_link,
+     a literal in their HTML; the full value set lives in
+     the tracking plan. */
+  var SCORECARD_LINK_SOURCE_ANSWER = "answer_context";
 
   /* Feature Experiment (Nov 19, 2026): the scorecard promotion
      card runs as an Amplitude Feature Experiment, flag
@@ -2625,7 +2667,22 @@
         !ev.ctrlKey && !ev.metaKey && !ev.shiftKey && !ev.altKey &&
         !ev.defaultPrevented &&
         (!a.target || a.target === "_self");
-      if (plainSameTab && window.DCAmplitude &&
+      /* Only a fragment-only click truly stays on this
+         page: same origin, path, and query, with a fragment
+         to move to. The page lives through it, so the
+         immediate track() delivers, and a persisted entry
+         would strand until some later load fired it with a
+         stale boot timestamp. Every other same-path click —
+         a different query, or the identical URL — is a
+         full navigation or reload that unloads this page,
+         so it defers and the reloaded page's boot drain
+         sends it (P-1123-LC2 final review fix). */
+      var staysHere = !!abs &&
+        abs.origin === window.location.origin &&
+        abs.pathname === window.location.pathname &&
+        abs.search === window.location.search &&
+        !!abs.hash;
+      if (plainSameTab && !staysHere && window.DCAmplitude &&
           typeof window.DCAmplitude.deferLinkClick === "function") {
         window.DCAmplitude.deferLinkClick(clickProps);
       } else {
