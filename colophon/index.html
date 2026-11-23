@@ -443,6 +443,62 @@
       return { is_bot: isBot, user_agent_type: type };
     })();
     try { document.documentElement.setAttribute("data-botcls", BOT_CLS.user_agent_type); } catch (e) {}
+    /* Internal-traffic flag (internal-traffic-flag build, Nov 23,
+       2026): the site owner's own browsing is not audience data,
+       and Amplitude offers no IP blocklist, so the exclusion
+       lives here. Visiting any page with ?internal=1 stores the
+       marker (localStorage dc_internal_v1); ?internal=0 clears
+       it. The parameter is removed from the address bar once
+       read, so a copied or shared link cannot flag its
+       recipient. While the marker is set, the Amplitude SDK is
+       never appended (see appendSdk), the snippet's event queues
+       drop instead of queueing, and no guide, survey,
+       experiment, or replay ever starts for that browser: the
+       browser sends nothing. The flag is independent of the
+       consent gate: it is not a consent answer and never changes
+       AMP_GATE. The flagged state is observable on the page
+       itself: data-internal="true" on <html> and
+       window.DCInternal; a set or clear that did not stick
+       (storage unavailable) stamps data-internal="set-failed"
+       instead, so the failure is visible rather than silent. */
+    var DC_INTERNAL = (function () {
+      var flagged = false;
+      var want = null;
+      try {
+        var params = new URLSearchParams(window.location.search);
+        want = params.get("internal");
+        if (want === "1") {
+          window.localStorage.setItem("dc_internal_v1", "1");
+        } else if (want === "0") {
+          window.localStorage.removeItem("dc_internal_v1");
+        }
+        flagged = window.localStorage.getItem("dc_internal_v1") === "1";
+      } catch (e) { flagged = false; }
+      if (want !== null) {
+        /* The parameter has done its work; take it out of the
+           address bar. Only the internal pair is removed, by
+           splitting and rejoining on "&" without decoding, so
+           every other parameter (the router's experience=
+           included) and the hash survive byte-identical. */
+        try {
+          var pairs = window.location.search.replace(/^\?/, "").split("&")
+            .filter(function (p) { return p && p.split("=")[0] !== "internal"; });
+          var cleaned = window.location.pathname +
+            (pairs.length ? "?" + pairs.join("&") : "") +
+            window.location.hash;
+          window.history.replaceState(null, "", cleaned);
+        } catch (e) {}
+      }
+      var failed = (want === "1" && !flagged) ||
+                   (want === "0" && flagged);
+      if (flagged) {
+        try { document.documentElement.setAttribute("data-internal", "true"); } catch (e) {}
+      } else if (failed) {
+        try { document.documentElement.setAttribute("data-internal", "set-failed"); } catch (e) {}
+      }
+      try { window.DCInternal = flagged; } catch (e) {}
+      return flagged;
+    })();
     /* Consent gate for measurement (amplitude-consent-gate build
        sheet): one detection, one choice. The stored choice under
        dc_ledger_consent_v1 governs both the on-device ledger
@@ -555,6 +611,9 @@
 
     function sendOutbound(properties) {
       if (!isConfigured) return;
+      /* Internal flag: the owner's own clicks are never queued
+         or sent (internal-traffic-flag build). */
+      if (DC_INTERNAL) return;
       /* Consent gate: while held or declined, a click is dropped,
       never queued; it describes activity not agreed to be measured. */
       if (AMP_GATE === "pending" || AMP_GATE === "declined") return;
@@ -797,6 +856,11 @@
     var sdkAppended = false;
     function appendSdk() {
       if (sdkAppended) return;
+      /* Internal flag: a flagged browser never loads the SDK,
+         whatever the consent gate says (internal-traffic-flag
+         build). grant() and the cross-tab listener reach the SDK
+         only through here, so this one hold covers them. */
+      if (DC_INTERNAL) return;
       sdkAppended = true;
       document.head.appendChild(sdk);
     }
@@ -808,6 +872,7 @@
     }
     window.DCAmplitude = {
       gate: function () { return AMP_GATE; },
+      isInternal: function () { return DC_INTERNAL; },
       isReady: function () { return ready; },
       whenReady: onAmpReady,
       grant: function () {
@@ -1191,7 +1256,7 @@
           <li><strong>A correction:</strong> Amplitude&rsquo;s built-in Web Vitals capture was switched on in the console on November 19, but it never ran: the site&rsquo;s initialization names its automatic capture choices explicitly, and Web Vitals was not among them, and the site does not fetch its settings from the console, so the switch never reached the pages. Web Vitals is now named in the initialization, and Amplitude&rsquo;s capture runs alongside the site&rsquo;s own measurement while the two are compared.</li>
           <li><strong>A correction, again:</strong> The console also had frustration interactions switched on, rage clicks and dead clicks, and the same gap applied: the initialization did not name them, and the site does not fetch its settings from the console, so they never ran either. Frustration interactions are now named in the initialization, set as the console has them, with error clicks and thrashed cursor left off.</li>
         </ul></div></details>
-        <details class="acc log-acc-last"><summary>Nov 22, 2026</summary><div class="acc-body"><ul class="log">
+        <details class="acc"><summary>Nov 22, 2026</summary><div class="acc-body"><ul class="log">
           <li><strong>Watch pages, made legible:</strong> Google&rsquo;s video index passed over the three recorded talks, judging their pages not to be watch pages. The players now load with the page instead of lazily, and each page&rsquo;s structured data names the recording itself as the page&rsquo;s main entity, the article in support. The transcripts stay; the video leads.</li>
           <li><strong>Pass it on:</strong> Every essay, case study, and recorded talk now ends with a quiet share row (the device&rsquo;s own share sheet where it offers one, then copy the link, LinkedIn, X, email) and carries a preview card of its own, composed from its own photograph, so a pasted link arrives with its title on its face. The row runs no one else&rsquo;s code; the only trace is the site&rsquo;s own count of which method a reader chose, under the same consent as everything else.</li>
           <li><strong>Say it in the listing:</strong> The speaking page&rsquo;s search title and description caught up with the page itself. The title now leads with the topics, CDPs and experimentation, and the description names all three recordings, so what a searcher sees is what the page holds.</li>
@@ -1201,6 +1266,9 @@
           <li><strong>Questions, sent to the record:</strong> A week of search data showed half of all searches finding nothing, and the misses were questions, full sentences typed where keywords live. The explore box now names a question a question and hands it to the record that can answer it; &lsquo;show me&rsquo; requests route the same way. A keyword miss, in turn, points at the ask button beneath it instead of an Enter key that was never going to answer.</li>
           <li><strong>Every part of the page, on the map:</strong> An accessibility pass over all 39 pages found one gap: the strip at the top of each page, carrying the menu and the name, sat outside the page&rsquo;s landmarks, and the home page&rsquo;s opening definition sat outside them too. The strip now declares itself a named region, and the definition moved inside the header it belongs to. Nothing looks different; the map a screen reader reads is now complete.</li>
           <li><strong>Names, declared:</strong> Search reads a page&rsquo;s title, summary, and headings, never its body, so a name that lives only in the body is a name search cannot find. Three pages now declare the names they answer to: the scorecard and Own Your Harness declare Builder OS, and the Lindblad Expeditions - National Geographic case study declares SeaWare. The index build reads the declarations, and each name now finds its page.</li>
+        </ul></div></details>
+        <details class="acc log-acc-last"><summary>Nov 23, 2026</summary><div class="acc-body"><ul class="log">
+          <li><strong>The owner&rsquo;s visits no longer count:</strong> Week two&rsquo;s build log admitted that a healthy share of the site&rsquo;s 900 page views were its owner checking his own work, and promised an honest baseline. The promise is now kept at the source. A browser can be marked as the owner&rsquo;s own, with one flagged visit, and a marked browser is simply never measured: the analytics software is never loaded for it, so no page view, no session replay, no guide, and no experiment starts, and nothing is sent. Amplitude offers no list of addresses to set aside, so the exclusion is built into the site itself. The mark clears the same way it is set. Week three&rsquo;s numbers are the first that count only the audience.</li>
         </ul></div></details>
         </div></details></div></details>
       </section>
