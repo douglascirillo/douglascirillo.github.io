@@ -37,9 +37,8 @@
 <link rel="me" href="https://www.linkedin.com/in/douglascirillo/" />
 <link rel="me" href="https://douglascirillo.substack.com" />
 <link rel="me" href="https://x.com/DouglasCirillo" />
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preload" href="/assets/fonts/publicsans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/fonts.css">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -311,7 +310,7 @@
 .hub-card:hover{border-color:var(--accent);transform:translateY(-1px)}
 .hub-card-a{display:flex;flex-direction:column;height:100%;text-decoration:none;color:inherit}
 a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;color:inherit}
-.hub-img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.hub-img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;display:block}
 .hub-body{display:flex;flex-direction:column;gap:5px;padding:14px 16px 16px}
 .hub-meta{display:flex;gap:8px;align-items:center;font-size:11.5px;color:var(--muted)}
 .hub-tag{letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);border-radius:4px;padding:0 5px;font-weight:600}
@@ -800,10 +799,16 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
     /* Session Replay (plugin-session-replay-browser 1.36.7,
        pinned). Full capture, sampleRate 1, for human sessions
        only: BOT_CLS is computed above, before the SDK loads, and
-       the plugin is registered only when it says human. Bot and
+       the plugin is added only when it says human. Bot and
        scanner sessions get analytics exactly as before and are
        never recorded. If the SDK bundle already exposes
-       window.sessionReplay, the plugin library is not loaded. */
+       window.sessionReplay, the plugin library is not loaded.
+       Lazy init (performance build, Nov 24, 2026): the plugin
+       no longer gates analytics start. It is loaded and added
+       after the page settles (idle time or first interaction),
+       by scheduleReplay below, so its download and boot cost
+       leave the critical path; engaged sessions are still
+       recorded whole, at the same sampleRate 1. */
     var SR_PLUGIN_SRC = 'https://cdn.amplitude.com/libs/plugin-session-replay-browser-1.36.7-min.js.gz';
     /* Guides and Surveys (the engagement SDK), loaded the same
        way as the replay plugin: fetched only inside this gated
@@ -833,9 +838,6 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
         started = true;
         try {
           if (window.amplitude && typeof window.amplitude.init === 'function') {
-            if (!BOT_CLS.is_bot && window.sessionReplay && typeof window.sessionReplay.plugin === 'function' && typeof window.amplitude.add === 'function') {
-              try { window.amplitude.add(window.sessionReplay.plugin({ sampleRate: 1 })); } catch (e) { /* Replay must never break analytics. */ }
-            }
             if (!BOT_CLS.is_bot && window.engagement && typeof window.engagement.plugin === 'function' && typeof window.amplitude.add === 'function') {
               try { window.amplitude.add(window.engagement.plugin()); } catch (e) { /* Guides and Surveys must never break analytics. */ }
             }
@@ -964,6 +966,7 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
               var readyFn = ampReadyCallbacks.shift();
               try { readyFn(); } catch (e) {}
             }
+            scheduleReplay();
           }
         } catch (e) { /* Analytics must never break the page. */ }
       };
@@ -974,21 +977,13 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
            both have settled, or when the stall guard fires,
            whichever comes first. A plugin that fails to load
            never blocks the start: start() registers only what
-           arrived. */
+           arrived. Session Replay is not in this set any more:
+           it lazy-loads after the start (see scheduleReplay). */
         var pluginsPending = 0;
         var pluginSettled = function () {
           pluginsPending--;
           if (pluginsPending <= 0) start();
         };
-        if (!window.sessionReplay) {
-          pluginsPending++;
-          var sr = document.createElement('script');
-          sr.src = SR_PLUGIN_SRC;
-          sr.async = true;
-          sr.onload = pluginSettled;
-          sr.onerror = pluginSettled;
-          document.head.appendChild(sr);
-        }
         if (!window.engagement) {
           pluginsPending++;
           var eng = document.createElement('script');
@@ -1014,6 +1009,64 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
           setTimeout(start, 3000);
         }
       }
+    };
+    /* Session Replay lazy init (performance build, Nov 24,
+       2026): startReplay runs once, after analytics is up. It
+       re-checks every gate at the moment it fires -- a consent
+       revoke or decline that landed while the page settled
+       means the plugin is never loaded and never added, and
+       the internal-flag hold is re-checked too (a flagged
+       browser never loads the SDK, so it never reaches this
+       code at all; the check is belt and braces). Recording
+       begins when the plugin is added; a visit that ends
+       before the settle window leaves no replay, which is
+       the accepted cost of the change. */
+    var srStarted = false;
+    var startReplay = function () {
+      if (srStarted) return;
+      srStarted = true;
+      try {
+        if (BOT_CLS.is_bot) return;
+        if (DC_INTERNAL) return;
+        if (AMP_GATE !== "open" && AMP_GATE !== "granted") return;
+        if (!window.amplitude || typeof window.amplitude.add !== 'function') return;
+        var addReplay = function () {
+          try {
+            /* The gate is re-checked here, at add time, not
+               only in startReplay: the plugin script loads
+               async, and a revoke landing between the append
+               and this callback must still win. */
+            if (AMP_GATE !== "open" && AMP_GATE !== "granted") return;
+            if (BOT_CLS.is_bot || DC_INTERNAL) return;
+            if (window.sessionReplay && typeof window.sessionReplay.plugin === 'function') {
+              window.amplitude.add(window.sessionReplay.plugin({ sampleRate: 1 }));
+            }
+          } catch (e) { /* Replay must never break analytics. */ }
+        };
+        if (window.sessionReplay) { addReplay(); return; }
+        var sr = document.createElement('script');
+        sr.src = SR_PLUGIN_SRC;
+        sr.async = true;
+        sr.onload = addReplay;
+        sr.onerror = function () { /* Replay is optional; analytics already runs. */ };
+        document.head.appendChild(sr);
+      } catch (e) { /* Replay must never break analytics. */ }
+    };
+    var scheduleReplay = function () {
+      if (BOT_CLS.is_bot) return;
+      var fire = function () { startReplay(); };
+      ['pointerdown', 'keydown', 'touchstart'].forEach(function (type) {
+        try { window.addEventListener(type, fire, { once: true, passive: true }); } catch (e) {}
+      });
+      var onLoad = function () {
+        if (typeof window.requestIdleCallback === 'function') {
+          window.requestIdleCallback(fire, { timeout: 3000 });
+        } else {
+          setTimeout(fire, 1500);
+        }
+      };
+      if (document.readyState === 'complete') { onLoad(); }
+      else { window.addEventListener('load', onLoad); }
     };
     sdk.onerror = function () { /* Fail silently if the CDN is unreachable. */ };
 
@@ -1193,7 +1246,7 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
     <section id="about" aria-labelledby="about-h">
       <div class="section-head"><span class="num">01</span><h2 id="about-h">About</h2></div>
       <div class="prose">
-        <img class="headshot" src="/assets/douglas-cirillo-headshot-web.jpg" alt="Douglas Cirillo, Head of Digital Experience and Growth" width="640" height="480">
+        <img class="headshot" srcset="/assets/douglas-cirillo-headshot-web-380.webp 380w, /assets/douglas-cirillo-headshot-web.jpg 640w" sizes="(max-width: 640px) 150px, 280px" src="/assets/douglas-cirillo-headshot-web.jpg" alt="Douglas Cirillo, Head of Digital Experience and Growth" width="640" height="480">
         <p>I build digital and data functions at audience brands, then run them.</p>
         <p>I am Head of Digital Experience and Growth at Vanguard, where I lead a function supporting Personal Wealth marketing and the retail business. Before Vanguard, I led marketing and product strategy at Gangverk, was Vice President of Digital Product Management at A Place for Mom, directed digital product at Lindblad Expeditions - National Geographic, ran digital product and the growth stack at Sotheby&rsquo;s, and built and ran digital product at Madison Square Garden.</p>
         <p>The pattern across those seats is consistent: build with the people who will run it, put the data foundation first, measure against outcomes, and leave something that still stands after you leave the room. Former leaders have recruited me back three times.</p>
@@ -1209,7 +1262,7 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
 <p class="emp-ctx">The experience had not kept pace with the business: a slow, fragmented site, and no clear view of how customers moved from browsing to booking. The approach was a composable replatform, run by a team of 10 across product, analytics, design, and partners, on a $5M portfolio.</p>
 <ul class="proofpoints"><li><strong>Bookings up 30%</strong> and booking funnel completion <strong>up 82%</strong>, within eight months of the replatform</li><li><strong>Qualified leads up 40%</strong></li><li>The rebuilt expeditions.com was named a <strong>Webby Honoree</strong></li></ul>
 <div class="hub-grid emp-cards">
-<article class="hub-card"><a class="hub-card-a" href="/case-studies/lindblad-expeditions/"><img class="hub-img" src="/assets/case-lindblad-expeditions.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Lindblad Expeditions - National Geographic: rebuilding the booking engine</span><span class="hub-sum">Bookings up 30%, booking funnel completion up 82%, within eight months.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/lindblad-expeditions/"><img class="hub-img" srcset="/assets/case-lindblad-expeditions-480.webp 480w, /assets/case-lindblad-expeditions-800.webp 800w, /assets/case-lindblad-expeditions.jpg 1200w" sizes="(max-width: 640px) calc(100vw - 48px), 351px" src="/assets/case-lindblad-expeditions.jpg" alt="" loading="lazy" width="1200" height="800" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Lindblad Expeditions - National Geographic: rebuilding the booking engine</span><span class="hub-sum">Bookings up 30%, booking funnel completion up 82%, within eight months.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
 </div>
 </article>
 <article class="employer">
@@ -1218,7 +1271,7 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
 <p class="emp-ctx">Search was not carrying its weight, and the customer data underneath was fragmented across systems, so search, personalization, and measurement all worked from fragments. The approach was a rearchitecture: off Adobe Experience Manager, onto a composable, data-first stack.</p>
 <ul class="proofpoints"><li><strong>Organic traffic up 167%</strong></li><li><strong>On-site search click-through up 48.7%</strong></li><li>Consignment landing pages doubled search placement and cut consignment ad spend <strong>50%</strong></li><li>The data and measurement foundations kept supporting the business after his departure</li></ul>
 <div class="hub-grid emp-cards">
-<article class="hub-card"><a class="hub-card-a" href="/case-studies/sothebys/"><img class="hub-img" src="/assets/case-sothebys.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Sotheby&rsquo;s: building the growth stack for a 275-year-old auction house</span><span class="hub-sum">Organic traffic up 167% on a composable stack that still stands.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/sothebys/"><img class="hub-img" srcset="/assets/case-sothebys-480.webp 480w, /assets/case-sothebys-800.webp 800w, /assets/case-sothebys.jpg 1200w" sizes="(max-width: 640px) calc(100vw - 48px), 351px" src="/assets/case-sothebys.jpg" alt="" loading="lazy" width="1200" height="800" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Sotheby&rsquo;s: building the growth stack for a 275-year-old auction house</span><span class="hub-sum">Organic traffic up 167% on a composable stack that still stands.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
 </div>
 </article>
 <article class="employer">
@@ -1227,7 +1280,7 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
 <p class="emp-ctx">Every brand ran its own digital property on its own aging platform: the Knicks, the Rangers, the Liberty, the Rockettes, Radio City Music Hall, and the arena itself. The approach was to build one digital product function and one operating model across all of them, including a $4M replatform he proposed and led.</p>
 <ul class="proofpoints"><li><strong>29+ websites and 4+ native apps</strong> under one operating model</li><li>The MSG GO app, <strong>New York Emmy-nominated</strong></li><li><strong>Digital ticket sales up 400%</strong> for the Rockettes and Radio City Music Hall</li></ul>
 <div class="hub-grid emp-cards">
-<article class="hub-card"><a class="hub-card-a" href="/case-studies/madison-square-garden/"><img class="hub-img" src="/assets/case-madison-square-garden.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Madison Square Garden: building the digital product function</span><span class="hub-sum">Rockettes and Radio City ticket sales up 400% across 29+ websites and 4+ apps.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/madison-square-garden/"><img class="hub-img" srcset="/assets/case-madison-square-garden-480.webp 480w, /assets/case-madison-square-garden-800.webp 800w, /assets/case-madison-square-garden.jpg 1200w" sizes="(max-width: 640px) calc(100vw - 48px), 351px" src="/assets/case-madison-square-garden.jpg" alt="" loading="lazy" width="1200" height="800" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Madison Square Garden: building the digital product function</span><span class="hub-sum">Rockettes and Radio City ticket sales up 400% across 29+ websites and 4+ apps.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
 </div>
 </article>
 <article class="employer">
@@ -1236,8 +1289,8 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
 <p class="emp-ctx">Gangverk had been his vendor at Sotheby&rsquo;s, where the firm built the auction engine and catalogue platform under his direction. He joined to build its transformation portfolio and go-to-market, carrying revenue targets and hiring authority.</p>
 <ul class="proofpoints"><li>The firm&rsquo;s active clients grew from <strong>1 to 60+</strong></li><li>Consulting included a Segment-sponsored engagement with TripAdvisor on customer data platform adoption</li></ul>
 <div class="hub-grid emp-cards">
-<article class="hub-card"><a class="hub-card-a" href="/case-studies/ae-networks/"><img class="hub-img" src="/assets/case-ae-networks.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">A+E Networks: the History.com replatform</span><span class="hub-sum">History.com replatformed in four months, then adopted as the migration standard.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
-<article class="hub-card"><a class="hub-card-a" href="/case-studies/gangverk/"><img class="hub-img" src="/assets/case-gangverk.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Gangverk: building the go-to-market</span><span class="hub-sum">Client brands from 1 to 60+ while carrying revenue targets and hiring authority.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/ae-networks/"><img class="hub-img" srcset="/assets/case-ae-networks-480.webp 480w, /assets/case-ae-networks-800.webp 800w, /assets/case-ae-networks.jpg 1200w" sizes="(max-width: 640px) calc(100vw - 48px), 351px" src="/assets/case-ae-networks.jpg" alt="" loading="lazy" width="1200" height="800" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">A+E Networks: the History.com replatform</span><span class="hub-sum">History.com replatformed in four months, then adopted as the migration standard.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/gangverk/"><img class="hub-img" srcset="/assets/case-gangverk-480.webp 480w, /assets/case-gangverk-800.webp 800w, /assets/case-gangverk.jpg 1200w" sizes="(max-width: 640px) calc(100vw - 48px), 351px" src="/assets/case-gangverk.jpg" alt="" loading="lazy" width="1200" height="800" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">Gangverk: building the go-to-market</span><span class="hub-sum">Client brands from 1 to 60+ while carrying revenue targets and hiring authority.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
 </div>
 </article>
 <article class="employer">
@@ -1246,7 +1299,7 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
 <p class="emp-ctx">Organic search was the growth engine, and it was losing power, with market share at 26 percent. The diagnosis was equal parts content and architecture, and the rebuild covered both, platform and governance included.</p>
 <ul class="proofpoints"><li><strong>SEO market share from 26% to 68%</strong></li><li><strong>Team grew from 3 to more than 20</strong></li></ul>
 <div class="hub-grid emp-cards">
-<article class="hub-card"><a class="hub-card-a" href="/case-studies/a-place-for-mom/"><img class="hub-img" src="/assets/case-a-place-for-mom.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">A Place for Mom: equal parts content and architecture</span><span class="hub-sum">SEO market share rose from 26% to 68% once the platform underneath was rebuilt.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/case-studies/a-place-for-mom/"><img class="hub-img" srcset="/assets/case-a-place-for-mom-480.webp 480w, /assets/case-a-place-for-mom.jpg 800w" sizes="(max-width: 640px) calc(100vw - 48px), 351px" src="/assets/case-a-place-for-mom.jpg" alt="" loading="lazy" width="800" height="533" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Case study</span></span><span class="hub-title">A Place for Mom: equal parts content and architecture</span><span class="hub-sum">SEO market share rose from 26% to 68% once the platform underneath was rebuilt.</span><span class="hub-cta">Read the case study &rarr;</span></span></a></article>
 </div>
 </article>
 <article class="employer">
@@ -1262,9 +1315,9 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
     <section id="speaking" aria-labelledby="speaking-h">
       <div class="section-head"><span class="num">03</span><h2 id="speaking-h">Speaking and media</h2></div>
       <div class="hub-grid">
-<article class="hub-card"><a class="hub-card-a" href="/speaking/determination/"><img class="hub-img" src="/assets/video-determination-thumb.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Podcast</span><span>November 2026</span></span><span class="hub-title">Determination: Tell Your Story Simply</span><span class="hub-sum">Douglas Cirillo joins host Brian Sheehy on Determination, on distilling what you do into a story people can hire, and the simplest test of the work: are we bringing joy to our customers?</span><span class="hub-cta">Watch and read the transcript &rarr;</span></span></a></article>
-<article class="hub-card"><a class="hub-card-a" href="/speaking/conductor/"><img class="hub-img" src="/assets/video-conductor-thumb.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Webcast</span><span>April 2020</span></span><span class="hub-title">Conductor Search From Home: A Place for Mom</span><span class="hub-sum">Douglas Cirillo joins Conductor&rsquo;s Search From Home series from A Place for Mom, on using content, data and search to guide a company during Covid-19.</span><span class="hub-cta">Watch the session &rarr;</span></span></a></article>
-<article class="hub-card"><a class="hub-card-a" href="/speaking/synapse/"><img class="hub-img" src="/assets/video-synapse-thumb.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Conference talk</span><span>September 2019</span></span><span class="hub-title">Synapse 2019: How Sotheby&rsquo;s Became a Data Innovator</span><span class="hub-sum">Douglas Cirillo and Richard McGovern present the Sotheby&rsquo;s data transformation live at Segment&rsquo;s Synapse: one customer view across 23 systems, and the adoption work that made it stick.</span><span class="hub-cta">Watch and read the transcript &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/speaking/determination/"><img class="hub-img" src="/assets/video-determination-thumb.jpg" alt="" loading="lazy" width="480" height="360" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Podcast</span><span>November 2026</span></span><span class="hub-title">Determination: Tell Your Story Simply</span><span class="hub-sum">Douglas Cirillo joins host Brian Sheehy on Determination, on distilling what you do into a story people can hire, and the simplest test of the work: are we bringing joy to our customers?</span><span class="hub-cta">Watch and read the transcript &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/speaking/conductor/"><img class="hub-img" src="/assets/video-conductor-thumb.jpg" alt="" loading="lazy" width="480" height="360" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Webcast</span><span>April 2020</span></span><span class="hub-title">Conductor Search From Home: A Place for Mom</span><span class="hub-sum">Douglas Cirillo joins Conductor&rsquo;s Search From Home series from A Place for Mom, on using content, data and search to guide a company during Covid-19.</span><span class="hub-cta">Watch the session &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/speaking/synapse/"><img class="hub-img" src="/assets/video-synapse-thumb.jpg" alt="" loading="lazy" width="480" height="360" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Conference talk</span><span>September 2019</span></span><span class="hub-title">Synapse 2019: How Sotheby&rsquo;s Became a Data Innovator</span><span class="hub-sum">Douglas Cirillo and Richard McGovern present the Sotheby&rsquo;s data transformation live at Segment&rsquo;s Synapse: one customer view across 23 systems, and the adoption work that made it stick.</span><span class="hub-cta">Watch and read the transcript &rarr;</span></span></a></article>
       </div>
       <p class="more"><a href="/speaking/">All speaking and media</a></p>
     </section>
@@ -1285,10 +1338,10 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
         <p>Essays on building digital functions, data first and AI second, and the human side of leading the work. New essays every two weeks, mirrored in <em>From the Middle Seat</em> on LinkedIn.</p>
         <h4>Selected writing</h4>
         <div class="hub-grid">
-<article class="hub-card"><a class="hub-card-a" href="/writing/machines-talking-to-machines/"><img class="hub-img" src="/assets/writing-machines-talking-to-machines-hero.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Essay</span><span>Nov 24, 2026</span></span><span class="hub-title">Machines Talking to Machines</span><span class="hub-sum">A machine reads your resume and another machine tuned it. What breaks through is a record a human can verify.</span><span class="hub-cta">Read the essay &rarr;</span></span></a></article>
-<article class="hub-card"><a class="hub-card-a" href="/writing/when-every-screen-is-different/"><img class="hub-img" src="/assets/writing-when-every-screen-is-different-hero.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Essay</span><span>Nov 18, 2026</span></span><span class="hub-title">When Every Screen Is Different, What Are You Testing?</span><span class="hub-sum">Generative UI ends the fixed screen. Douglas Cirillo on why the objective, not the variant, is now the thing you test.</span><span class="hub-cta">Read the essay &rarr;</span></span></a></article>
-<article class="hub-card"><a class="hub-card-a" href="/writing/own-your-harness/"><img class="hub-img" src="/assets/writing-own-your-harness-hero.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Essay</span><span>Nov 8, 2026</span></span><span class="hub-title">Own Your Harness</span><span class="hub-sum">Own your harness, your data, your runtime. Douglas Cirillo on the Monday test: three checks before trusting any agent setup, and why gates beat prompts.</span><span class="hub-cta">Read the essay &rarr;</span></span></a></article>
-<article class="hub-card"><a class="hub-card-a" href="/writing/composable-is-a-culture-not-just-a-stack/"><img class="hub-img" src="/assets/writing-composable-is-a-culture-not-just-a-stack-hero.jpg" alt="" loading="lazy" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Essay</span><span>August 2025</span></span><span class="hub-title">Composable Is a Culture, Not Just a Stack</span><span class="hub-sum">Composable is not just an architecture choice. It is how a team agrees to work.</span><span class="hub-cta">Read the essay &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/writing/machines-talking-to-machines/"><img class="hub-img" src="/assets/writing-machines-talking-to-machines-hero.jpg" alt="" loading="lazy" width="1200" height="1058" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Essay</span><span>Nov 24, 2026</span></span><span class="hub-title">Machines Talking to Machines</span><span class="hub-sum">A machine reads your resume and another machine tuned it. What breaks through is a record a human can verify.</span><span class="hub-cta">Read the essay &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/writing/when-every-screen-is-different/"><img class="hub-img" src="/assets/writing-when-every-screen-is-different-hero.jpg" alt="" loading="lazy" width="1200" height="800" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Essay</span><span>Nov 18, 2026</span></span><span class="hub-title">When Every Screen Is Different, What Are You Testing?</span><span class="hub-sum">Generative UI ends the fixed screen. Douglas Cirillo on why the objective, not the variant, is now the thing you test.</span><span class="hub-cta">Read the essay &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/writing/own-your-harness/"><img class="hub-img" src="/assets/writing-own-your-harness-hero.jpg" alt="" loading="lazy" width="1200" height="800" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Essay</span><span>Nov 8, 2026</span></span><span class="hub-title">Own Your Harness</span><span class="hub-sum">Own your harness, your data, your runtime. Douglas Cirillo on the Monday test: three checks before trusting any agent setup, and why gates beat prompts.</span><span class="hub-cta">Read the essay &rarr;</span></span></a></article>
+<article class="hub-card"><a class="hub-card-a" href="/writing/composable-is-a-culture-not-just-a-stack/"><img class="hub-img" src="/assets/writing-composable-is-a-culture-not-just-a-stack-hero.jpg" alt="" loading="lazy" width="1200" height="900" /><span class="hub-body"><span class="hub-meta"><span class="hub-tag">Essay</span><span>August 2025</span></span><span class="hub-title">Composable Is a Culture, Not Just a Stack</span><span class="hub-sum">Composable is not just an architecture choice. It is how a team agrees to work.</span><span class="hub-cta">Read the essay &rarr;</span></span></a></article>
 </div>
 <p class="more"><a href="/writing/">View all writing</a></p>
         <div class="writing-actions">
@@ -1337,10 +1390,10 @@ a.hub-card{display:flex;flex-direction:column;height:100%;text-decoration:none;c
   </footer>
 
 </div>
-<script src="/assets/surface.js?v=20261117-11"></script>
-<script src="/assets/ledger.js?v=20261119-2"></script>
-<script src="/assets/ask.js?v=20261123-3"></script>
-<script src="/assets/compose.js?v=20261123-3" defer></script>
-<script src="/assets/experiences.js?v=20261119-4"></script>
+<script src="/assets/surface.js?v=20261124-1"></script>
+<script src="/assets/ledger.js?v=20261124-1"></script>
+<script src="/assets/ask.js?v=20261124-1"></script>
+<script src="/assets/compose.js?v=20261124-1" defer></script>
+<script src="/assets/experiences.js?v=20261124-1"></script>
 </body>
 </html>
