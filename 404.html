@@ -38,9 +38,8 @@
 <link rel="me" href="https://www.linkedin.com/in/douglascirillo/" />
 <link rel="me" href="https://douglascirillo.substack.com" />
 <link rel="me" href="https://x.com/DouglasCirillo" />
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preload" href="/assets/fonts/publicsans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/fonts.css">
 
 <style>
   :root{
@@ -714,10 +713,16 @@
     /* Session Replay (plugin-session-replay-browser 1.36.7,
        pinned). Full capture, sampleRate 1, for human sessions
        only: BOT_CLS is computed above, before the SDK loads, and
-       the plugin is registered only when it says human. Bot and
+       the plugin is added only when it says human. Bot and
        scanner sessions get analytics exactly as before and are
        never recorded. If the SDK bundle already exposes
-       window.sessionReplay, the plugin library is not loaded. */
+       window.sessionReplay, the plugin library is not loaded.
+       Lazy init (performance build, Nov 24, 2026): the plugin
+       no longer gates analytics start. It is loaded and added
+       after the page settles (idle time or first interaction),
+       by scheduleReplay below, so its download and boot cost
+       leave the critical path; engaged sessions are still
+       recorded whole, at the same sampleRate 1. */
     var SR_PLUGIN_SRC = 'https://cdn.amplitude.com/libs/plugin-session-replay-browser-1.36.7-min.js.gz';
     /* Guides and Surveys (the engagement SDK), loaded the same
        way as the replay plugin: fetched only inside this gated
@@ -747,9 +752,6 @@
         started = true;
         try {
           if (window.amplitude && typeof window.amplitude.init === 'function') {
-            if (!BOT_CLS.is_bot && window.sessionReplay && typeof window.sessionReplay.plugin === 'function' && typeof window.amplitude.add === 'function') {
-              try { window.amplitude.add(window.sessionReplay.plugin({ sampleRate: 1 })); } catch (e) { /* Replay must never break analytics. */ }
-            }
             if (!BOT_CLS.is_bot && window.engagement && typeof window.engagement.plugin === 'function' && typeof window.amplitude.add === 'function') {
               try { window.amplitude.add(window.engagement.plugin()); } catch (e) { /* Guides and Surveys must never break analytics. */ }
             }
@@ -882,6 +884,7 @@
               var readyFn = ampReadyCallbacks.shift();
               try { readyFn(); } catch (e) {}
             }
+            scheduleReplay();
           }
         } catch (e) { /* Analytics must never break the page. */ }
       };
@@ -892,21 +895,13 @@
            both have settled, or when the stall guard fires,
            whichever comes first. A plugin that fails to load
            never blocks the start: start() registers only what
-           arrived. */
+           arrived. Session Replay is not in this set any more:
+           it lazy-loads after the start (see scheduleReplay). */
         var pluginsPending = 0;
         var pluginSettled = function () {
           pluginsPending--;
           if (pluginsPending <= 0) start();
         };
-        if (!window.sessionReplay) {
-          pluginsPending++;
-          var sr = document.createElement('script');
-          sr.src = SR_PLUGIN_SRC;
-          sr.async = true;
-          sr.onload = pluginSettled;
-          sr.onerror = pluginSettled;
-          document.head.appendChild(sr);
-        }
         if (!window.engagement) {
           pluginsPending++;
           var eng = document.createElement('script');
@@ -932,6 +927,64 @@
           setTimeout(start, 3000);
         }
       }
+    };
+    /* Session Replay lazy init (performance build, Nov 24,
+       2026): startReplay runs once, after analytics is up. It
+       re-checks every gate at the moment it fires -- a consent
+       revoke or decline that landed while the page settled
+       means the plugin is never loaded and never added, and
+       the internal-flag hold is re-checked too (a flagged
+       browser never loads the SDK, so it never reaches this
+       code at all; the check is belt and braces). Recording
+       begins when the plugin is added; a visit that ends
+       before the settle window leaves no replay, which is
+       the accepted cost of the change. */
+    var srStarted = false;
+    var startReplay = function () {
+      if (srStarted) return;
+      srStarted = true;
+      try {
+        if (BOT_CLS.is_bot) return;
+        if (DC_INTERNAL) return;
+        if (AMP_GATE !== "open" && AMP_GATE !== "granted") return;
+        if (!window.amplitude || typeof window.amplitude.add !== 'function') return;
+        var addReplay = function () {
+          try {
+            /* The gate is re-checked here, at add time, not
+               only in startReplay: the plugin script loads
+               async, and a revoke landing between the append
+               and this callback must still win. */
+            if (AMP_GATE !== "open" && AMP_GATE !== "granted") return;
+            if (BOT_CLS.is_bot || DC_INTERNAL) return;
+            if (window.sessionReplay && typeof window.sessionReplay.plugin === 'function') {
+              window.amplitude.add(window.sessionReplay.plugin({ sampleRate: 1 }));
+            }
+          } catch (e) { /* Replay must never break analytics. */ }
+        };
+        if (window.sessionReplay) { addReplay(); return; }
+        var sr = document.createElement('script');
+        sr.src = SR_PLUGIN_SRC;
+        sr.async = true;
+        sr.onload = addReplay;
+        sr.onerror = function () { /* Replay is optional; analytics already runs. */ };
+        document.head.appendChild(sr);
+      } catch (e) { /* Replay must never break analytics. */ }
+    };
+    var scheduleReplay = function () {
+      if (BOT_CLS.is_bot) return;
+      var fire = function () { startReplay(); };
+      ['pointerdown', 'keydown', 'touchstart'].forEach(function (type) {
+        try { window.addEventListener(type, fire, { once: true, passive: true }); } catch (e) {}
+      });
+      var onLoad = function () {
+        if (typeof window.requestIdleCallback === 'function') {
+          window.requestIdleCallback(fire, { timeout: 3000 });
+        } else {
+          setTimeout(fire, 1500);
+        }
+      };
+      if (document.readyState === 'complete') { onLoad(); }
+      else { window.addEventListener('load', onLoad); }
     };
     sdk.onerror = function () { /* Fail silently if the CDN is unreachable. */ };
 
@@ -1120,10 +1173,10 @@
     <p>West Chester, Pennsylvania</p>
     <p><a href="/colophon/">How this site runs: the colophon</a></p>
   </footer>
-  <script src="/assets/surface.js?v=20261117-11"></script>
-<script src="/assets/ledger.js?v=20261119-2"></script>
-<script src="/assets/ask.js?v=20261123-3"></script>
-<script src="/assets/compose.js?v=20261123-3" defer></script>
-<script src="/assets/experiences.js?v=20261119-4"></script>
+  <script src="/assets/surface.js?v=20261124-1"></script>
+<script src="/assets/ledger.js?v=20261124-1"></script>
+<script src="/assets/ask.js?v=20261124-1"></script>
+<script src="/assets/compose.js?v=20261124-1" defer></script>
+<script src="/assets/experiences.js?v=20261124-1"></script>
 </body>
 </html>
